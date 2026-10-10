@@ -1,0 +1,33 @@
+{
+	"_comment": "Combat tuning. Every number here is a first guess, not balance. Energy values are in whole points unless the key ends in _milli (thousandths of a point).",
+	"timeline": {
+		"action_threshold": 100,
+		"min_charge_per_tick": 1
+	},
+	"energy": {
+		"recharge_milli_per_battery_per_tick": 20,
+		"recharge_floor_milli_per_tick": 100,
+		"starting_percent": 50
+	},
+	"wait": {
+		"recharge_bonus_percent": 100
+	},
+	"damage": {
+		"defense_percent": 50,
+		"min_damage": 1
+	},
+	"fight": {
+		"max_actions": 400
+	},
+	"grid": {
+		"base_cost": 4.0,
+		"cost_per_defense_level": 2.0,
+		"cost_per_energy_spent": 0.1
+	},
+	"player_skills": ["strike", "heavy_strike", "overload"],
+	"skills": {
+		"strike": {"name": "Strike", "energy_cost": 0, "power_percent": 100},
+		"heavy_strike": {"name": "Heavy Strike", "energy_cost": 4, "power_percent": 150},
+		"overload": {"name": "Overload", "energy_cost": 9, "power_percent": 220}
+	}
+}
