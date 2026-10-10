@@ -60,8 +60,11 @@ static func bot(id: String, speed: int, generation := 3) -> Bot:
 static func fight_for(bots: Array[Bot], foe_hp := SAMPLE_FOE_HP) -> Fight:
 	var tuning := combat_tuning()
 	var squad: Array[SquadMemberSummary] = []
+	# The sample predates bot skills: its bots fight with the pinned
+	# player_skills (strike, heavy_strike, overload), not their own skills.
 	for b in bots:
 		squad.append(b.to_summary())
+	squad = H.without_skills(squad)
 	var skills: Array = ["strike"]
 	var table := H.table({"foe": H.enemy_def("Foe", H.stats(foe_hp, 1, 0, 1, 0), skills)}, "foe")
 	return Fight.new(H.request(squad), 1, tuning, table)

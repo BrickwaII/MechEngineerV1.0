@@ -17,10 +17,15 @@
 		"levels_per_step": 1,
 		"max_level": 10
 	},
-	"_combat_skill_effects_comment": "Combat skill id -> bot skill effect_id. A use of the combat skill counts toward the bot skill with that effect. Empty means no bot skill matches yet.",
+	"_combat_skill_effects_comment": "Combat skill id -> bot skill effect_id. A use of the combat skill counts toward the bot skill with that effect. Empty means no bot skill matches. Must agree with bot_skill_effects in data/combat/combat_tuning.json (a test checks).",
 	"combat_skill_effects": {
 		"strike": "damage_single",
 		"heavy_strike": "damage_single_heavy",
-		"overload": ""
+		"overload": "",
+		"repair": "",
+		"arc_sweep": "damage_all",
+		"brace": "guard_self",
+		"patch_up": "heal_single",
+		"shield": "guard_ally"
 	}
 }

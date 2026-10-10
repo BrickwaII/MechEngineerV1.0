@@ -6,8 +6,10 @@ fight and turn the mouse into `FightCommand`s.
 - `fight_demo.tscn`: runnable entry. Draft -> fight -> result text.
 - `BattleScreen` (`battle_screen.tscn`): timeline bar, a panel per unit with
   live HP and energy, the log, and the command bar. Mouse: left-click a bot to
-  select it, a skill button to pick a skill, an enemy to target it; WAIT;
-  CANCEL or right-click to step back.
+  select it, a skill button to pick a skill, an enemy to target it (a bot,
+  for Patch Up and Shield Ally; Brace needs no target); WAIT; CANCEL or
+  right-click to step back. The buttons are the bot's own skills, by its
+  names and levels.
 - `FightSceneService`: a contracts `FightService` that plays the fight as a
   `BattleScreen` under a host node and emits `finished` with the
   `FightResult`. Swap it in for the overworld's fight service.

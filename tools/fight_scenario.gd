@@ -127,11 +127,11 @@ func _enemy_table(base: EnemyTable, bot_tuning: BotTuning, combat_tuning: Combat
 	return FixedEnemyTable.from_table(base, ids, extra)
 
 
-## A bot as an enemy definition. Bots' own skills do not drive fights yet:
-## fight/ gives every squad member CombatTuning.player_skills, so a bot fielded
-## as an enemy gets the same list.
+## A bot as an enemy definition, with the combat skills its own skills map to
+## (as in the squad, see SquadSkills). Enemies have no skill levels, so the
+## bot's levels and skill names do not carry over.
 static func _enemy_def(bot: Bot, combat_tuning: CombatTuning) -> Dictionary:
-	var d := {"name": bot.display_name, "skills": combat_tuning.player_skills.duplicate()}
+	var d := {"name": bot.display_name, "skills": SquadSkills.ids_for(bot.to_summary(), combat_tuning)}
 	for stat in Bot.STAT_NAMES:
 		d[stat] = int(bot.stats.get(stat))
 	return d

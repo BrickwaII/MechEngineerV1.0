@@ -9,6 +9,10 @@ extends RefCounted
 var problem := ""
 ## One entry per unit whose hp would (or might) change, in roster order.
 var effects: Array[UnitEffect] = []
+## Unit id -> the percent of its next hit it would block afterwards, for every
+## unit whose guard the choice would change (Brace, Shield Ally, or a hit that
+## uses a guard up).
+var guard_changes: Dictionary[String, int] = {}
 ## False when the outcome is random, so which intents change is unknown.
 var intent_changes_known := true
 ## One revision per enemy whose intent would change. Empty when unknown.

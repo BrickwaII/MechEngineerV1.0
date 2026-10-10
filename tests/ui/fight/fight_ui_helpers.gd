@@ -29,22 +29,56 @@ static func click(panel: Control, button := MOUSE_BUTTON_LEFT) -> void:
 	panel._gui_input(event)
 
 
-## One player turn by mouse: the strongest affordable skill button, then a
-## click on the weakest enemy. The choice SimpleFightPolicy would make.
+## One player turn by mouse: the strongest affordable single-target attack
+## button, then a click on the weakest enemy. The choice SimpleFightPolicy
+## would make.
 static func play_turn_by_mouse(s: BattleScreen) -> void:
 	var fight := s.fight
 	var actor := s.handler.actor()
 	var best := ""
-	for id in actor.skill_ids:
-		if s.handler.skill_problem(id).is_empty() and (best.is_empty()
-				or fight.tuning.skill(id).power_percent > fight.tuning.skill(best).power_percent):
-			best = id
+	for skill in actor.skills():
+		if skill.target == CombatSkill.TARGET_OPPONENT and s.handler.skill_problem(skill.id).is_empty() and (
+				best.is_empty() or skill.power_percent > actor.skill(best).power_percent):
+			best = skill.id
 	var target: Combatant = null
 	for c in fight.opponents_of(actor):
 		if target == null or c.hp < target.hp:
 			target = c
 	s.skill_buttons[best].pressed.emit()
 	click(s.unit_panels[target.id])
+
+
+## One player turn by mouse that uses the bot's support skills too: heal the
+## most worn-down bot when the heal would be used in full, else guard the most
+## worn-down unguarded bot below half hp, else sweep when two or more enemies
+## stand, else the play_turn_by_mouse() attack.
+static func play_support_turn_by_mouse(s: BattleScreen) -> void:
+	var fight := s.fight
+	var actor := s.handler.actor()
+	var hurt: Combatant = null
+	for c in fight.living(Combatant.Side.PLAYER):
+		if hurt == null or c.hp * hurt.max_hp < hurt.hp * c.max_hp:
+			hurt = c
+	for skill in actor.skills():
+		if not s.handler.skill_problem(skill.id).is_empty():
+			continue
+		var target: Combatant = null
+		if skill.is_heal() and hurt.max_hp - hurt.hp >= DamageRules.heal(actor.stats, 0, hurt.max_hp, skill):
+			target = hurt
+		elif skill.is_guard() and hurt.guard_percent == 0 and hurt.hp * 2 < hurt.max_hp:
+			target = actor if skill.target == CombatSkill.TARGET_SELF else hurt
+		if target != null and fight.check_action(FightAction.use(skill.id, target.id)).is_empty():
+			s.skill_buttons[skill.id].pressed.emit()
+			if s.handler.is_choosing_target():
+				click(s.unit_panels[target.id])
+			return
+	if fight.opponents_of(actor).size() >= 2:
+		for skill in actor.skills():
+			if skill.hits_all() and s.handler.skill_problem(skill.id).is_empty():
+				s.skill_buttons[skill.id].pressed.emit()
+				click(s.unit_panels[fight.opponents_of(actor)[0].id])
+				return
+	play_turn_by_mouse(s)
 
 
 ## Bolt, one strong fast bot, against two Warden Mechs (supportive, by

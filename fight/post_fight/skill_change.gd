@@ -10,6 +10,9 @@ var banked_before := 0
 var banked_after := 0
 var level_before := 0
 var level_after := 0
+## Uses one level step takes, and the highest level, from PostFightTuning.
+var uses_per_level := 0
+var max_level := 0
 
 
 func has_bot_skill() -> bool:
@@ -18,3 +21,7 @@ func has_bot_skill() -> bool:
 
 func levels_gained() -> int:
 	return level_after - level_before
+
+
+func is_max_level() -> bool:
+	return has_bot_skill() and level_after >= max_level

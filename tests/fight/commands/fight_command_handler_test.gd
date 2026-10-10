@@ -1,11 +1,14 @@
 extends GdUnitTestSuite
 ## FightCommandHandler, headless: whole fights driven by commands alone.
 
+const H := preload("res://tests/fight/fight_test_helpers.gd")
 const SEED := 7
 
 
+## The stub squad without its own skills: every bot has player_skills.
 func _request(level := 1) -> FightRequest:
-	return FightRequest.new(FightRequest.Kind.ATTACK, "test_territory", level, StubSquadProvider.new().get_squad())
+	return FightRequest.new(
+		FightRequest.Kind.ATTACK, "test_territory", level, H.without_skills(StubSquadProvider.new().get_squad()))
 
 
 func _handler(level := 1, auto := true) -> FightCommandHandler:
@@ -195,3 +198,15 @@ func _other_living_bot(handler: FightCommandHandler) -> Combatant:
 		if c.id != handler.actor().id:
 			return c
 	return null
+
+
+func test_a_self_only_skill_is_used_on_selection() -> void:
+	var skills: Array[Dictionary] = [SquadMemberSummary.make_skill("Brace", "guard_self")]
+	var squad: Array[SquadMemberSummary] = [
+		SquadMemberSummary.new("anvil", "Anvil", 40, 40, "defensive", UnitStats.new(40, 5, 5, 20, 2, 10), skills)]
+	var handler := FightCommandHandler.new(Fight.new(
+		FightRequest.new(FightRequest.Kind.ATTACK, "test_territory", 1, squad), SEED))
+	assert_str(handler.actor().id).is_equal("anvil")
+	assert_str(handler.apply(FightCommand.select_skill("brace"))).is_empty()
+	assert_str(handler.fight.action_tags[0]).is_equal("anvil:brace")
+	assert_int(handler.fight.combatant("anvil").guard_percent).is_greater(0)

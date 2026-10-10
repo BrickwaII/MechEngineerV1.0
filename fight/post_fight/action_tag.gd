@@ -60,7 +60,7 @@ static func begin(fight: Fight, actor: Combatant, action: FightAction) -> Action
 	tag.skill_id = action.skill_id
 	tag.energy_before_milli = actor.energy_milli
 	tag.after_wait = actor.is_waiting()
-	var skill := fight.tuning.skill(action.skill_id)
+	var skill := actor.skill(action.skill_id)
 	tag.energy_cost_milli = skill.energy_cost_milli() if skill != null else 0
 	if action.kind == FightAction.Kind.SKILL:
 		tag.target_id = action.target_id

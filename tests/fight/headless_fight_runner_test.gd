@@ -6,7 +6,7 @@ const H := preload("res://tests/fight/fight_test_helpers.gd")
 
 
 func _request(level: int) -> FightRequest:
-	return H.request(StubSquadProvider.new().get_squad(), level)
+	return H.request(H.without_skills(StubSquadProvider.new().get_squad()), level)
 
 
 func _random_run(level: int, seed_value: int) -> Fight:

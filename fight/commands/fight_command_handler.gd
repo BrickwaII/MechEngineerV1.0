@@ -94,8 +94,8 @@ func skill_problem(skill_id: String) -> String:
 	if not is_player_turn():
 		return "not your turn"
 	var unit := actor()
-	var skill := fight.tuning.skill(skill_id)
-	if skill == null or not unit.has_skill(skill_id):
+	var skill := unit.skill(skill_id)
+	if skill == null:
 		return "%s has no skill %s" % [unit.display_name, skill_id]
 	if not unit.can_afford(skill):
 		return "%s needs %d energy for %s" % [unit.display_name, skill.energy_cost, skill.display_name]
@@ -119,9 +119,8 @@ func default_wait_skill() -> String:
 		return ""
 	var unit := actor()
 	var best: CombatSkill = null
-	for id in unit.skill_ids:
-		var skill := fight.tuning.skill(id)
-		if skill == null or unit.can_afford(skill) or skill.energy_cost_milli() > unit.max_energy_milli:
+	for skill in unit.skills():
+		if unit.can_afford(skill) or skill.energy_cost_milli() > unit.max_energy_milli:
 			continue
 		if best == null or skill.energy_cost < best.energy_cost:
 			best = skill
@@ -170,6 +169,10 @@ func _select_skill(skill_id: String) -> String:
 	problem = skill_problem(skill_id)
 	if not problem.is_empty():
 		return problem
+	# A self-only skill has one possible target: use it straight away.
+	if actor().skill(skill_id).target == CombatSkill.TARGET_SELF:
+		_submit(FightAction.use(skill_id, actor().id))
+		return ""
 	selected_skill_id = skill_id
 	return ""
 

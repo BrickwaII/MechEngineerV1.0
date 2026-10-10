@@ -16,7 +16,12 @@ var side: Side
 ## Position in the fight's roster; the last tie-break on the timeline.
 var order: int
 var stats: UnitStats
+## The unit's skills in menu order. Read each one with skill(), which carries
+## the unit's own name and level for it.
 var skill_ids: Array[String] = []
+## Skill id -> {"name": String, "level": int}: a bot's own name and level for
+## a skill. Skills not listed use the tuning's name at level 1.
+var skill_overrides: Dictionary = {}
 
 var hp: int
 var max_hp: int
@@ -35,8 +40,12 @@ var wait_target_milli := NOT_WAITING
 ## Ticks spent in the current wait.
 var wait_ticks := 0
 var energy_spent_milli := 0
+## Percent of the next hit this unit takes that is blocked. 0 when unguarded.
+var guard_percent := 0
 
 var _tuning: CombatTuning
+## Skill id -> this unit's CombatSkill, built from the tuning and the overrides.
+var _skills: Dictionary[String, CombatSkill] = {}
 
 
 ## p_side is a Side value; typed int because GDScript cannot type a
@@ -50,6 +59,7 @@ func _init(
 	p_hp: int,
 	p_skill_ids: Array[String],
 	tuning: CombatTuning,
+	p_skill_overrides: Dictionary = {},
 ) -> void:
 	_tuning = tuning
 	id = p_id
@@ -60,6 +70,14 @@ func _init(
 	max_hp = maxi(p_stats.hp, p_hp)
 	hp = p_hp
 	skill_ids = p_skill_ids.duplicate()
+	skill_overrides = p_skill_overrides
+	for skill_id in skill_ids:
+		var base := tuning.skill(skill_id)
+		if base == null:
+			continue
+		var o: Dictionary = skill_overrides.get(skill_id, {})
+		_skills[skill_id] = base.at_level(
+			int(o.get("level", 1)), String(o.get("name", "")), tuning.power_percent_per_level, tuning.max_guard_percent)
 	charge_per_tick = maxi(tuning.min_charge_per_tick, p_stats.speed)
 	max_energy_milli = maxi(0, p_stats.battery_capacity) * MILLI
 	energy_milli = max_energy_milli * tuning.starting_energy_percent / 100
@@ -88,7 +106,22 @@ func can_afford(skill: CombatSkill) -> bool:
 
 
 func has_skill(skill_id: String) -> bool:
-	return skill_id in skill_ids
+	return _skills.has(skill_id)
+
+
+## This unit's version of `skill_id`: its own name, and power scaled by its
+## level. Null when the unit does not have the skill.
+func skill(skill_id: String) -> CombatSkill:
+	return _skills.get(skill_id)
+
+
+## This unit's skills in menu order.
+func skills() -> Array[CombatSkill]:
+	var out: Array[CombatSkill] = []
+	for skill_id in skill_ids:
+		if _skills.has(skill_id):
+			out.append(_skills[skill_id])
+	return out
 
 
 func spend(skill: CombatSkill) -> void:
@@ -132,10 +165,11 @@ func finish_action(threshold: int) -> void:
 	wait_ticks = 0
 
 
-## A copy of the timing state only, for previews. Shares stats and skills.
+## A copy of the timing and guard state, for previews. Shares stats and skills.
 func clone_for_preview() -> Combatant:
-	var c := Combatant.new(id, display_name, side, order, stats, hp, skill_ids, _tuning)
+	var c := Combatant.new(id, display_name, side, order, stats, hp, skill_ids, _tuning, skill_overrides)
 	c.max_hp = max_hp
+	c.guard_percent = guard_percent
 	c.gauge = gauge
 	c.energy_milli = energy_milli
 	c.wait_target_milli = wait_target_milli

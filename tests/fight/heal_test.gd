@@ -64,7 +64,7 @@ func test_a_heal_spends_energy() -> void:
 func test_a_heal_may_not_target_an_opponent_and_an_attack_may_not_target_an_ally() -> void:
 	var f := _fight()
 	f.advance()
-	assert_str(f.check_action(FightAction.use("repair", "bolt"))).contains("may not heal an opponent")
+	assert_str(f.check_action(FightAction.use("repair", "bolt"))).contains("may not use repair on an opponent")
 	assert_str(f.check_action(FightAction.use("strike", "grunt#1"))).contains("may not target an ally")
 
 

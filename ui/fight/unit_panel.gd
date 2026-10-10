@@ -146,10 +146,13 @@ func _status(unit: Combatant, p_highlight: Highlight) -> String:
 		return "READY - choose an action"
 	if p_highlight == Highlight.TARGETABLE:
 		return "click to target"
+	var parts := PackedStringArray()
+	if unit.guard_percent > 0:
+		parts.append("GUARD %d%%" % unit.guard_percent)
 	if unit.is_waiting():
 		@warning_ignore("integer_division")
-		return "charging to %d energy" % (unit.wait_target_milli / Combatant.MILLI)
-	return ""
+		parts.append("charging to %d energy" % (unit.wait_target_milli / Combatant.MILLI))
+	return " · ".join(parts)
 
 
 func _gui_input(event: InputEvent) -> void:
