@@ -21,4 +21,8 @@ The dev menu also plays a run on the switchboard's choices.
   toggles it. `debug_overlay_demo.tscn` shows it on a fight
   driven headless.
 
+- `enemy_lineup.tscn` (`EnemyLineup`): every enemy unit type grouped by
+  faction, in all three tiers, idling. `capture_enemy_lineup.gd` renders it
+  and one battle per faction to PNGs (needs a display, see the script).
+
 `screenshots/` holds images for pull requests; Godot does not import it.

@@ -2,6 +2,15 @@ extends Control
 ## The overworld screen: grid capacity and countdown along the top, the map
 ## and time bar on the left, the territory panel and event log on the right.
 ## All rules live in Campaign; this script only shows them and forwards input.
+##
+## Presentation (M7 P3, timings in data/feel/screens.json): P1's pixel theme;
+## regions react to hover and selection (MapView, MapFx); changes to the run
+## (captures, energy, material, grid) are held while the map is out of sight
+## or under a message, then shown at once as a capture sweep, number popups
+## and bars that slide with a trailing ghost (MapChanges); the act zoom plays
+## a whoosh, an act title card and a music crossfade (ActMusic); the
+## territory panel names the enemy faction when the data has one
+## (FactionLookup).
 
 const Palette := preload("res://ui/overworld/palette.gd")
 const MapView := preload("res://ui/overworld/map_view.gd")
@@ -52,9 +61,22 @@ var _zoom_from := [Vector2(0.5, 0.5), 1.0]
 
 var _events: PackedStringArray = []
 var _hover_wait := false
+## The map's music, one loop per act.
+var music: ActMusic
+## Which enemy faction holds each region, from data/combat/.
+var factions := FactionLookup.load_default()
+## The run as it looked at the last refresh, and the changes not yet shown.
+var _seen := {}
+var _unshown: MapChanges
+## The act title card the zoom shows.
+var _act_title: Control
+## The panels dimmed while the act zoom plays.
+var _hud: Array[Control] = []
+var _popups: Control
 
 var _grid_bar: MeterBar
 var _grid_text: Label
+var _grid_title: Label
 var _grid_rate: Label
 var _countdown: Label
 var _day_line: Label
@@ -77,8 +99,18 @@ var _status: Label
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	theme = ScreenTheme.theme()
+	music = ActMusic.new()
+	music.name = "ActMusic"
+	add_child(music)
 	_build_layout()
 	new_run()
+
+
+func _process(_delta: float) -> void:
+	if _unshown != null and can_show_changes():
+		_show_changes(_unshown)
+		_unshown = null
 
 
 ## Starts a fresh run on the default start and offers the choice of start.
@@ -215,8 +247,101 @@ func _use_campaign(c: Campaign) -> void:
 	_use_view_for(campaign.map)
 	map_view.campaign = campaign
 	map_view.selected_id = ""
+	_seen = {}
+	_unshown = null
+	music.play_act(campaign.state.act)
 	_hide_modal()
 	_refresh()
+
+
+## True when the run plays the shared_pool energy-grid variant: grid capacity
+## and Energy are one pool, kept in RunState.grid.
+func is_shared_pool() -> bool:
+	return campaign != null and campaign.variants != null and EnergyGridRules.is_shared(campaign.variants)
+
+
+## True when the map is on screen with nothing over it, so changes to the run
+## can be shown: not hidden behind a fight or readout, a message or the zoom.
+func can_show_changes() -> bool:
+	return is_visible_in_tree() and not _modal.visible and not zooming
+
+
+## Changes to the run not shown yet, or null.
+func unshown_changes() -> MapChanges:
+	return _unshown
+
+
+## Notes what changed since the last refresh, to show when the map is in view.
+func _note_changes() -> void:
+	var now := MapChanges.snapshot(campaign.state)
+	if _seen.is_empty():
+		_seen = now
+		_grid_bar.animate_to(campaign.state.grid / campaign.tuning.max_grid, true)
+		return
+	var changes := MapChanges.between(_seen, now)
+	_seen = now
+	if changes.is_empty():
+		return
+	if _unshown == null:
+		_unshown = changes
+	else:
+		_unshown.merge(changes)
+	for id in _unshown.captured:
+		map_view.fx.hold_capture(id)
+
+
+## Plays the held changes: captured regions sweep to the owned color, the grid
+## bar slides with a trailing ghost, and gains and losses pop as numbers by
+## their readouts.
+func _show_changes(changes: MapChanges) -> void:
+	for id in changes.captured:
+		if campaign.map.has_region(id):
+			map_view.play_capture(id)
+	if not changes.captured.is_empty():
+		SoundPlayer.fire(&"map_capture")
+	_grid_bar.animate_to(campaign.state.grid / campaign.tuning.max_grid)
+	var gained := false
+	var spent := false
+	for key: String in changes.deltas:
+		var delta: float = changes.deltas[key]
+		_pop_number(key, roundi(delta))
+		gained = gained or delta > 0.0
+		spent = spent or delta < 0.0
+	if gained and changes.captured.is_empty():
+		SoundPlayer.fire(&"resource_gain")
+	elif spent and changes.captured.is_empty():
+		SoundPlayer.fire(&"resource_loss")
+
+
+## A popup by a readout: "+3 EN" with the energy bolt, "+2 MAT", "-10% GRID".
+## Sign, word and color together, never color alone.
+func _pop_number(key: String, amount: int) -> void:
+	if amount == 0:
+		return
+	var anchor: Control = _grid_text if key == "grid" else _income_label(key)
+	if anchor == null or not anchor.is_inside_tree():
+		return
+	var popup := NumberPopup.new()
+	popup.setup(amount, "energy" if key == "energy" else "heal")
+	if key == "material":
+		popup.text = "%+d MAT" % amount
+		popup.color = Palette.MATERIAL
+		popup.icon = null
+	elif key == "grid":
+		popup.text = ("%+d%% POOL" if is_shared_pool() else "%+d%% GRID") % amount
+		popup.color = Palette.WARNING if amount > 0 else Palette.DANGER
+		popup.icon = null
+	var offset: Array = ScreenFeel.value("map.popup_offset_px", [0, 0])
+	var at := anchor.global_position - _popups.global_position + Vector2(anchor.size.x / 2.0, 0)
+	popup.position = at + Vector2(offset[0], offset[1])
+	_popups.add_child(popup)
+
+
+func _income_label(key: String) -> Control:
+	for row in _income.get_children():
+		if row.has_meta("resource") and row.get_meta("resource") == key:
+			return row
+	return null
 
 
 # --- Layout ---------------------------------------------------------------------
@@ -248,7 +373,29 @@ func _build_layout() -> void:
 	left.add_child(_build_time_strip())
 
 	body.add_child(_build_side_panel())
+	_hud = [column.get_child(0), left.get_child(1), body.get_child(1)]
+	_popups = Control.new()
+	_popups.name = "Popups"
+	_popups.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_popups.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_popups)
+	_build_act_title()
 	_build_modal()
+
+
+## The act title card the zoom shows over the map: "ACT 2" over the act name.
+func _build_act_title() -> void:
+	_act_title = _box(Color(Palette.BAR_BACKGROUND, 0.92), Vector4(28, 14, 28, 14), Palette.RULE)
+	_act_title.name = "ActTitle"
+	_act_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_act_title.visible = false
+	var rows := _rows(4)
+	rows.add_child(_text("", 11, Palette.ACCENT))
+	rows.add_child(_text("", 30, Palette.TEXT_BRIGHT))
+	for label: Label in rows.get_children():
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_act_title.add_child(rows)
+	add_child(_act_title)
 
 
 func _new_view(globe: bool) -> MapView:
@@ -256,6 +403,9 @@ func _new_view(globe: bool) -> MapView:
 	view.name = "GlobeView" if globe else "MapView"
 	view.custom_minimum_size = MAP_SIZE
 	view.region_selected.connect(func(_id: String) -> void: _refresh())
+	if _time_bar != null:
+		_time_bar.fx = view.fx
+		_grid_bar.fx = view.fx
 	return view
 
 
@@ -285,7 +435,8 @@ func _build_top_bar() -> Control:
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.alignment = BoxContainer.ALIGNMENT_BEGIN
 	row.add_child(grid)
-	grid.add_child(_text("GRID CAPACITY", 11, Palette.TEXT_DIM))
+	_grid_title = _text("GRID CAPACITY", 11, Palette.TEXT_DIM)
+	grid.add_child(_grid_title)
 	_grid_bar = MeterBar.new()
 	_grid_bar.custom_minimum_size = Vector2(260, 16)
 	_grid_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -344,6 +495,8 @@ func _build_time_strip() -> Control:
 	_time_bar.fill_color = Palette.TIME_FILL
 	_time_bar.ghost_color = Palette.TIME_GHOST
 	_time_bar.ghost_dark = Palette.TIME_GHOST_DARK
+	_time_bar.fx = map_view.fx
+	_grid_bar.fx = map_view.fx
 	rows.add_child(_time_bar)
 
 	var camp := HBoxContainer.new()
@@ -428,19 +581,30 @@ func _refresh() -> void:
 	var pending_grid := campaign.grid_cost(pending, map_view.selected_id) if pending != Campaign.Action.NONE else 0.0
 
 	var income := campaign.income_per_day()
-	_grid_bar.fill_ratio = s.grid / t.max_grid
+	_note_changes()
+	if _unshown == null or not _unshown.deltas.has("grid"):
+		_grid_bar.animate_to(s.grid / t.max_grid)
 	var ghost := minf(pending_grid, s.grid)
 	_grid_bar.ghost_from = (s.grid - ghost) / t.max_grid
 	_grid_bar.ghost_ratio = ghost / t.max_grid
 	_grid_text.text = "%d%%" % roundi(s.grid)
-	_grid_rate.text = "+%s%%/DAY" % _number(income[MapRegion.POWER] * t.points_per_day / t.grid_regen_divisor)
+	# With the shared pool (energy-grid variant) the bar is the one pool of
+	# grid and Energy, and there is no separate Energy count.
+	var shared := is_shared_pool()
+	_grid_title.text = "POWER POOL" if shared else "GRID CAPACITY"
+	_grid_bar.fill_color = Palette.ENERGY if shared else Color("#f2b84b")
+	if shared:
+		var divisor := campaign.variants.param_float(CampaignVariants.ENERGY_GRID, "pool_regen_divisor", 1.0)
+		_grid_rate.text = "+%s%%/DAY" % _number((income[MapRegion.POWER] + income[MapRegion.ENERGY]) * t.points_per_day / maxf(divisor, 0.001))
+	else:
+		_grid_rate.text = "+%s%%/DAY" % _number(income[MapRegion.POWER] * t.points_per_day / t.grid_regen_divisor)
 
 	_countdown.text = "PAYLOAD IN %d DAYS" % campaign.days_left()
 	_day_line.text = "ACT %d · %s · DAY %d / %d · %d OF %d TERRITORIES" % [
 		s.act + 1, campaign.map.name.to_upper(), campaign.day(), t.total_points / t.points_per_day,
 		s.owned.size(), campaign.map.regions.size()]
 	_clear(_income)
-	for key in [MapRegion.ENERGY, MapRegion.MATERIAL]:
+	for key in ([MapRegion.MATERIAL] if shared else [MapRegion.ENERGY, MapRegion.MATERIAL]):
 		var stock: float = s.energy if key == MapRegion.ENERGY else s.material
 		_income.add_child(_resource_readout(key, floori(stock), income[key]))
 
@@ -514,6 +678,7 @@ func _refresh_panel() -> void:
 	if standing == Campaign.Standing.OWNED:
 		_panel_pressure(id)
 	else:
+		_panel_faction(region)
 		_panel_defense(region)
 
 	var spacer := Control.new()
@@ -550,6 +715,37 @@ func _panel_intro() -> void:
 		row.add_child(_swatch(entry[0], Vector2(16, 12)))
 		row.add_child(_text(entry[1], 14, Palette.TEXT))
 		rows.add_child(row)
+	_panel.add_child(rows)
+
+
+## The enemy faction holding a hostile region, with its icon or a diamond in
+## its color; nothing when the data names none.
+func _panel_faction(region: MapRegion) -> void:
+	var faction := factions.faction_for(campaign.map.id, campaign.state.act, region.id)
+	if faction.is_empty():
+		return
+	var rows := _rows(6)
+	rows.name = "Faction"
+	rows.add_child(_text("HELD BY", 11, Palette.TEXT_DIM))
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 10)
+	var color: Color = faction["color"] if faction["color"] != null else Palette.DEFENSE
+	if faction["icon"] != null:
+		var icon := TextureRect.new()
+		icon.texture = faction["icon"]
+		icon.custom_minimum_size = Vector2(20, 20)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		line.add_child(icon)
+	else:
+		var diamond := _swatch(color, Vector2(10, 10))
+		diamond.pivot_offset = Vector2(5, 5)
+		diamond.rotation = PI / 4.0
+		line.add_child(diamond)
+	line.add_child(_text(faction["name"], 16, color))
+	rows.add_child(line)
 	_panel.add_child(rows)
 
 
@@ -786,13 +982,46 @@ func zoom_out() -> void:
 	map_view.inset_alpha = 1.0
 	_zoom_from = [rect.get_center(), minf(1.0 / rect.size.x, 1.0 / rect.size.y)]
 	_set_zoom_progress(0.0)
+	var settings := GameSettings.shared()
+	var zoom_s := settings.scale_seconds(plan.zoom_seconds)
+	if zoom_s <= 0.0:
+		_end_zoom()
+		return
 	map_view.modulate.a = 0.0
 	zooming = true
 	_refresh()
+	SoundPlayer.fire(&"zoom_whoosh")
+	_play_act_title(campaign.state.act, zoom_s)
 	var tween := create_tween()
-	tween.tween_property(map_view, "modulate:a", 1.0, plan.fade_seconds)
-	tween.tween_method(_set_zoom_progress, 0.0, 1.0, plan.zoom_seconds).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(map_view, "modulate:a", 1.0, settings.scale_seconds(plan.fade_seconds))
+	tween.tween_method(_set_zoom_progress, 0.0, 1.0, zoom_s).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	tween.finished.connect(_end_zoom)
+	var dim := create_tween().set_parallel()
+	for panel in _hud:
+		dim.tween_property(panel, "modulate:a", ScreenFeel.number("act_zoom.hud_dim_alpha", 1.0), FeelTween.seconds("ui", settings))
+
+
+## Shows "ACT n" and the act's name over the map while the camera pulls back:
+## it slides in, holds and fades, inside `zoom_s` seconds.
+func _play_act_title(act: int, zoom_s: float) -> void:
+	var labels := _act_title.get_child(0).get_children()
+	labels[0].text = "ACT %d" % (act + 1)
+	labels[1].text = plan.act_name(act).to_upper()
+	_act_title.visible = true
+	_act_title.reset_size()
+	var map_rect := map_view.get_global_rect()
+	var rest := map_rect.position - global_position + Vector2((map_rect.size.x - _act_title.size.x) / 2.0, map_rect.size.y * 0.12)
+	_act_title.position = rest + Vector2(0, -ScreenFeel.number("map.popup_rise_px"))
+	_act_title.modulate.a = 0.0
+	var title_in := ScreenFeel.seconds("act_zoom.title_in_ms")
+	var title_out := ScreenFeel.seconds("act_zoom.title_out_ms")
+	var hold := clampf(ScreenFeel.seconds("act_zoom.title_hold_ms"), 0.0, maxf(zoom_s - title_in - title_out, 0.0))
+	var tween := create_tween()
+	tween.tween_property(_act_title, "modulate:a", 1.0, title_in)
+	tween.parallel().tween_property(_act_title, "position", rest, title_in).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(hold)
+	tween.tween_property(_act_title, "modulate:a", 0.0, title_out)
+	tween.tween_callback(_act_title.hide)
 
 
 ## Places the act zoom camera `t` of the way from the old map filling the view
@@ -814,6 +1043,13 @@ func _end_zoom() -> void:
 	map_view.zoom = 1.0
 	map_view.zoom_center = Vector2(0.5, 0.5)
 	map_view.inset_map = null
+	map_view.modulate.a = 1.0
+	var undim := create_tween().set_parallel()
+	for panel in _hud:
+		undim.tween_property(panel, "modulate:a", 1.0, FeelTween.seconds("ui"))
+	if FeelTween.seconds("ui") <= 0.0:
+		for panel in _hud:
+			panel.modulate.a = 1.0
 	_refresh()
 
 
@@ -906,7 +1142,7 @@ func _hide_modal() -> void:
 func _text(text: String, font_size: int, color: Color) -> Label:
 	var label := Label.new()
 	label.text = text
-	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_font_size_override("font_size", ScreenTheme.size(font_size))
 	label.add_theme_color_override("font_color", color)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	return label
@@ -984,7 +1220,7 @@ func _button(text: String, bg: Color, fg: Color, on_press: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.custom_minimum_size.y = 26
-	button.add_theme_font_size_override("font_size", 13)
+	button.add_theme_font_size_override("font_size", ScreenTheme.size(13))
 	_style_button(button, bg, fg, Color("#3a526a"))
 	button.pressed.connect(on_press)
 	return button
@@ -995,7 +1231,7 @@ func _big_button(text: String, bg: Color, fg: Color, enabled: bool) -> Button:
 	button.text = text
 	button.custom_minimum_size.y = 48
 	button.disabled = not enabled
-	button.add_theme_font_size_override("font_size", 16)
+	button.add_theme_font_size_override("font_size", ScreenTheme.size(16))
 	_style_button(button, bg if enabled else Palette.DISABLED, fg if enabled else Palette.TEXT_DIM, Color(0, 0, 0, 0))
 	return button
 
@@ -1025,9 +1261,10 @@ func _resource_readout(key: String, stock: int, per_day: int) -> Control:
 	row.add_child(_swatch(Palette.resource_color(key), Vector2(10, 10)))
 	var lines := VBoxContainer.new()
 	lines.add_theme_constant_override("separation", 0)
-	lines.add_child(_text(str(stock), 14, Palette.TEXT))
+	lines.add_child(_text(str(stock), 20, Palette.TEXT))
 	lines.add_child(_text("%s +%d/DAY" % [RESOURCE_LABELS[key].to_upper(), per_day], 10, Palette.TEXT_DIM))
 	row.add_child(lines)
+	row.set_meta("resource", key)
 	return row
 
 

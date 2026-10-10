@@ -42,7 +42,8 @@ Presentation (M7 P2). Timings and easing come from P1's feel kit
 data/ui/battle_presentation.json. The whole screen uses `PixelTheme`.
 - `BattleArt`: how each unit looks. Bots are the manifest's ally unit with
   parts and a palette from their id (no two squad mates share a palette);
-  enemies use P4's `SpriteManifest.for_enemy()` when it exists, else a
+  enemies use `SpriteManifest.for_enemy()` (the enemy table's sprite and
+  tier), else a
   manifest unit of the same id (or listing it in `enemy_ids`), else the
   `enemy_sprites` alias, else the fallback walker recolored per enemy type.
 - `BattleTierRule`: the tier-rule switch (generation / skill_levels /

@@ -19,6 +19,10 @@ replacing the file (same size and layout) and updating its row here.
 |---|---|---|---|
 | Ally bot parts (legs, body, head, arm; 2 variants x 3 tiers each) | `assets/sprites/units/ally_frame/*.png` | `tools/asset_gen/gen_sprites.py` | CC0 1.0 |
 | Enemy hunter drone, 3 tiers | `assets/sprites/units/enemy_drone/*.png` | `tools/asset_gen/gen_sprites.py` | CC0 1.0 |
+| Human resistance enemies (soldier, tank, pilot mech), 3 tiers each | `assets/enemies/human_resistance/*.png` | `tools/asset_gen/gen_enemies.py` | CC0 1.0 |
+| Enhanced human enemies (cyborg, augmented trooper), 3 tiers each | `assets/enemies/enhanced_humans/*.png` | `tools/asset_gen/gen_enemies.py` | CC0 1.0 |
+| Rival AI enemies (walker, rogue splinter swarm), 3 tiers each | `assets/enemies/rival_ai/*.png` | `tools/asset_gen/gen_enemies.py` | CC0 1.0 |
+| Alien enemies (stalker, spitter), 3 tiers each | `assets/enemies/aliens/*.png` | `tools/asset_gen/gen_enemies.py` | CC0 1.0 |
 | Effects: hit spark, heal plus, energy spark, muzzle flash, shield shimmer, down burst | `assets/sprites/effects/*.png` | `tools/asset_gen/gen_sprites.py` | CC0 1.0 |
 | Particle textures (white, for tinting) | `assets/sprites/particles/*.png` | `tools/asset_gen/gen_sprites.py` | CC0 1.0 |
 | Interface boxes, buttons, checkbox, slider, arrow | `assets/ui/*.png` | `tools/asset_gen/gen_sprites.py` | CC0 1.0 |
@@ -32,6 +36,8 @@ replacing the file (same size and layout) and updating its row here.
 | Intent icons and target reticle | `assets/fight/icons/*.png` | `tools/asset_gen/gen_battle.py` | CC0 1.0 |
 | Tier plates and glow | `assets/fight/tiers/*.png` | `tools/asset_gen/gen_battle.py` | CC0 1.0 |
 | Skill sounds, level layers, victory and defeat stingers | `assets/fight/audio/*.wav` | `tools/asset_gen/gen_battle.py` (synthesized) | CC0 1.0 |
+| Map and between-fight sounds (region select, capture, resource gain and loss, card flip and snap, tally tick, level-up, personality shift, screen and zoom whooshes) | `assets/map/audio/sfx/*.wav` | `tools/asset_gen/gen_map_audio.py` (synthesized) | CC0 1.0 |
+| Act music loops (Lake Washington metro, North America, globe) | `assets/map/audio/music/*.wav` | `tools/asset_gen/gen_map_audio.py` (synthesized) | CC0 1.0 |
 | Audio bus layout (Music, Effects, Interface) | `assets/audio/default_bus_layout.tres` | hand-written | CC0 1.0 |
 | Asset license text | `assets/LICENSE.md` | hand-written | CC0 1.0 |
 

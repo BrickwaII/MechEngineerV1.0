@@ -7,11 +7,11 @@ extends RefCounted
 ##
 ## A drafted bot is the manifest's ally unit with parts and a palette picked
 ## from its id (SpriteManifest.ally_look), in the tier the tier rule gives.
-## An enemy is drawn by, in order: SpriteManifest.for_enemy() (P4's enemy
-## sprite table, used when present), the manifest unit with its enemy table id,
+## An enemy is drawn by, in order: SpriteManifest.for_enemy() (the
+## enemy table's sprite and tier), the manifest unit with its enemy table id,
 ## a manifest unit listing that id in "enemy_ids", the "enemy_sprites" alias
-## here, else the fallback sheet recolored per enemy type. Enemy tiers follow
-## the fight's defense level.
+## here, else the fallback sheet recolored per enemy type. An enemy's tier is
+## the enemy table's, else the fight's defense level picks it.
 
 const DATA_PATH := "res://data/ui/battle_presentation.json"
 
@@ -52,15 +52,12 @@ static func base_id(unit_id: String) -> String:
 	return unit_id.get_slice("#", 0)
 
 
-## P4's enemy sprite lookup, SpriteManifest.for_enemy(enemy_id) -> {unit, tier},
-## when that method exists; {} otherwise or when it knows no sprite.
+## The enemy table's sprite for an enemy (SpriteManifest.for_enemy -> {unit,
+## tier}), or {} when it names none or names no enemy manifest unit.
 static func manifest_enemy_entry(enemy_id: String) -> Dictionary:
-	var script: Script = load("res://ui/common/sprite_manifest.gd")
-	for m: Dictionary in script.get_script_method_list():
-		if m.name == "for_enemy":
-			var found: Variant = script.call("for_enemy", enemy_id)
-			if found is Dictionary and SpriteManifest.unit(str(found.get("unit", ""))).get("kind", "") == "enemy":
-				return found
+	var found := SpriteManifest.for_enemy(enemy_id)
+	if SpriteManifest.unit(str(found.get("unit", ""))).get("kind", "") == "enemy":
+		return found
 	return {}
 
 

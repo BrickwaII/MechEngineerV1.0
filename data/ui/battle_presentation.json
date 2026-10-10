@@ -2,10 +2,8 @@
 	"_comment": "Battle presentation (M7 P2): how units, skills, statuses and the fight's end look and sound. Timings of the attack itself come from data/feel/feel.json (attack_windup + attack_strike + attack_recover) so every screen keeps one rhythm; this file holds what is particular to the battle. Every number here is a first guess, not balance. Read by ui/fight/battle_art.gd and ui/fight/skill_fx.gd.",
 
 	"ally_unit": "ally_frame",
-	"_enemy_sprites_comment": "Enemy table id -> sprite manifest unit, for enemies whose manifest entry has another id. An enemy whose id is a manifest unit (or listed in a unit's enemy_ids) needs nothing here; one with neither draws fallback_enemy.",
-	"enemy_sprites": {
-		"scrap_drone": "enemy_drone"
-	},
+	"_enemy_sprites_comment": "Enemy table id -> sprite manifest unit, a last resort for enemies the enemy table gives no sprite (its sprite and tier come first, data/combat/enemy_tables.json), whose id is no manifest unit and that no unit lists in enemy_ids. An enemy with none of these draws fallback_enemy.",
+	"enemy_sprites": {},
 	"fallback_enemy": {
 		"sheets": {
 			"beginner": "res://assets/fight/units/enemy_fallback/fallback_beginner.png",
@@ -20,7 +18,7 @@
 			"slate": {"primary": ["#3a4250", "#5a6578", "#8794a8"], "secondary": ["#6a2a2a", "#9a3e3a", "#c8605a"], "glow": ["#ff6b5e"]}
 		}
 	},
-	"_enemy_tier_comment": "Enemy tier by the fight's defense level (index 0 to 5).",
+	"_enemy_tier_comment": "Enemy tier by the fight's defense level (index 0 to 5), for enemies whose enemy table entry names no tier.",
 	"enemy_tier_by_defense_level": ["beginner", "beginner", "medium", "medium", "advanced", "advanced"],
 
 	"_tier_look_comment": "What a tier adds around the sprite: the base plate under the unit and a glow in the bot's glow color behind it. glow_alpha 0 is no glow; glow_pulse is how far the alpha breathes, glow_pulse_ms one breath.",

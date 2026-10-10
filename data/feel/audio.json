@@ -148,6 +148,139 @@
 			"volume_db": -2.0,
 			"pitch_variation": 0.04
 		},
+		"map_select": {
+			"bus": "Interface",
+			"files": [
+				"res://assets/map/audio/sfx/map_select.wav"
+			],
+			"volume_db": -6.0,
+			"pitch_variation": 0.03,
+			"throttle": {
+				"max": 1,
+				"window_ms": 80
+			}
+		},
+		"map_capture": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/map/audio/sfx/map_capture.wav"
+			],
+			"volume_db": -2.0,
+			"pitch_variation": 0.02,
+			"throttle": {
+				"max": 1,
+				"window_ms": 300
+			}
+		},
+		"resource_gain": {
+			"bus": "Interface",
+			"files": [
+				"res://assets/map/audio/sfx/resource_gain.wav"
+			],
+			"volume_db": -8.0,
+			"pitch_variation": 0.04,
+			"throttle": {
+				"max": 1,
+				"window_ms": 120
+			}
+		},
+		"resource_loss": {
+			"bus": "Interface",
+			"files": [
+				"res://assets/map/audio/sfx/resource_loss.wav"
+			],
+			"volume_db": -8.0,
+			"pitch_variation": 0.04,
+			"throttle": {
+				"max": 1,
+				"window_ms": 120
+			}
+		},
+		"card_flip": {
+			"bus": "Interface",
+			"files": [
+				"res://assets/map/audio/sfx/card_flip_1.wav",
+				"res://assets/map/audio/sfx/card_flip_2.wav"
+			],
+			"volume_db": -8.0,
+			"pitch_variation": 0.08,
+			"throttle": {
+				"max": 2,
+				"window_ms": 60
+			}
+		},
+		"card_snap": {
+			"bus": "Interface",
+			"files": [
+				"res://assets/map/audio/sfx/card_snap.wav"
+			],
+			"volume_db": -4.0,
+			"pitch_variation": 0.04,
+			"throttle": {
+				"max": 1,
+				"window_ms": 80
+			}
+		},
+		"tally_tick": {
+			"bus": "Interface",
+			"files": [
+				"res://assets/map/audio/sfx/tally_tick.wav"
+			],
+			"volume_db": -12.0,
+			"pitch_variation": 0.06,
+			"throttle": {
+				"max": 1,
+				"window_ms": 70
+			}
+		},
+		"level_up": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/map/audio/sfx/level_up.wav"
+			],
+			"volume_db": -3.0,
+			"pitch_variation": 0.0,
+			"throttle": {
+				"max": 1,
+				"window_ms": 250
+			}
+		},
+		"personality_shift": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/map/audio/sfx/personality_shift.wav"
+			],
+			"volume_db": -5.0,
+			"pitch_variation": 0.03,
+			"throttle": {
+				"max": 1,
+				"window_ms": 150
+			}
+		},
+		"screen_whoosh": {
+			"bus": "Interface",
+			"files": [
+				"res://assets/map/audio/sfx/screen_whoosh.wav"
+			],
+			"volume_db": -8.0,
+			"pitch_variation": 0.05,
+			"throttle": {
+				"max": 1,
+				"window_ms": 200
+			}
+		},
+		"zoom_whoosh": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/map/audio/sfx/zoom_whoosh.wav"
+			],
+			"volume_db": -4.0,
+			"pitch_variation": 0.0,
+			"throttle": {
+				"max": 1,
+				"window_ms": 1000
+			}
+		},
 		"skill_strike": {
 			"bus": "Effects",
 			"files": [
@@ -285,6 +418,18 @@
 		"placeholder_loop": {
 			"file": "res://assets/audio/music/loop_placeholder.wav",
 			"volume_db": -6.0
+		},
+		"act1_metro": {
+			"file": "res://assets/map/audio/music/act1_metro.wav",
+			"volume_db": -6.0
+		},
+		"act2_continent": {
+			"file": "res://assets/map/audio/music/act2_continent.wav",
+			"volume_db": -6.0
+		},
+		"act3_globe": {
+			"file": "res://assets/map/audio/music/act3_globe.wav",
+			"volume_db": -7.0
 		}
 	},
 	"music_fade_ms": 400

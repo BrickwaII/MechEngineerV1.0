@@ -6,6 +6,7 @@ extends RefCounted
 const ANIMATIONS := ["idle", "windup", "attack", "hit", "guard", "heal", "down"]
 
 static var _frames_cache := {}
+static var _enemy_table: EnemyTable
 
 
 static func data() -> Dictionary:
@@ -54,6 +55,15 @@ static func sheets(id: String) -> Array[String]:
 			for tier: String in def["parts"][part][variant]:
 				out.append(def["parts"][part][variant][tier])
 	return out
+
+
+## The manifest unit and tier that draw a fight enemy, from its enemy id or
+## combatant id ("rust_hound#2"): {"unit": id, "tier": tier}, or {} when the
+## enemy names no sprite. The mapping lives in data/combat/enemy_tables.json.
+static func for_enemy(enemy_or_unit_id: String) -> Dictionary:
+	if _enemy_table == null:
+		_enemy_table = EnemyTable.load_default()
+	return _enemy_table.sprite_of(enemy_or_unit_id.get_slice("#", 0))
 
 
 ## An ally's look picked from `look_seed`: one variant per part and a palette.

@@ -21,6 +21,10 @@ extends Control
 ## the other next-run ones when the map starts a run, grid-cost-owner when
 ## each fight starts. Selecting a region on the map makes it the
 ## auto-expansion focus.
+##
+## Every change of screen plays the ScreenTransition wipe over the swap. The
+## readout counts up; CONTINUE skips the count-up first, then goes back to
+## the map.
 
 const DRAFT_SCENE := preload("res://ui/draft/draft_screen.tscn")
 const OVERWORLD_SCENE := preload("res://ui/overworld/overworld.tscn")
@@ -78,11 +82,16 @@ var run_board: Switchboard
 ## The F4 switchboard while it shows, or null.
 var switchboard_screen: SwitchboardScreen
 var variant_label: VariantLabel
+## The wipe between screens.
+var transition: ScreenTransition
 var _variant_layer: CanvasLayer
 
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	theme = ScreenTheme.theme()
+	transition = ScreenTransition.new()
+	add_child(transition)
 	_variant_layer = CanvasLayer.new()
 	_variant_layer.name = "VariantLayer"
 	_variant_layer.layer = VARIANT_LAYER
@@ -128,6 +137,7 @@ func toggle_switchboard() -> void:
 
 ## Drops the run in progress and opens the draft for a new one.
 func new_run() -> void:
+	transition.cover()
 	_close_all()
 	squad = null
 	ledger = null
@@ -146,6 +156,7 @@ func new_run() -> void:
 
 ## Takes the drafted squad to the map, where the start choice opens.
 func start_map(p_squad: BotSquad, p_ledger: SkillUseLedger) -> void:
+	transition.cover()
 	_close_all()
 	squad = p_squad
 	ledger = p_ledger
@@ -157,6 +168,7 @@ func start_map(p_squad: BotSquad, p_ledger: SkillUseLedger) -> void:
 func continue_to_map() -> void:
 	if readout == null:
 		return
+	transition.cover()
 	_free(readout)
 	readout = null
 	continue_button = null
@@ -283,6 +295,7 @@ func _on_region_selected(region_id: String) -> void:
 
 
 func _on_screen_opened(screen: BattleScreen) -> void:
+	transition.cover()
 	battle_screen = screen
 	overworld.visible = false
 	debug_overlay = DebugOverlay.new()
@@ -297,6 +310,7 @@ func _on_screen_opened(screen: BattleScreen) -> void:
 
 
 func _on_fight_reported(report: PostFightReport, _result: FightResult) -> void:
+	transition.cover()
 	battle_screen = null
 	debug_overlay = null
 	overworld.visible = false
@@ -305,14 +319,29 @@ func _on_fight_reported(report: PostFightReport, _result: FightResult) -> void:
 	readout.show_report(report)
 	continue_button = Button.new()
 	continue_button.name = "ContinueButton"
-	continue_button.text = "BACK TO THE MAP"
 	continue_button.custom_minimum_size = CONTINUE_SIZE
-	continue_button.pressed.connect(continue_to_map)
+	continue_button.pressed.connect(_on_continue_pressed)
+	readout.tally_finished.connect(_label_continue)
+	_label_continue()
 	readout.add_child(continue_button)
 	continue_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, int(SCREEN_MARGIN))
 	continue_button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	continue_button.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_set_stage(Stage.POST_FIGHT)
+
+
+## During the count-up the button skips it; after, it goes back to the map.
+func _on_continue_pressed() -> void:
+	if readout != null and readout.is_tallying():
+		readout.skip()
+	else:
+		SoundPlayer.fire(&"ui_confirm")
+		continue_to_map()
+
+
+func _label_continue() -> void:
+	if continue_button != null:
+		continue_button.text = "SKIP" if readout.is_tallying() else "BACK TO THE MAP"
 
 
 ## A fight with no report (a stub service) goes straight back to the map.
@@ -328,6 +357,8 @@ func _close_readout_and_show_map() -> void:
 		continue_to_map()
 		return
 	if overworld != null:
+		if not overworld.visible:
+			transition.cover()
 		overworld.visible = true
 		_set_stage(Stage.MAP)
 
