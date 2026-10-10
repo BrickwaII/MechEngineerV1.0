@@ -42,11 +42,11 @@ func test_same_request_gives_the_same_result() -> void:
 	assert_str(service.last_fight.log_text()).is_equal(log_a)
 
 
-func test_result_is_the_headless_runner_with_the_simple_policy() -> void:
+func test_result_is_the_headless_runner_with_enemies_played_by_intent() -> void:
 	var service := AutoFightService.new()
 	var request := _request(2)
 	var result := service.resolve(request)
-	var fight := HeadlessFightRunner.run(request, service.seed_for(request), SimpleFightPolicy.new(), SimpleFightPolicy.new())
+	var fight := HeadlessFightRunner.run(request, service.seed_for(request), SimpleFightPolicy.new(), IntentFightPolicy.new())
 	assert_int(result.outcome).is_equal(fight.result().outcome)
 	assert_float(result.grid_cost).is_equal(fight.result().grid_cost)
 

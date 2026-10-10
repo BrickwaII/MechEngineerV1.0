@@ -26,6 +26,13 @@ const RESOURCE_LABELS := {MapRegion.POWER: "Grid power", MapRegion.ENERGY: "Ener
 var squad_provider: SquadProvider = StubSquadProvider.new()
 var fight_service: FightService = StubFightService.new()
 
+## A host that keeps more of the run than the map (ui/run/ keeps the bots) sets
+## these; the SAVE, LOAD and NEW RUN buttons then call them instead of
+## save_run(), load_run() and new_run().
+var save_action: Callable
+var load_action: Callable
+var new_run_action: Callable
+
 var campaign: Campaign
 var plan: ActPlan
 var map_view: MapView
@@ -138,7 +145,12 @@ func save_run(path := SAVE_PATH) -> Error:
 
 
 func load_run(path := SAVE_PATH) -> bool:
-	var state := RunState.load_file(path)
+	return load_state(RunState.load_file(path))
+
+
+## Continues the run `state` describes on its act's map. False, with the
+## current run kept, if it does not fit the acts file.
+func load_state(state: RunState) -> bool:
 	if state == null or state.act < 0 or state.act >= plan.act_count():
 		_event("No saved run for this map.")
 		return false
@@ -152,6 +164,11 @@ func load_run(path := SAVE_PATH) -> bool:
 	_event("Run loaded. Act %d, day %d." % [state.act + 1, campaign.day()])
 	_check_forced()
 	return true
+
+
+## Adds a line to the event log, for a host's own messages.
+func log_event(text: String) -> void:
+	_event(text)
 
 
 func _load_map(act: int) -> RegionMap:
@@ -272,9 +289,9 @@ func _build_time_strip() -> Control:
 	_wait_button.mouse_entered.connect(_set_hover_wait.bind(true))
 	_wait_button.mouse_exited.connect(_set_hover_wait.bind(false))
 	header.add_child(_wait_button)
-	header.add_child(_button("SAVE", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, func() -> void: save_run()))
-	header.add_child(_button("LOAD", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, func() -> void: load_run()))
-	header.add_child(_button("NEW RUN", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, new_run))
+	header.add_child(_button("SAVE", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, _on_save))
+	header.add_child(_button("LOAD", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, _on_load))
+	header.add_child(_button("NEW RUN", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, _on_new_run))
 
 	_time_bar = MeterBar.new()
 	_time_bar.custom_minimum_size.y = 18
@@ -562,6 +579,27 @@ func _event(text: String) -> void:
 
 # --- Actions and fights ---------------------------------------------------------
 
+func _on_save() -> void:
+	if save_action.is_valid():
+		save_action.call()
+	else:
+		save_run()
+
+
+func _on_load() -> void:
+	if load_action.is_valid():
+		load_action.call()
+	else:
+		load_run()
+
+
+func _on_new_run() -> void:
+	if new_run_action.is_valid():
+		new_run_action.call()
+	else:
+		new_run()
+
+
 func _on_wait() -> void:
 	campaign.wait()
 	_check_forced()
@@ -635,7 +673,7 @@ func _on_defend() -> void:
 
 
 func _show_end(title: String, body: String) -> void:
-	_show_modal("RUN OVER", title, body, [["NEW RUN", new_run]])
+	_show_modal("RUN OVER", title, body, [["NEW RUN", _on_new_run]])
 
 
 func _show_payload_zoom() -> void:

@@ -19,7 +19,7 @@ bots saved from the robot builder to `user://dev/bots/` and `user://dev/enemies/
   "squad": [ ...entries... ],
   "enemies": [ ...entries... ],      // optional; leave out to draw from the enemy table
   "player_policy": "simple",         // "simple", "random" or "intent" (IntentFightPolicy)
-  "enemy_policy": "simple"
+  "enemy_policy": "intent"           // default "intent": enemies act as on the battle screen
 }
 ```
 

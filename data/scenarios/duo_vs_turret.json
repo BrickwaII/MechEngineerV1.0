@@ -20,5 +20,5 @@
 		{"enemy": "scrap_drone", "count": 2}
 	],
 	"player_policy": "random",
-	"enemy_policy": "simple"
+	"enemy_policy": "intent"
 }
