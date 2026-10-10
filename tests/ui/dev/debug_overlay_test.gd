@@ -80,6 +80,24 @@ func test_intents_come_from_the_intent_source_when_one_is_set() -> void:
 	assert_str(with_source.units[0].intent).is_equal(DebugOverlay.NO_INTENT)
 
 
+func test_by_default_the_overlay_shows_each_enemys_planned_intent() -> void:
+	var sim := _fight()
+	sim.fight.advance()
+	var overlay: DebugOverlay = auto_free(DebugOverlay.new())
+	add_child(overlay)
+	overlay.fight = sim.fight
+	var planner := IntentPlanner.new()
+	var enemy := sim.fight.living(Combatant.Side.ENEMY)[0]
+	var expected := DebugOverlay.planned_intent(planner, sim.fight, enemy)
+	var intent := planner.plan(sim.fight, enemy)
+	assert_str(expected).starts_with(intent.kind_name())
+	assert_str(expected).contains(sim.fight.combatant(intent.target_id()).display_name)
+	var row: Array = overlay._cells[enemy.id]
+	assert_str((row[DebugOverlay.COLUMNS.find("Intent")] as Label).text).is_equal(expected)
+	var ally_row: Array = overlay._cells[sim.fight.combatants[0].id]
+	assert_str((ally_row[DebugOverlay.COLUMNS.find("Intent")] as Label).text).is_equal(DebugOverlay.NO_INTENT)
+
+
 func test_no_fight_shows_an_empty_overlay() -> void:
 	var snap := DebugOverlay.snapshot(null, 5)
 	assert_array(snap.units).is_empty()

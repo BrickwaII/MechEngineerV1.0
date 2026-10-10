@@ -18,7 +18,7 @@ bots saved from the robot builder to `user://dev/bots/` and `user://dev/enemies/
   "defense_level": 2,                // 0 to 5: enemies drawn, rewards, grid cost
   "squad": [ ...entries... ],
   "enemies": [ ...entries... ],      // optional; leave out to draw from the enemy table
-  "player_policy": "simple",         // "simple" or "random"
+  "player_policy": "simple",         // "simple", "random" or "intent" (IntentFightPolicy)
   "enemy_policy": "simple"
 }
 ```

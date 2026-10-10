@@ -10,9 +10,9 @@ extends PanelContainer
 ##
 ## Toggle it with F3 (the "toggle_key" property).
 ##
-## Intents: fight/intent/ is not on main yet. Set `intent_source` to a
-## Callable(fight: Fight, unit: Combatant) -> String to fill the Intent column;
-## until then it shows a dash.
+## Intents: each enemy's current plan from IntentPlanner (fight/intent/). A
+## scene that already tracks intents can set `intent_source` to a
+## Callable(fight: Fight, unit: Combatant) -> String to show its own instead.
 
 const Palette := preload("res://ui/dev/dev_palette.gd")
 const COLUMNS: Array[String] = ["Unit", "HP", "ATK", "DEF", "SPD", "ELA", "BAT", "Energy", "Gauge", "State", "Intent"]
@@ -23,7 +23,7 @@ var fight: Fight:
 		fight = value
 		_built_for = []
 		refresh()
-## Callable(fight, unit) -> String. Empty until an intent module exists.
+## Callable(fight, unit) -> String. Defaults to planned_intent() with an IntentPlanner.
 var intent_source: Callable
 var toggle_key := KEY_F3
 var timeline_count: int
@@ -32,7 +32,7 @@ var refresh_seconds: float
 var _header: Label
 var _grid: GridContainer
 var _timeline: Label
-var _intent_note: Label
+var _planner: IntentPlanner
 ## Combatant ids the grid rows were built for.
 var _built_for: Array = []
 var _cells: Dictionary = {}
@@ -44,6 +44,8 @@ func _init() -> void:
 	timeline_count = settings.overlay_timeline_count
 	refresh_seconds = settings.overlay_refresh_seconds
 	name = "DebugOverlay"
+	_planner = IntentPlanner.new()
+	intent_source = func(f: Fight, unit: Combatant) -> String: return planned_intent(_planner, f, unit)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style := StyleBoxFlat.new()
 	style.bg_color = Palette.OVERLAY
@@ -65,8 +67,6 @@ func _init() -> void:
 	_timeline.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_timeline.custom_minimum_size.x = 560
 	box.add_child(_timeline)
-	_intent_note = _label("Intent: no intent module on main yet (set intent_source to fill this column)", Palette.TEXT_DIM)
-	box.add_child(_intent_note)
 
 
 func _process(delta: float) -> void:
@@ -106,7 +106,6 @@ func refresh() -> void:
 			cell.text = str(values[i])
 			cell.add_theme_color_override("font_color", color if i == 0 or not u.alive else Palette.TEXT)
 	_timeline.text = "Next: " + ("  →  ".join(snap.timeline) if not snap.timeline.is_empty() else "nothing")
-	_intent_note.visible = not intent_source.is_valid()
 
 
 ## Everything the overlay shows, as plain data. Pure: reads the fight only.
@@ -154,6 +153,17 @@ static func snapshot(p_fight: Fight, count: int, p_intent_source: Callable = Cal
 		"units": units,
 		"timeline": timeline,
 	}
+
+
+## `unit`'s planned action as text, such as "attack Heavy Strike → Torque (7)".
+static func planned_intent(planner: IntentPlanner, p_fight: Fight, unit: Combatant) -> String:
+	var intent := planner.plan(p_fight, unit)
+	if intent == null:
+		return NO_INTENT
+	var skill := p_fight.tuning.skill(intent.skill_id())
+	var target := p_fight.combatant(intent.target_id())
+	return "%s %s → %s (%d)" % [intent.kind_name(), skill.display_name if skill != null else intent.skill_id(),
+		target.display_name if target != null else intent.target_id(), intent.amount]
 
 
 func _rebuild_rows(units: Array) -> void:

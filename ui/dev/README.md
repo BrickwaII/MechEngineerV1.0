@@ -7,8 +7,9 @@ Developer screens. Start at `res://ui/dev/dev_menu.tscn`, or run one directly:
 - `scenario_builder.tscn`: pick saved bots and enemies, save a scenario
   (`user://dev/scenarios/`), and run it with the batch simulator.
 - `debug_overlay.gd` (`DebugOverlay`): a standalone node that shows a Fight's
-  units, energy, gauges, timeline and intents, live. Add it to any scene and set
-  `overlay.fight`; F3 toggles it. `debug_overlay_demo.tscn` shows it on a fight
+  units, energy, gauges, timeline and each enemy's planned intent
+  (IntentPlanner), live. Add it to any scene and set `overlay.fight`; F3
+  toggles it. `debug_overlay_demo.tscn` shows it on a fight
   driven headless.
 
 `screenshots/` holds images for pull requests; Godot does not import it.

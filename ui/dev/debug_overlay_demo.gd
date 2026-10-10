@@ -1,6 +1,6 @@
 extends Control
 ## Demo of the debug overlay on a fight driven headless: a sample scenario is
-## played by its policies, one decision every demo_seconds_per_action, with the
+## played by its squad policy and IntentFightPolicy for the enemies, one decision every demo_seconds_per_action, with the
 ## overlay attached. When the fight ends a new one starts on the next seed.
 ## F3 hides and shows the overlay.
 
@@ -37,6 +37,8 @@ func _ready() -> void:
 	overlay.position = Vector2(16, 16)
 	add_child(overlay)
 	_resolved = ScenarioFiles.load_scenario(SCENARIO_PATH).resolve()
+	# Enemies act on their intents, so the overlay's Intent column is what happens next.
+	_resolved.enemy_policy = IntentFightPolicy.new()
 	start_fight()
 
 
