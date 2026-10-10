@@ -1,0 +1,26 @@
+{
+	"_comment": "Post-fight tuning: what a bot learns from a fight. Every number is a first guess, not balance. drift_rules map ActionTag labels to personality poles; TODO(decision: d-personality-map) until the mapping is signed off.",
+	"drift_rules": [
+		{"label": "hit_enemy", "pole": "aggressive"},
+		{"label": "self_target", "skills": ["brace", "shield"], "pole": "defensive"},
+		{"label": "ally_target", "pole": "supportive"},
+		{"label": "solo", "pole": "solitary"},
+		{"label": "wait", "pole": "methodical"},
+		{"label": "first_affordable", "pole": "reactive"}
+	],
+	"drift": {
+		"per_push": 0.02,
+		"max_per_scale_per_fight": 0.1
+	},
+	"skill_levels": {
+		"uses_per_level": 5,
+		"levels_per_step": 1,
+		"max_level": 10
+	},
+	"_combat_skill_effects_comment": "Combat skill id -> bot skill effect_id. A use of the combat skill counts toward the bot skill with that effect. Empty means no bot skill matches yet.",
+	"combat_skill_effects": {
+		"strike": "damage_single",
+		"heavy_strike": "damage_single_heavy",
+		"overload": ""
+	}
+}
