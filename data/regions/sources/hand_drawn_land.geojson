@@ -1,0 +1,15 @@
+{
+	"type": "FeatureCollection",
+	"features": [
+		{
+			"type": "Feature",
+			"properties": {"name": "Mercer Island", "note": "Hand-drawn approximate shoreline; too small for Natural Earth 1:10m land."},
+			"geometry": {"type": "Polygon", "coordinates": [[
+				[-122.236, 47.601], [-122.222, 47.597], [-122.211, 47.588], [-122.207, 47.572],
+				[-122.204, 47.556], [-122.210, 47.541], [-122.220, 47.528], [-122.231, 47.530],
+				[-122.240, 47.541], [-122.248, 47.556], [-122.255, 47.572], [-122.251, 47.588],
+				[-122.243, 47.598], [-122.236, 47.601]
+			]]}
+		}
+	]
+}

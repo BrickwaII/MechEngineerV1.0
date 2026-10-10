@@ -5,6 +5,12 @@ const BACKGROUND := Color("#0b121b")
 const MAP_BACKGROUND := Color("#0d1520")
 const MAP_GRID_LINE := Color("#142030")
 const WATER := Color("#0f2334")
+## Neutral land no region holds.
+const LAND := Color("#1b2532")
+const CROSSING := Color("#7fa6c4")
+## The globe's rim and its lines of latitude and longitude.
+const GLOBE_RIM := Color("#2c4560")
+const GRATICULE := Color(0.5, 0.7, 0.9, 0.12)
 const INSET_OWNED := Color("#35c2b0")
 const INSET_HOSTILE := Color("#5a6273")
 const BAR_BACKGROUND := Color("#0f1824")

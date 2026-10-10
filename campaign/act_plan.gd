@@ -8,15 +8,26 @@ extends RefCounted
 ## income bonus carry over. Nothing here has a default: a missing key is an
 ## error, so the file stays the one source.
 ##
-## TODO(decision: act1-scope): act 1 defaults to the city of Seattle, by
-## neighborhood; Washington state is the other option. Act 2 is a placeholder
-## greater Puget Sound map until the act 2 scope (the United States) is drawn.
+## Each act offers map variants, region files of the same place cut into more
+## or fewer regions; the act plays its "default_variant" unless another is
+## chosen with choose_variant() (the dev menu does). A variant's id is the id
+## of its region file, so a save's region_set_id names the variant it was on.
+##
+## The shipped acts: the cities around Lake Washington, North America by state,
+## province or group of them (the lake sits in Washington), then the world on
+## a globe (North America sits in the United States). Each act's tuning file
+## sets its pacing: countdown, action time costs and pressure.
+## TODO(decision: act-pacing): every act has the same countdown and costs for
+## now, and pressure scales with region count; see data/tuning/act*.json.
+## TODO(decision: map-variants): the defaults (Lake Washington 12, North
+## America 33, the world 20) are a first pick; the user is trying the others.
 ## TODO(decision: zoom-carryover): what carries across the zoom (all stock, a
 ## grid top-up, bonus regions for ground held, the start's income bonus) is a
 ## placeholder rule set; the numbers are in acts.json.
 
-## [{id, name, region_file, tuning_file, zoom_focus}]. zoom_focus is "" for
-## the first act.
+## [{id, name, tuning_file, variants, default_variant}, plus the chosen
+## variant's variant, region_file and zoom_focus]. variants is
+## [{id, name, region_file, zoom_focus}]; zoom_focus is "" in the first act.
 var acts: Array[Dictionary] = []
 
 # What carries across a zoom.
@@ -73,6 +84,31 @@ func has_next(act: int) -> bool:
 
 func act_name(act: int) -> String:
 	return acts[act]["name"] if act >= 0 and act < acts.size() else ""
+
+
+## The variants an act offers, in file order: [{id, name, region_file, zoom_focus}].
+func variants(act: int) -> Array:
+	return acts[act]["variants"] if act >= 0 and act < acts.size() else []
+
+
+## The id of the variant an act plays.
+func chosen_variant(act: int) -> String:
+	return acts[act]["variant"]
+
+
+## Plays the variant with this id in this act from now on. False, and nothing
+## changes, if the act has no such variant. "" picks the act's default.
+func choose_variant(act: int, variant_id: String) -> bool:
+	if act < 0 or act >= acts.size():
+		return false
+	var wanted := variant_id if not variant_id.is_empty() else str(acts[act]["default_variant"])
+	for variant: Dictionary in acts[act]["variants"]:
+		if variant["id"] == wanted:
+			acts[act]["variant"] = variant["id"]
+			acts[act]["region_file"] = variant["region_file"]
+			acts[act]["zoom_focus"] = variant["zoom_focus"]
+			return true
+	return false
 
 
 func load_map(act: int) -> RegionMap:
@@ -145,16 +181,18 @@ func _read(d: Dictionary) -> void:
 				errors.append("act %d is not an object" % (i + 1))
 				continue
 			var act := {}
-			for key in ["id", "name", "region_file", "tuning_file"]:
+			for key in ["id", "name", "tuning_file", "default_variant"]:
 				var v: Variant = entry.get(key)
 				if not v is String or (v as String).is_empty():
 					errors.append("act %d needs a non-empty '%s'" % [i + 1, key])
 				act[key] = str(v)
-			var focus: Variant = entry.get("zoom_focus", "")
-			if i > 0 and (not focus is String or (focus as String).is_empty()):
-				errors.append("act %d needs a 'zoom_focus' region id" % (i + 1))
-			act["zoom_focus"] = str(focus)
+			act["variants"] = _read_variants(entry.get("variants"), i)
 			acts.append(act)
+			if not choose_variant(i, ""):
+				errors.append("act %d's default_variant '%s' is not one of its variants" % [i + 1, act["default_variant"]])
+				act["variant"] = ""
+				act["region_file"] = ""
+				act["zoom_focus"] = ""
 	energy_kept = _num(d, "zoom.energy_kept")
 	material_kept = _num(d, "zoom.material_kept")
 	grid_restore = _num(d, "zoom.grid_restore")
@@ -168,6 +206,29 @@ func _read(d: Dictionary) -> void:
 	zoom_seconds = _num(d, "zoom.zoom_seconds")
 	if held_per_bonus_region <= 0:
 		errors.append("acts 'zoom.held_per_bonus_region' must be above 0")
+
+
+func _read_variants(list: Variant, i: int) -> Array:
+	var out := []
+	if not list is Array or (list as Array).is_empty():
+		errors.append("act %d needs a non-empty 'variants' list" % (i + 1))
+		return out
+	for entry: Variant in list:
+		if not entry is Dictionary:
+			errors.append("act %d has a variant that is not an object" % (i + 1))
+			continue
+		var variant := {}
+		for key in ["id", "name", "region_file"]:
+			var v: Variant = entry.get(key)
+			if not v is String or (v as String).is_empty():
+				errors.append("act %d variant needs a non-empty '%s'" % [i + 1, key])
+			variant[key] = str(v)
+		var focus: Variant = entry.get("zoom_focus", "")
+		if i > 0 and (not focus is String or (focus as String).is_empty()):
+			errors.append("act %d variant '%s' needs a 'zoom_focus' region id" % [i + 1, variant["id"]])
+		variant["zoom_focus"] = str(focus)
+		out.append(variant)
+	return out
 
 
 func _lookup(d: Dictionary, path: String) -> Variant:

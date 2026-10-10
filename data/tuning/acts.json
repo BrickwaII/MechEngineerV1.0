@@ -2,16 +2,83 @@
 	"acts": [
 		{
 			"id": "act1",
-			"name": "Seattle",
-			"region_file": "res://data/regions/seattle.json",
-			"tuning_file": "res://data/tuning/overworld.json"
+			"name": "Greater Seattle",
+			"tuning_file": "res://data/tuning/act1.json",
+			"default_variant": "lake_washington_12",
+			"variants": [
+				{
+					"id": "lake_washington_8",
+					"name": "Lake Washington, 8 areas",
+					"region_file": "res://data/regions/lake_washington_8.json"
+				},
+				{
+					"id": "lake_washington_12",
+					"name": "Lake Washington, 12 areas",
+					"region_file": "res://data/regions/lake_washington_12.json"
+				},
+				{
+					"id": "lake_washington_16",
+					"name": "Lake Washington, 16 areas",
+					"region_file": "res://data/regions/lake_washington_16.json"
+				},
+				{
+					"id": "lake_washington_22",
+					"name": "Lake Washington, 22 areas",
+					"region_file": "res://data/regions/lake_washington_22.json"
+				}
+			]
 		},
 		{
 			"id": "act2",
-			"name": "Puget Sound",
-			"region_file": "res://data/regions/puget_sound.json",
-			"tuning_file": "res://data/tuning/overworld.json",
-			"zoom_focus": "seattle"
+			"name": "North America",
+			"tuning_file": "res://data/tuning/act2.json",
+			"default_variant": "north_america_33",
+			"variants": [
+				{
+					"id": "north_america_19",
+					"name": "North America, 19 regions",
+					"region_file": "res://data/regions/north_america_19.json",
+					"zoom_focus": "pacific_northwest"
+				},
+				{
+					"id": "north_america_33",
+					"name": "North America, 33 states and groups",
+					"region_file": "res://data/regions/north_america_33.json",
+					"zoom_focus": "washington"
+				},
+				{
+					"id": "north_america_57",
+					"name": "North America, 57 states and provinces",
+					"region_file": "res://data/regions/north_america_57.json",
+					"zoom_focus": "washington"
+				}
+			]
+		},
+		{
+			"id": "act3",
+			"name": "The World",
+			"tuning_file": "res://data/tuning/act3.json",
+			"default_variant": "world_20",
+			"variants": [
+				{
+					"id": "world_8",
+					"name": "The world, 8 continents and blocs",
+					"region_file": "res://data/regions/world_8.json",
+					"zoom_focus": "north_america"
+				},
+				{
+					"id": "world_20",
+					"name": "The world, 20 regions",
+					"region_file": "res://data/regions/world_20.json",
+					"zoom_focus": "united_states"
+				},
+				{
+					"id": "world_39",
+					"name": "The world, 39 countries and groups",
+					"region_file": "res://data/regions/world_39.json",
+					"zoom_focus": "united_states"
+				}
+			]
 		}
 	],
 	"zoom": {

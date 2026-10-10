@@ -2,7 +2,7 @@ extends GdUnitTestSuite
 ## The overworld screen, headless. Input events do not arrive in headless mode,
 ## so these drive the screen through the same calls its input handlers make.
 ## These run on the act 1 placeholder map; overworld_acts_test.gd covers the
-## shipped Seattle map, the start choice and the act zoom.
+## shipped greater Seattle map, the start choice and the act zooms.
 
 const SCENE := "res://ui/overworld/overworld.tscn"
 const SAVE_PATH := "user://overworld_test.save"

@@ -1,0 +1,481 @@
+{
+	"id": "north_america_19",
+	"name": "North America",
+	"output": "data/regions/north_america_19.json",
+	"credit": "Natural Earth 1:10m admin-1 states and provinces, lakes cut out (public domain). Built by tools/region_prep/prepare_regions.py.",
+	"output_projection": "flat",
+	"projection": {
+		"type": "albers",
+		"parallels": [
+			29.5,
+			45.5
+		],
+		"lon0": -98.0,
+		"lat0": 37.0
+	},
+	"frame": {
+		"fit": [
+			[
+				-125.0,
+				49.0
+			],
+			[
+				-124.6,
+				42.0
+			],
+			[
+				-117.2,
+				22.8
+			],
+			[
+				-97.5,
+				22.2
+			],
+			[
+				-80.2,
+				24.6
+			],
+			[
+				-66.9,
+				44.8
+			],
+			[
+				-61.5,
+				46.5
+			],
+			[
+				-128.0,
+				53.5
+			],
+			[
+				-98.0,
+				55.5
+			]
+		],
+		"margin": 0.01,
+		"aspect": 1.4193548387096775
+	},
+	"raster": [
+		1760,
+		1240
+	],
+	"densify_degrees": 0.25,
+	"inputs": {
+		"admin1": {
+			"files": [
+				"ne_10m_admin_1_states_provinces_lakes.geojson"
+			],
+			"urls": [
+				"https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_1_states_provinces_lakes.geojson"
+			]
+		}
+	},
+	"land": {
+		"inputs": [
+			"admin1"
+		]
+	},
+	"members": {
+		"input": "admin1",
+		"key": "iso_3166_2"
+	},
+	"simplify_px": 1.6,
+	"min_part_px": 250,
+	"min_land_px": 250,
+	"min_shared_px": 4,
+	"regions": [
+		{
+			"id": "pacific_northwest",
+			"name": "Pacific Northwest",
+			"short_name": "PNW",
+			"kind": "Aerospace plants, hydro dams and cloud campuses",
+			"members": [
+				"US-WA",
+				"US-OR",
+				"US-ID"
+			],
+			"provides": {
+				"power": 3,
+				"energy": 3,
+				"material": 2
+			},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": true
+		},
+		{
+			"id": "california",
+			"name": "California",
+			"short_name": "CA",
+			"kind": "Tech valley and container ports",
+			"members": [
+				"US-CA"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 4,
+				"material": 3
+			},
+			"defense": 5,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "southwest",
+			"name": "Southwest",
+			"short_name": "SW",
+			"kind": "Chip fabs, data vaults and missile ranges",
+			"members": [
+				"US-NV",
+				"US-UT",
+				"US-AZ",
+				"US-NM"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 3,
+				"material": 2
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "rockies",
+			"name": "Rocky Mountains",
+			"short_name": "ROCKY",
+			"kind": "Mountain bunkers and missile fields",
+			"members": [
+				"US-MT",
+				"US-WY",
+				"US-CO"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 1,
+				"material": 3
+			},
+			"defense": 4,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "northern_plains",
+			"name": "Northern Plains",
+			"short_name": "N.PLAINS",
+			"kind": "Oil fields, silos and grain",
+			"members": [
+				"US-ND",
+				"US-SD",
+				"US-NE"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 0,
+				"material": 2
+			},
+			"defense": 2,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "southern_plains",
+			"name": "Southern Plains",
+			"short_name": "S.PLAINS",
+			"kind": "Wheat, oil hubs and aircraft plants",
+			"members": [
+				"US-KS",
+				"US-OK"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 0,
+				"material": 2
+			},
+			"defense": 2,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "texas",
+			"name": "Texas",
+			"short_name": "TX",
+			"kind": "Refineries, ports and a private grid",
+			"members": [
+				"US-TX"
+			],
+			"provides": {
+				"power": 4,
+				"energy": 2,
+				"material": 3
+			},
+			"defense": 5,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "upper_midwest",
+			"name": "Upper Midwest",
+			"short_name": "MIDWEST",
+			"kind": "Iron range, river ports and wind farms",
+			"members": [
+				"US-MN",
+				"US-IA",
+				"US-MO",
+				"US-WI"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 1,
+				"material": 3
+			},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "great_lakes",
+			"name": "Great Lakes",
+			"short_name": "LAKES",
+			"kind": "Auto plants, steel and the rail hub",
+			"members": [
+				"US-IL",
+				"US-MI",
+				"US-IN",
+				"US-OH"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 3,
+				"material": 4
+			},
+			"defense": 4,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "deep_south",
+			"name": "Deep South",
+			"short_name": "SOUTH",
+			"kind": "Gulf refineries and rocket works",
+			"members": [
+				"US-AR",
+				"US-LA",
+				"US-MS",
+				"US-AL",
+				"US-TN",
+				"US-KY"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 2,
+				"material": 3
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "southeast",
+			"name": "Southeast",
+			"short_name": "SE",
+			"kind": "Launch sites, ports and research parks",
+			"members": [
+				"US-GA",
+				"US-FL",
+				"US-SC",
+				"US-NC"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 3,
+				"material": 2
+			},
+			"defense": 4,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "mid_atlantic",
+			"name": "Mid-Atlantic",
+			"short_name": "MID-ATL",
+			"kind": "Capital district, naval base and steel",
+			"members": [
+				"US-VA",
+				"US-WV",
+				"US-MD",
+				"US-DE",
+				"US-DC",
+				"US-PA",
+				"US-NJ"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 4,
+				"material": 3
+			},
+			"defense": 5,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "new_york",
+			"name": "New York",
+			"short_name": "NY",
+			"kind": "Financial towers and harbor",
+			"members": [
+				"US-NY"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 4,
+				"material": 2
+			},
+			"defense": 5,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "new_england",
+			"name": "New England",
+			"short_name": "N.ENG",
+			"kind": "Universities and shipyards",
+			"members": [
+				"US-MA",
+				"US-CT",
+				"US-RI",
+				"US-VT",
+				"US-NH",
+				"US-ME"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 3,
+				"material": 2
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "western_canada",
+			"name": "Western Canada",
+			"short_name": "W.CAN",
+			"kind": "Ports, hydro dams and oil sands",
+			"members": [
+				"CA-BC",
+				"CA-AB"
+			],
+			"provides": {
+				"power": 3,
+				"energy": 1,
+				"material": 3
+			},
+			"defense": 2,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "prairies",
+			"name": "Canadian Prairies",
+			"short_name": "PRAIRIE",
+			"kind": "Potash, uranium and rail",
+			"members": [
+				"CA-SK",
+				"CA-MB"
+			],
+			"provides": {
+				"power": 3,
+				"energy": 0,
+				"material": 2
+			},
+			"defense": 1,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "ontario",
+			"name": "Ontario",
+			"short_name": "ON",
+			"kind": "Nuclear plants and auto works",
+			"members": [
+				"CA-ON"
+			],
+			"provides": {
+				"power": 3,
+				"energy": 2,
+				"material": 3
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "quebec_maritimes",
+			"name": "Quebec and the Maritimes",
+			"short_name": "QC",
+			"kind": "Hydro grid, aerospace and Atlantic ports",
+			"members": [
+				"CA-QC",
+				"CA-NB",
+				"CA-NS",
+				"CA-PE"
+			],
+			"provides": {
+				"power": 4,
+				"energy": 1,
+				"material": 2
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "northern_mexico",
+			"name": "Northern Mexico",
+			"short_name": "MEX",
+			"kind": "Border factories, copper and steel",
+			"members": [
+				"MX-BCN",
+				"MX-BCS",
+				"MX-SON",
+				"MX-CHH",
+				"MX-COA",
+				"MX-NLE",
+				"MX-TAM"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 1,
+				"material": 3
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		}
+	],
+	"crossings": [
+		[
+			"pacific_northwest",
+			"western_canada",
+			"Victoria ferry"
+		],
+		[
+			"great_lakes",
+			"ontario",
+			"Ambassador Bridge"
+		],
+		[
+			"new_york",
+			"ontario",
+			"Peace Bridge"
+		],
+		[
+			"great_lakes",
+			"upper_midwest",
+			"Lake Michigan car ferry"
+		]
+	],
+	"zoom_inset_from": "data/regions/sources/lake_washington_16.source.json",
+	"variant_name": "North America, 19 regions"
+}

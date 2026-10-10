@@ -1,0 +1,18 @@
+{
+	"base": "res://data/tuning/overworld.json",
+	"time": {
+		"total_points": 400,
+		"action_cost": {
+			"attack": 3,
+			"reinforce": 1,
+			"wait": 1
+		}
+	},
+	"pressure": {
+		"scale": 1.0,
+		"reference_regions": 20
+	},
+	"view": {
+		"node_style": "full"
+	}
+}

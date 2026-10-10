@@ -1,0 +1,448 @@
+{
+	"id": "world_8",
+	"name": "The World",
+	"output": "data/regions/world_8.json",
+	"credit": "Natural Earth 1:50m admin-0 countries, lakes cut out (public domain). Countries are grouped into world regions. Built by tools/region_prep/prepare_regions.py.",
+	"output_projection": "globe",
+	"projection": {
+		"type": "lonlat"
+	},
+	"frame": {
+		"lonlat_box": [
+			-180.0,
+			-90.0,
+			180.0,
+			90.0
+		]
+	},
+	"raster": [
+		1440,
+		720
+	],
+	"inputs": {
+		"admin0": {
+			"files": [
+				"ne_50m_admin_0_countries_lakes.geojson"
+			],
+			"urls": [
+				"https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries_lakes.geojson"
+			]
+		}
+	},
+	"land": {
+		"inputs": [
+			"admin0"
+		]
+	},
+	"members": {
+		"input": "admin0",
+		"key": "ADM0_A3"
+	},
+	"relabel": [
+		{
+			"from": "europe",
+			"to": "latin_america",
+			"box": [
+				-60.0,
+				0.0,
+				-50.0,
+				8.0
+			],
+			"note": "French Guiana"
+		}
+	],
+	"simplify_px": 1.2,
+	"min_part_px": 14,
+	"min_land_px": 14,
+	"min_shared_px": 2,
+	"regions": [
+		{
+			"id": "north_america",
+			"name": "North America",
+			"short_name": "N.AM",
+			"kind": "Industrial heartland, oil sands and carrier fleets",
+			"members": [
+				"USA",
+				"PRI",
+				"VIR",
+				"ASM",
+				"GUM",
+				"MNP",
+				"CAN",
+				"SPM",
+				"GRL"
+			],
+			"provides": {
+				"power": 4,
+				"energy": 4,
+				"material": 4
+			},
+			"defense": 4,
+			"pressure_base": 2,
+			"starts_owned": true
+		},
+		{
+			"id": "latin_america",
+			"name": "Latin America",
+			"short_name": "LAT.AM",
+			"kind": "The canal, rainforest dams and Andean mines",
+			"members": [
+				"MEX",
+				"GTM",
+				"BLZ",
+				"HND",
+				"SLV",
+				"NIC",
+				"CRI",
+				"PAN",
+				"CUB",
+				"HTI",
+				"DOM",
+				"JAM",
+				"BHS",
+				"TTO",
+				"ABW",
+				"AIA",
+				"ATG",
+				"BLM",
+				"BMU",
+				"BRB",
+				"CUW",
+				"CYM",
+				"DMA",
+				"GRD",
+				"KNA",
+				"LCA",
+				"MAF",
+				"MSR",
+				"SXM",
+				"TCA",
+				"VCT",
+				"VGB",
+				"COL",
+				"VEN",
+				"ECU",
+				"PER",
+				"BOL",
+				"GUY",
+				"SUR",
+				"BRA",
+				"ARG",
+				"CHL",
+				"URY",
+				"PRY",
+				"FLK",
+				"SGS"
+			],
+			"provides": {
+				"power": 3,
+				"energy": 1,
+				"material": 4
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "europe",
+			"name": "Europe",
+			"short_name": "EUR",
+			"kind": "Reactors, auto works and finance",
+			"members": [
+				"GBR",
+				"IRL",
+				"IMN",
+				"GGY",
+				"JEY",
+				"FRA",
+				"BEL",
+				"NLD",
+				"LUX",
+				"ESP",
+				"PRT",
+				"AND",
+				"MCO",
+				"DEU",
+				"POL",
+				"CZE",
+				"AUT",
+				"CHE",
+				"SVK",
+				"HUN",
+				"LIE",
+				"NOR",
+				"SWE",
+				"FIN",
+				"DNK",
+				"ISL",
+				"FRO",
+				"ALD",
+				"ITA",
+				"GRC",
+				"ALB",
+				"MKD",
+				"SRB",
+				"MNE",
+				"BIH",
+				"HRV",
+				"SVN",
+				"BGR",
+				"KOS",
+				"MLT",
+				"SMR",
+				"VAT",
+				"UKR",
+				"BLR",
+				"MDA",
+				"ROU",
+				"LTU",
+				"LVA",
+				"EST"
+			],
+			"provides": {
+				"power": 3,
+				"energy": 4,
+				"material": 3
+			},
+			"defense": 5,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "russia_central_asia",
+			"name": "Russia and Central Asia",
+			"short_name": "RUS",
+			"kind": "Command bunkers, pipelines and launch pads",
+			"members": [
+				"RUS",
+				"KAZ",
+				"UZB",
+				"TKM",
+				"KGZ",
+				"TJK",
+				"MNG"
+			],
+			"provides": {
+				"power": 4,
+				"energy": 1,
+				"material": 4
+			},
+			"defense": 4,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "middle_east_north_africa",
+			"name": "Middle East and North Africa",
+			"short_name": "MENA",
+			"kind": "Oil fields, the Suez and the straits",
+			"members": [
+				"TUR",
+				"GEO",
+				"ARM",
+				"AZE",
+				"CYP",
+				"CYN",
+				"SAU",
+				"YEM",
+				"OMN",
+				"ARE",
+				"QAT",
+				"BHR",
+				"KWT",
+				"IRQ",
+				"SYR",
+				"JOR",
+				"ISR",
+				"PSX",
+				"LBN",
+				"IRN",
+				"AFG",
+				"MAR",
+				"DZA",
+				"TUN",
+				"LBY",
+				"EGY",
+				"SAH"
+			],
+			"provides": {
+				"power": 4,
+				"energy": 1,
+				"material": 2
+			},
+			"defense": 4,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "sub_saharan_africa",
+			"name": "Sub-Saharan Africa",
+			"short_name": "AFRICA",
+			"kind": "Cobalt, gold and the Cape route",
+			"members": [
+				"MRT",
+				"MLI",
+				"NER",
+				"SEN",
+				"GMB",
+				"GIN",
+				"GNB",
+				"SLE",
+				"LBR",
+				"CIV",
+				"BFA",
+				"GHA",
+				"TGO",
+				"BEN",
+				"NGA",
+				"CPV",
+				"TCD",
+				"CAF",
+				"CMR",
+				"GAB",
+				"COG",
+				"COD",
+				"GNQ",
+				"STP",
+				"SDN",
+				"SDS",
+				"ETH",
+				"ERI",
+				"DJI",
+				"SOM",
+				"SOL",
+				"KEN",
+				"UGA",
+				"TZA",
+				"RWA",
+				"BDI",
+				"AGO",
+				"ZMB",
+				"MWI",
+				"MOZ",
+				"ZWE",
+				"BWA",
+				"NAM",
+				"ZAF",
+				"LSO",
+				"SWZ",
+				"MDG",
+				"COM",
+				"MUS"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 1,
+				"material": 4
+			},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "asia",
+			"name": "Asia",
+			"short_name": "ASIA",
+			"kind": "The factory belt, chip fabs and megacities",
+			"members": [
+				"IND",
+				"PAK",
+				"BGD",
+				"NPL",
+				"BTN",
+				"LKA",
+				"MDV",
+				"KAS",
+				"CHN",
+				"TWN",
+				"HKG",
+				"MAC",
+				"JPN",
+				"KOR",
+				"PRK",
+				"MMR",
+				"THA",
+				"LAO",
+				"KHM",
+				"VNM",
+				"IDN",
+				"MYS",
+				"PHL",
+				"SGP",
+				"BRN",
+				"TLS",
+				"PLW"
+			],
+			"provides": {
+				"power": 4,
+				"energy": 4,
+				"material": 4
+			},
+			"defense": 5,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "oceania",
+			"name": "Oceania",
+			"short_name": "OCEANIA",
+			"kind": "Iron ore, geothermal plants and island cables",
+			"members": [
+				"AUS",
+				"NZL",
+				"PNG",
+				"FJI",
+				"SLB",
+				"VUT",
+				"NCL"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 1,
+				"material": 3
+			},
+			"defense": 3,
+			"pressure_base": 1,
+			"starts_owned": false
+		}
+	],
+	"crossings": [
+		[
+			"north_america",
+			"russia_central_asia",
+			"Bering Strait"
+		],
+		[
+			"north_america",
+			"europe",
+			"Transatlantic cable"
+		],
+		[
+			"north_america",
+			"latin_america",
+			"Florida Straits"
+		],
+		[
+			"europe",
+			"middle_east_north_africa",
+			"Strait of Gibraltar"
+		],
+		[
+			"middle_east_north_africa",
+			"sub_saharan_africa",
+			"Bab-el-Mandeb"
+		],
+		[
+			"asia",
+			"oceania",
+			"Timor Sea"
+		],
+		[
+			"latin_america",
+			"sub_saharan_africa",
+			"South Atlantic cable"
+		]
+	],
+	"zoom_inset_from": "data/regions/sources/north_america_57.source.json",
+	"variant_name": "The world, 8 continents and blocs"
+}

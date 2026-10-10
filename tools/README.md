@@ -2,6 +2,23 @@
 
 Dev tools. May import any layer except ui/.
 
+## Region prep
+
+`region_prep/prepare_regions.py` builds the act maps in `data/regions/` from
+public-domain outlines (Natural Earth, US Census TIGER). It is offline data
+prep in Python (standard library only), not game code; the game reads only
+its JSON output. Each map has a source file in `data/regions/sources/`.
+
+```sh
+python3 tools/region_prep/prepare_regions.py fetch --cache /tmp/region_cache data/regions/sources/*.source.json
+python3 tools/region_prep/prepare_regions.py build --cache /tmp/region_cache data/regions/sources/*.source.json
+```
+
+`--preview DIR` also writes a PNG of each map's raster. It rasterizes the
+outlines, grows city cores over land (act 1), traces and simplifies each
+region (retrying with a finer tolerance until no outline crosses itself),
+finds land borders, and adds the source file's water crossings.
+
 ## Batch simulator
 
 Runs a scenario many times headless and prints win rate, fight length (actions

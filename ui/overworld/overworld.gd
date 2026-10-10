@@ -5,6 +5,7 @@ extends Control
 
 const Palette := preload("res://ui/overworld/palette.gd")
 const MapView := preload("res://ui/overworld/map_view.gd")
+const GlobeView := preload("res://ui/overworld/globe_view.gd")
 const MeterBar := preload("res://ui/overworld/meter_bar.gd")
 
 const SAVE_PATH := "user://overworld.save"
@@ -20,6 +21,9 @@ const RESOURCE_LABELS := {MapRegion.POWER: "Grid power", MapRegion.ENERGY: "Ener
 @export_file("*.json") var region_file := ""
 ## When set, act 1 uses this tuning file instead of the acts file's.
 @export_file("*.json") var tuning_file := ""
+## Dev option: the map variant to play in each act, by act index; "" or a
+## missing entry plays the act's default_variant from the acts file.
+@export var act_variants: PackedStringArray = []
 
 ## The two contracts the map talks to. Swap these for real implementations;
 ## nothing else on the map changes.
@@ -38,9 +42,13 @@ var start_picker: Callable
 
 var campaign: Campaign
 var plan: ActPlan
+## The map: a MapView, or a GlobeView on a globe act. Replaced when the act's
+## projection changes.
 var map_view: MapView
 ## True while the act zoom plays.
 var zooming := false
+## Where the act zoom starts: [zoom_center, zoom].
+var _zoom_from := [Vector2(0.5, 0.5), 1.0]
 
 var _events: PackedStringArray = []
 var _hover_wait := false
@@ -93,6 +101,9 @@ func start_new_run(start_id := "") -> String:
 	plan = ActPlan.load_file(acts_file)
 	if not plan.is_valid():
 		return "\n".join(plan.errors)
+	for act in mini(act_variants.size(), plan.act_count()):
+		if not plan.choose_variant(act, act_variants[act]):
+			return "act %d has no map variant '%s'" % [act + 1, act_variants[act]]
 	var map := _load_map(0)
 	var tuning := _load_tuning(0)
 	var problems: Array[String] = map.errors + tuning.errors
@@ -162,6 +173,12 @@ func load_state(state: RunState) -> bool:
 	if state == null or state.act < 0 or state.act >= plan.act_count():
 		_event("No saved run for this map.")
 		return false
+	# Play on the variant the save was made on. Act 1 on a region_file
+	# override has no variant to pick.
+	var on_override := state.act == 0 and not region_file.is_empty()
+	if not on_override and not plan.choose_variant(state.act, state.region_set_id):
+		_event("No saved run for this map.")
+		return false
 	var map := _load_map(state.act)
 	var tuning := _load_tuning(state.act)
 	if not map.is_valid() or not tuning.is_valid() or state.region_set_id != map.id:
@@ -195,6 +212,7 @@ func _use_campaign(c: Campaign) -> void:
 	campaign = c
 	campaign.changed.connect(_refresh)
 	campaign.event_logged.connect(_event)
+	_use_view_for(campaign.map)
 	map_view.campaign = campaign
 	map_view.selected_id = ""
 	_hide_modal()
@@ -225,14 +243,34 @@ func _build_layout() -> void:
 	left.custom_minimum_size.x = MAP_SIZE.x
 	left.add_theme_constant_override("separation", 0)
 	body.add_child(left)
-	map_view = MapView.new()
-	map_view.custom_minimum_size = MAP_SIZE
-	map_view.region_selected.connect(func(_id: String) -> void: _refresh())
+	map_view = _new_view(false)
 	left.add_child(map_view)
 	left.add_child(_build_time_strip())
 
 	body.add_child(_build_side_panel())
 	_build_modal()
+
+
+func _new_view(globe: bool) -> MapView:
+	var view: MapView = GlobeView.new() if globe else MapView.new()
+	view.name = "GlobeView" if globe else "MapView"
+	view.custom_minimum_size = MAP_SIZE
+	view.region_selected.connect(func(_id: String) -> void: _refresh())
+	return view
+
+
+## Swaps the map view for a globe or a flat one to suit `map`.
+func _use_view_for(map: RegionMap) -> void:
+	if (map_view is GlobeView) == map.is_globe():
+		return
+	var view := _new_view(map.is_globe())
+	var parent := map_view.get_parent()
+	var index := map_view.get_index()
+	parent.remove_child(map_view)
+	map_view.queue_free()
+	parent.add_child(view)
+	parent.move_child(view, index)
+	map_view = view
 
 
 func _build_top_bar() -> Control:
@@ -644,11 +682,12 @@ func _check_forced() -> void:
 		return
 	if campaign.is_payload_due():
 		# TODO(decision: boss-fight): the boss fight is a stub. The last act's
-		# payload ends the run; an earlier one zooms out to the next act.
+		# payload brings it and the run ends after it; an earlier payload
+		# zooms out to the next act.
 		if plan.has_next(campaign.state.act):
 			_show_payload_zoom()
 		else:
-			_show_end("The payload arrives", "The countdown reached zero and the boss fight begins with whatever you have prepared. The boss fight is not built yet.")
+			_show_boss()
 		return
 	var region_id := campaign.pending_defense()
 	if region_id.is_empty():
@@ -684,6 +723,24 @@ func _show_end(title: String, body: String) -> void:
 	_show_modal("RUN OVER", title, body, [["NEW RUN", _on_new_run]])
 
 
+## The last act's payload: the stub boss fight, then the end of the run.
+func _show_boss() -> void:
+	var body := "The countdown is over and the boss is here. Everything you hold across %s stands behind the squad. " % plan.act_name(campaign.state.act)
+	body += "The boss fight is a stand-in for now: a fight at defense level %d." % campaign.tuning.boss_defense_level
+	_show_modal("ACT %d · FINAL PAYLOAD" % (campaign.state.act + 1), "The boss arrives", body, [["FIGHT THE BOSS", _on_boss]])
+
+
+func _on_boss() -> void:
+	_hide_modal()
+	var result: FightResult = await campaign.boss_fight()
+	if result == null:
+		return
+	if result.is_victory():
+		_show_end("The boss falls", "The squad beat the boss. The run is won.")
+	else:
+		_show_end("The boss holds", "The squad could not break the boss. The run ends here.")
+
+
 func _show_payload_zoom() -> void:
 	var act := campaign.state.act
 	var held := campaign.state.owned.size()
@@ -707,31 +764,55 @@ func zoom_out() -> void:
 	if not error.is_empty():
 		_show_message("CANNOT LOAD MAP", "The next act did not load", error)
 		return
-	var focus := campaign.map.get_region(plan.acts[campaign.state.act]["zoom_focus"])
-	if focus == null:
+	# The old map sits where the region file's zoom_inset says, or over the
+	# whole focus region when it says nothing.
+	var inset := campaign.map.zoom_inset
+	if inset.is_empty():
+		var focus := campaign.map.get_region(plan.acts[campaign.state.act]["zoom_focus"])
+		if focus == null:
+			return
+		inset = focus.polygon
+	if map_view is GlobeView:
+		var middle := Vector2.ZERO
+		for p in inset:
+			middle += p
+		map_view.look_at_lonlat(middle / inset.size())
+	var rect := map_view.zoom_space_rect(inset)
+	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
 		return
-	var rect := Rect2(focus.polygon[0], Vector2.ZERO)
-	for p in focus.polygon:
-		rect = rect.expand(p)
 	map_view.inset_map = old_map
 	map_view.inset_owned = old_owned
 	map_view.inset_rect = rect
 	map_view.inset_alpha = 1.0
-	map_view.zoom_center = rect.get_center()
-	map_view.zoom = minf(1.0 / rect.size.x, 1.0 / rect.size.y)
+	_zoom_from = [rect.get_center(), minf(1.0 / rect.size.x, 1.0 / rect.size.y)]
+	_set_zoom_progress(0.0)
 	map_view.modulate.a = 0.0
 	zooming = true
 	_refresh()
 	var tween := create_tween()
 	tween.tween_property(map_view, "modulate:a", 1.0, plan.fade_seconds)
-	tween.tween_property(map_view, "zoom", 1.0, plan.zoom_seconds).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	tween.parallel().tween_property(map_view, "zoom_center", Vector2(0.5, 0.5), plan.zoom_seconds).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	tween.parallel().tween_property(map_view, "inset_alpha", 0.0, plan.zoom_seconds).set_ease(Tween.EASE_IN)
+	tween.tween_method(_set_zoom_progress, 0.0, 1.0, plan.zoom_seconds).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 	tween.finished.connect(_end_zoom)
+
+
+## Places the act zoom camera `t` of the way from the old map filling the view
+## (0) to the whole new map (1). The view's width shrinks at an even rate on a
+## log scale, and its middle moves in step with the width, so the zoom is about
+## one fixed point and the old map stays put on screen as it shrinks.
+func _set_zoom_progress(t: float) -> void:
+	var start_center: Vector2 = _zoom_from[0]
+	var start_zoom: float = _zoom_from[1]
+	var width := exp(lerpf(log(1.0 / start_zoom), 0.0, t))
+	var moved := (width - 1.0 / start_zoom) / (1.0 - 1.0 / start_zoom) if start_zoom != 1.0 else 1.0
+	map_view.zoom = 1.0 / width
+	map_view.zoom_center = start_center.lerp(Vector2(0.5, 0.5), moved)
+	map_view.inset_alpha = 1.0 - t * t
 
 
 func _end_zoom() -> void:
 	zooming = false
+	map_view.zoom = 1.0
+	map_view.zoom_center = Vector2(0.5, 0.5)
 	map_view.inset_map = null
 	_refresh()
 

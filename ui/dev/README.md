@@ -1,6 +1,8 @@
 # ui/dev/
 
-Developer screens. Start at `res://ui/dev/dev_menu.tscn`, or run one directly:
+Developer screens. Start at `res://ui/dev/dev_menu.tscn`, or run one directly.
+The dev menu also picks a map variant per act and plays a run on them.
+
 
 - `bot_builder.tscn`: create or edit a bot's or enemy's stats and skills and
   save it through BotSquadStorage (`user://dev/bots/`, `user://dev/enemies/`).
