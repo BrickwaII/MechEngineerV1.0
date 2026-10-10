@@ -179,8 +179,8 @@ func _strike(beat: BattleBeat, visual: bool) -> void:
 		last_sounds.append_array(sounds)
 		return
 	for id in sounds:
-		if SoundPlayer.fire(id) or not is_instance_valid(SoundPlayer.current):
-			last_sounds.append(id)
+		SoundPlayer.fire(id)
+		last_sounds.append(id)
 	var view := _view(beat.actor_id)
 	if view == null:
 		return
@@ -290,8 +290,8 @@ func _show_hit(beat: BattleBeat, e: FightEvent, is_big: bool) -> void:
 	_burst(at, int(beat.fx.get("particles", 4)), SkillFx.tint(beat.fx, "accent"), scale_by)
 	var impact_sound := str(beat.fx.get("impact_sound", ""))
 	if not impact_sound.is_empty():
-		if SoundPlayer.fire(StringName(impact_sound)) or not is_instance_valid(SoundPlayer.current):
-			last_sounds.append(StringName(impact_sound))
+		SoundPlayer.fire(StringName(impact_sound))
+		last_sounds.append(StringName(impact_sound))
 
 
 func _show_heal(beat: BattleBeat, e: FightEvent) -> void:
@@ -332,8 +332,8 @@ func _show_down(e: FightEvent) -> void:
 		return
 	view.set_state(view.guarded, true)
 	_spawn_effect("down_burst", view.center_global(), Color.WHITE, 1.0)
-	if SoundPlayer.fire(&"down") or not is_instance_valid(SoundPlayer.current):
-		last_sounds.append(&"down")
+	SoundPlayer.fire(&"down")
+	last_sounds.append(&"down")
 
 
 ## Only the actor and its targets move; the rest hold still.

@@ -26,6 +26,12 @@ replacing the file (same size and layout) and updating its row here.
 | Mech Pixel font (5x7 bitmap, BMFont) | `assets/fonts/mech_pixel.fnt`, `assets/fonts/mech_pixel.png` | `tools/asset_gen/gen_font.py` | CC0 1.0 |
 | Sound effects (interface, hits, shots, swings, charge, energy, heal, guard, down) | `assets/audio/sfx/*.wav` | `tools/asset_gen/gen_sfx.py` (synthesized) | CC0 1.0 |
 | Placeholder music loop | `assets/audio/music/*.wav` | `tools/asset_gen/gen_sfx.py` (synthesized) | CC0 1.0 |
+| Extra ally bot parts (hover and spider legs, angular and barrel bodies, antenna and cyclops heads, cannon and drill arms; 3 tiers each) | `assets/fight/units/ally_frame/*.png` | `tools/asset_gen/gen_battle.py` | CC0 1.0 |
+| Fallback enemy walker (key colors, recolored per enemy type), 3 tiers | `assets/fight/units/enemy_fallback/*.png` | `tools/asset_gen/gen_battle.py` | CC0 1.0 |
+| Skill effects and projectiles (slash, impact ring, bolt, orb, arc wave, shield dome, wrench, gear, blast, charge, cross) | `assets/fight/effects/*.png` | `tools/asset_gen/gen_battle.py` | CC0 1.0 |
+| Intent icons and target reticle | `assets/fight/icons/*.png` | `tools/asset_gen/gen_battle.py` | CC0 1.0 |
+| Tier plates and glow | `assets/fight/tiers/*.png` | `tools/asset_gen/gen_battle.py` | CC0 1.0 |
+| Skill sounds, level layers, victory and defeat stingers | `assets/fight/audio/*.wav` | `tools/asset_gen/gen_battle.py` (synthesized) | CC0 1.0 |
 | Audio bus layout (Music, Effects, Interface) | `assets/audio/default_bus_layout.tres` | hand-written | CC0 1.0 |
 | Asset license text | `assets/LICENSE.md` | hand-written | CC0 1.0 |
 
@@ -48,4 +54,5 @@ environment (the site is blocked); confirm each before downloading.
 
 TODO(decision: sprite-source): the robot sprites may stay generated (they
 already follow the parts-and-palette manifest) or move to a pack that is cut
-into the same layout. Default: keep generated sprites until P2 decides.
+into the same layout. P2 (battle presentation) keeps the generated sprites
+and adds its parts, effects and sounds the same way (`gen_battle.py`).

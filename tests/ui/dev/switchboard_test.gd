@@ -3,11 +3,13 @@ extends GdUnitTestSuite
 ## user file.
 
 const USER_FILE := "user://switchboard_test.json"
+const UNBUILT_DATA := "user://switchboard_test_data.json"
 const LAYERS := ["contracts", "bot_data", "fight", "campaign", "ui", "tools"]
 
 
 func after_test() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(USER_FILE))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(UNBUILT_DATA))
 
 
 func _board() -> Switchboard:
@@ -91,9 +93,23 @@ func test_reset_clears_every_choice() -> void:
 	assert_dict(board.choices).is_empty()
 
 
+## The real board with one unbuilt option added (every listed option is built
+## now), so the unbuilt-option handling stays covered.
+func _board_with_unbuilt() -> Switchboard:
+	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Switchboard.DATA_PATH))
+	for d: Dictionary in data.decisions:
+		if d.id == "tier-rule":
+			d.options.append({"id": "not_yet", "name": "Not built yet", "built": false})
+	var file := FileAccess.open(UNBUILT_DATA, FileAccess.WRITE)
+	file.store_string(JSON.stringify(data))
+	file.close()
+	return Switchboard.load_board(USER_FILE, UNBUILT_DATA)
+
+
 func test_unbuilt_options_are_marked() -> void:
-	var board := _board()
-	assert_bool(board.is_built("tier-rule", "skill_levels")).is_false()
+	var board := _board_with_unbuilt()
+	assert_bool(board.is_built("tier-rule", "not_yet")).is_false()
+	assert_bool(board.is_built("tier-rule", "skill_levels")).is_true()
 	assert_bool(board.is_built("d-wait", "bonus_damage")).is_true()
 	assert_bool(board.is_built("energy-grid", "shared_pool")).is_true()
 
@@ -119,10 +135,10 @@ func test_screen_shows_a_picker_per_decision_and_saves_picks() -> void:
 
 func test_screen_refuses_unbuilt_options() -> void:
 	var screen: SwitchboardScreen = auto_free(SwitchboardScreen.new())
-	screen.board = _board()
+	screen.board = _board_with_unbuilt()
 	add_child(screen)
 	await get_tree().process_frame
-	assert_bool(screen.pick("tier-rule", "skill_levels")).is_false()
+	assert_bool(screen.pick("tier-rule", "not_yet")).is_false()
 	var picker := screen.pickers["tier-rule"]
 	for i in picker.item_count:
 		assert_bool(picker.is_item_disabled(i)).is_equal(not screen.board.is_built("tier-rule", picker.get_item_metadata(i)))

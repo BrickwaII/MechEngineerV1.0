@@ -7,7 +7,8 @@ extends RefCounted
 ##
 ## A drafted bot is the manifest's ally unit with parts and a palette picked
 ## from its id (SpriteManifest.ally_look), in the tier the tier rule gives.
-## An enemy is drawn by, in order: the manifest unit with its enemy table id,
+## An enemy is drawn by, in order: SpriteManifest.for_enemy() (P4's enemy
+## sprite table, used when present), the manifest unit with its enemy table id,
 ## a manifest unit listing that id in "enemy_ids", the "enemy_sprites" alias
 ## here, else the fallback sheet recolored per enemy type. Enemy tiers follow
 ## the fight's defense level.
@@ -51,8 +52,23 @@ static func base_id(unit_id: String) -> String:
 	return unit_id.get_slice("#", 0)
 
 
+## P4's enemy sprite lookup, SpriteManifest.for_enemy(enemy_id) -> {unit, tier},
+## when that method exists; {} otherwise or when it knows no sprite.
+static func manifest_enemy_entry(enemy_id: String) -> Dictionary:
+	var script: Script = load("res://ui/common/sprite_manifest.gd")
+	for m: Dictionary in script.get_script_method_list():
+		if m.name == "for_enemy":
+			var found: Variant = script.call("for_enemy", enemy_id)
+			if found is Dictionary and SpriteManifest.unit(str(found.get("unit", ""))).get("kind", "") == "enemy":
+				return found
+	return {}
+
+
 ## The manifest unit that draws enemy `enemy_id`, or "" for the fallback.
 static func enemy_unit_id(enemy_id: String) -> String:
+	var entry := manifest_enemy_entry(enemy_id)
+	if not entry.is_empty():
+		return str(entry["unit"])
 	if SpriteManifest.unit(enemy_id).get("kind", "") == "enemy":
 		return enemy_id
 	for id: String in SpriteManifest.unit_ids():
@@ -113,6 +129,9 @@ static func look_for(unit: Combatant, defense_level: int, tier_rule: BattleTierR
 		}
 	var enemy_id := base_id(unit.id)
 	var tier := enemy_tier(defense_level)
+	var entry := manifest_enemy_entry(enemy_id)
+	if str(entry.get("tier", "")) in SpriteManifest.tiers():
+		tier = str(entry["tier"])
 	var manifest_id := enemy_unit_id(enemy_id)
 	if not manifest_id.is_empty():
 		return {"unit_id": manifest_id, "tier": tier, "look": {}, "palette": PackedColorArray(), "glow": color("enemy")}
