@@ -102,8 +102,8 @@
 			"applies": "next_run",
 			"default": "separate",
 			"options": [
-				{"id": "separate", "name": "Separate (current)"},
-				{"id": "shared_pool", "name": "One shared pool", "built": false}
+				{"id": "separate", "name": "Separate (current)", "description": "Energy is a stock from region income and fight rewards; grid capacity regains power / grid.regen_divisor per point and pays for attacks, reinforcing and defeats."},
+				{"id": "shared_pool", "name": "One shared pool", "description": "Grid and Energy are one pool in grid percent (energy stock stays 0). Each point it regains (power + energy per day) / pool_regen_divisor; starting energy and fight energy rewards add energy_to_pool percent per point; it pays every grid cost. Capped at grid.max.", "params": {"pool_regen_divisor": 8.0, "energy_to_pool": 0.5}}
 			]
 		},
 		{
@@ -113,9 +113,9 @@
 			"applies": "next_fight",
 			"default": "map_surcharge",
 			"options": [
-				{"id": "map_surcharge", "name": "Map adds 1.5x (current)"},
-				{"id": "fight_service", "name": "Fight service charges it", "built": false},
-				{"id": "no_surcharge", "name": "No surcharge", "built": false}
+				{"id": "map_surcharge", "name": "Map adds 1.5x (current)", "description": "The fight service charges the same on victory and defeat; the map multiplies a lost attack's grid cost by grid.defeat_multiplier (data/tuning/overworld.json)."},
+				{"id": "fight_service", "name": "Fight service charges it", "description": "The run's fight service reports a lost attack's grid cost already times defeat_multiplier; the map uses every result's cost as it is.", "params": {"defeat_multiplier": 1.5}},
+				{"id": "no_surcharge", "name": "No surcharge", "description": "A lost attack costs the same grid as a won one."}
 			]
 		},
 		{
@@ -125,9 +125,9 @@
 			"applies": "next_run",
 			"default": "draft5_field3",
 			"options": [
-				{"id": "draft5_field3", "name": "Draft 5, field 3 (current)"},
-				{"id": "draft4_field3", "name": "Draft 4, field 3", "built": false},
-				{"id": "draft6_field4", "name": "Draft 6, field 4", "built": false}
+				{"id": "draft5_field3", "name": "Draft 5, field 3 (current)", "description": "draft_size and squad_size from data/bot_data/tuning.json."},
+				{"id": "draft4_field3", "name": "Draft 4, field 3", "description": "The run's draft offers draft_size bots and fields squad_size.", "params": {"draft_size": 4, "squad_size": 3}},
+				{"id": "draft6_field4", "name": "Draft 6, field 4", "description": "The run's draft offers draft_size bots and fields squad_size.", "params": {"draft_size": 6, "squad_size": 4}}
 			]
 		},
 		{
@@ -137,9 +137,17 @@
 			"applies": "next_run",
 			"default": "current",
 			"options": [
-				{"id": "current", "name": "Per-act tuning files (current)"},
-				{"id": "even", "name": "Even length", "built": false},
-				{"id": "faster_later", "name": "Faster later acts", "built": false}
+				{"id": "current", "name": "Per-act tuning files (current)", "description": "Each act plays data/tuning/act*.json: today a 100-day countdown each, pressure scaled by region count."},
+				{"id": "even", "name": "Even length", "description": "Preset: every act a 400-point (100-day) countdown at attack 3, reinforce 1, wait 1, whatever the act files say. acts holds one tuning override per act.", "params": {"acts": [
+					{"time": {"total_points": 400, "action_cost": {"attack": 3, "reinforce": 1, "wait": 1}}},
+					{"time": {"total_points": 400, "action_cost": {"attack": 3, "reinforce": 1, "wait": 1}}},
+					{"time": {"total_points": 400, "action_cost": {"attack": 3, "reinforce": 1, "wait": 1}}}
+				]}},
+				{"id": "faster_later", "name": "Faster later acts", "description": "Preset: a longer act 1 and shorter acts 2 and 3, the same 1200 points in total. acts holds one tuning override per act.", "params": {"acts": [
+					{"time": {"total_points": 480}},
+					{"time": {"total_points": 360}},
+					{"time": {"total_points": 360}}
+				]}}
 			]
 		},
 		{
@@ -149,8 +157,8 @@
 			"applies": "next_run",
 			"default": "off",
 			"options": [
-				{"id": "off", "name": "Off (current)"},
-				{"id": "simple", "name": "A simple version", "built": false}
+				{"id": "off", "name": "Off (current)", "description": "Held ground only grows by attacking."},
+				{"id": "simple", "name": "A simple version", "description": "From act from_act on, once a day every hostile region with defense at most max_defense next to held ground gains progress_per_day percent per held neighbor, focus_multiplier times that if it is (or borders) the region last attacked or selected. At 100 it is taken without a fight, at most claims_per_day a day. No dice.", "params": {"from_act": 2, "max_defense": 2, "progress_per_day": 4.0, "focus_multiplier": 3.0, "claims_per_day": 1}}
 			]
 		},
 		{
