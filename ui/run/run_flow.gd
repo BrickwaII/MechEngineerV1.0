@@ -17,7 +17,7 @@ const DRAFT_SCENE := preload("res://ui/draft/draft_screen.tscn")
 const OVERWORLD_SCENE := preload("res://ui/overworld/overworld.tscn")
 const READOUT_SCENE := preload("res://ui/post_fight/post_fight_readout.tscn")
 
-const SAVE_PATH := "user://run.tres"
+const SAVE_PATH := "user://run.res"
 const NO_SEED := -1
 const CONTINUE_SIZE := Vector2(220, 48)
 const SCREEN_MARGIN := 24.0
@@ -33,6 +33,9 @@ signal stage_changed(stage: Stage)
 @export var choose_start := false
 ## Plays fights with AutoFightService instead of the battle screen.
 @export var auto_fights := false
+## Dev option: the map variant for each act, by act index ("" for the act's
+## default). The dev menu sets it; see data/tuning/acts.json for the ids.
+@export var map_variants: PackedStringArray = []
 ## Battle screen tuning; null means data/ui/fight_screen.json.
 var fight_screen_tuning: FightScreenTuning
 ## Set on the overworld when it is made, as its own exports: tests use them.
@@ -149,6 +152,7 @@ func _open_overworld() -> void:
 	overworld = OVERWORLD_SCENE.instantiate()
 	if not region_file.is_empty():
 		overworld.region_file = region_file
+	overworld.act_variants = map_variants
 	_hand_services_to(overworld)
 	overworld.save_action = func() -> void: save_run()
 	overworld.load_action = func() -> void: load_run()

@@ -16,6 +16,7 @@
 		"after_capture": 15.0,
 		"after_defense_victory": 30.0,
 		"scale": 1.0,
+		"reference_regions": 0,
 		"uprising_defense_level": 2,
 		"cause_warning_at": 40.0,
 		"imminent_at": 75.0,

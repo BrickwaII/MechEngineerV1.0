@@ -3,26 +3,26 @@ extends GdUnitTestSuite
 ## click finds the region drawn under it at any rotation.
 
 const GlobeView := preload("res://ui/overworld/globe_view.gd")
-const WORLD := "res://data/regions/world.json"
+const WORLD := "res://data/regions/world_20.json"
 const TUNING := "res://data/tuning/act3.json"
 
 ## Cities and the region each lies in, as longitude and latitude.
 const CITIES := {
 	"Kansas City": [Vector2(-94.6, 39.1), "united_states"],
-	"Toronto": [Vector2(-79.4, 43.7), "canada"],
-	"Mexico City": [Vector2(-99.1, 19.4), "mexico_central"],
-	"Bogota": [Vector2(-74.1, 4.7), "north_andes"],
-	"London": [Vector2(-0.1, 51.5), "british_isles"],
+	"Ottawa": [Vector2(-75.7, 45.4), "canada"],
+	"Mexico City": [Vector2(-99.1, 19.4), "mexico_caribbean"],
+	"Bogota": [Vector2(-74.1, 4.7), "andes"],
+	"London": [Vector2(-0.1, 51.5), "western_europe"],
 	"Paris": [Vector2(2.35, 48.85), "western_europe"],
-	"Berlin": [Vector2(13.4, 52.5), "central_europe"],
-	"Rome": [Vector2(12.5, 41.9), "mediterranean"],
+	"Berlin": [Vector2(13.4, 52.5), "northern_europe"],
+	"Rome": [Vector2(12.5, 41.9), "western_europe"],
 	"Moscow": [Vector2(37.6, 55.75), "russia_west"],
 	"Cairo": [Vector2(31.2, 30.0), "north_africa"],
-	"Lagos": [Vector2(3.4, 6.5), "west_africa"],
+	"Lagos": [Vector2(3.4, 6.5), "west_central_africa"],
 	"Delhi": [Vector2(77.2, 28.6), "south_asia"],
 	"Beijing": [Vector2(116.4, 39.9), "china"],
 	"Tokyo": [Vector2(139.7, 35.7), "east_asia"],
-	"Sydney": [Vector2(151.2, -33.9), "australia"],
+	"Sydney": [Vector2(151.2, -33.9), "oceania"],
 }
 
 var _view: Control
@@ -62,7 +62,7 @@ func test_the_globe_starts_facing_the_network() -> void:
 func test_clicks_hit_the_region_drawn_there_facing_the_americas() -> void:
 	_turn_to(-95.0, 35.0)
 	var seen := _check_visible_cities()
-	assert_array(seen).contains(["Kansas City", "Toronto", "Mexico City", "Bogota"])
+	assert_array(seen).contains(["Kansas City", "Ottawa", "Mexico City", "Bogota"])
 	assert_array(seen).not_contains(["Tokyo", "Delhi", "Sydney", "Beijing"])
 	assert_str(_view.region_at(_view.size / 2.0)).is_equal("united_states")
 
@@ -71,8 +71,8 @@ func test_clicks_hit_the_region_drawn_there_facing_europe() -> void:
 	_turn_to(15.0, 45.0)
 	var seen := _check_visible_cities()
 	assert_array(seen).contains(["London", "Paris", "Berlin", "Rome", "Moscow", "Cairo", "Lagos"])
-	assert_array(seen).not_contains(["Kansas City", "Sydney", "Tokyo"])
-	assert_str(_view.region_at(_view.size / 2.0)).is_equal("mediterranean")
+	assert_array(seen).not_contains(["Sydney"])
+	assert_str(_view.region_at(_view.size / 2.0)).is_equal("eastern_europe")
 
 
 func test_the_same_spot_shows_different_regions_at_two_rotations() -> void:
@@ -105,11 +105,11 @@ func test_view_to_map_inverts_project_point() -> void:
 
 func test_the_far_side_is_not_drawn() -> void:
 	_turn_to(-95.0, 35.0)
-	assert_object(_view.project_point(CITIES["Beijing"][0])).is_null()
-	assert_object(_view.label_position("china")).is_null()
+	assert_object(_view.project_point(CITIES["Sydney"][0])).is_null()
+	assert_object(_view.label_position("oceania")).is_null()
 	assert_object(_view.label_position("united_states")).is_not_null()
-	var china := _view.campaign.map.get_region("china")
-	assert_array(_view.project_shape(china.polygon)).is_empty()
+	var australia: MapRegion = _view.campaign.map.get_region("oceania")
+	assert_array(_view.project_shape(australia.polygon)).is_empty()
 
 
 func test_outlines_over_the_rim_are_clipped_to_the_disk() -> void:

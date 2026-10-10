@@ -35,6 +35,11 @@ var pressure_after_capture: float
 var pressure_after_defense_victory: float
 ## Factor on every pressure rate in this act.
 var pressure_scale: float
+## When above 0, pressure rates are also scaled by this over the map's region
+## count, so a map with more regions builds pressure more slowly on each and
+## a run holds about as much pressure in total whichever map variant it is on.
+## TODO(decision: act-pacing): with 0 the map size changes nothing.
+var pressure_reference_regions: int
 ## Defense level of a forced fight with no hostile neighbor to blame.
 var uprising_defense_level: int
 ## Pressure at which a held node's cause line turns to a warning, and at
@@ -177,6 +182,7 @@ func _read(d: Dictionary) -> void:
 	pressure_after_capture = _num(d, "pressure.after_capture")
 	pressure_after_defense_victory = _num(d, "pressure.after_defense_victory")
 	pressure_scale = _num(d, "pressure.scale")
+	pressure_reference_regions = int(_num(d, "pressure.reference_regions"))
 	uprising_defense_level = int(_num(d, "pressure.uprising_defense_level"))
 	cause_warning_at = _num(d, "pressure.cause_warning_at")
 	imminent_at = _num(d, "pressure.imminent_at")

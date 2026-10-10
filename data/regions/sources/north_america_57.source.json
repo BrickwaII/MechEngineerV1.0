@@ -1,7 +1,7 @@
 {
-	"id": "north_america",
+	"id": "north_america_57",
 	"name": "North America",
-	"output": "data/regions/north_america.json",
+	"output": "data/regions/north_america_57.json",
 	"credit": "Natural Earth 1:10m admin-1 states and provinces, lakes cut out (public domain). Built by tools/region_prep/prepare_regions.py.",
 	"output_projection": "flat",
 	"projection": {
@@ -1094,5 +1094,6 @@
 			"Sea of Cortez ferry"
 		]
 	],
-	"zoom_inset_from": "data/regions/sources/greater_seattle.source.json"
+	"zoom_inset_from": "data/regions/sources/lake_washington_16.source.json",
+	"variant_name": "North America, 57 states and provinces"
 }

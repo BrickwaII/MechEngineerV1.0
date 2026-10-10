@@ -82,9 +82,9 @@ func test_a_version_1_save_loads_as_act_1_with_the_default_start() -> void:
 
 func test_the_act_and_start_traits_round_trip() -> void:
 	var state := RunState.new()
-	state.region_set_id = "north_america"
+	state.region_set_id = "north_america_33"
 	state.act = 1
-	state.start_id = "issaquah_substation"
+	state.start_id = "redmond_substation"
 	state.owned = PackedStringArray(["washington"])
 	state.pressure["washington"] = 1.0 / 3.0
 	state.income_bonus[MapRegion.POWER] = 3

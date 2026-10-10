@@ -109,7 +109,16 @@ func pressure_rate(region_id: String) -> float:
 	var rate := tuning.pressure_rate_base + tuning.pressure_rate_per_base * region.pressure_base
 	if is_border(region_id):
 		rate *= tuning.border_multiplier
-	return rate * tuning.pressure_scale * state.pressure_rate_factor.get(region_id, 1.0)
+	return rate * pressure_scale() * state.pressure_rate_factor.get(region_id, 1.0)
+
+
+## The act's factor on every pressure rate: the tuning's scale, times its
+## reference region count over this map's when it gives one.
+func pressure_scale() -> float:
+	var scale := tuning.pressure_scale
+	if tuning.pressure_reference_regions > 0:
+		scale *= float(tuning.pressure_reference_regions) / map.regions.size()
+	return scale
 
 
 ## The hostile neighbor pressing on a held region: the best defended one, the

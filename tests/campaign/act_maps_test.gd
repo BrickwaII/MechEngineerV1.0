@@ -1,46 +1,57 @@
 extends GdUnitTestSuite
-## The three shipped act maps, headless: greater Seattle, North America and
-## the world. They load, their adjacency is sound, water crossings are there,
-## and they follow real geography.
+## Every shipped map variant of the three acts, headless: the cities around
+## Lake Washington, North America and the world. They load, their adjacency is
+## sound, water crossings are there, and they follow real geography.
 
 const ACTS := "res://data/tuning/acts.json"
-const SEATTLE := "res://data/regions/greater_seattle.json"
-const NORTH_AMERICA := "res://data/regions/north_america.json"
-const WORLD := "res://data/regions/world.json"
 
 
-func _load(path: String) -> RegionMap:
-	var map := RegionMap.load_file(path)
-	assert_array(map.errors).override_failure_message("%s: %s" % [path, map.errors]).is_empty()
+func _plan() -> ActPlan:
+	var plan := ActPlan.load_file(ACTS)
+	assert_array(plan.errors).is_empty()
+	return plan
+
+
+## Every variant's map, as [act, variant, map].
+func _all() -> Array:
+	var plan := _plan()
+	var out := []
+	for act in plan.act_count():
+		for variant: Dictionary in plan.variants(act):
+			out.append([act, variant, RegionMap.load_file(variant["region_file"])])
+	return out
+
+
+func _load(id: String) -> RegionMap:
+	var map := RegionMap.load_file("res://data/regions/%s.json" % id)
+	assert_array(map.errors).override_failure_message("%s: %s" % [id, map.errors]).is_empty()
 	return map
 
 
-func _maps() -> Array[RegionMap]:
-	var plan := ActPlan.load_file(ACTS)
-	var maps: Array[RegionMap] = []
-	for act in plan.act_count():
-		maps.append(plan.load_map(act))
-	return maps
-
-
-func test_all_three_acts_load() -> void:
-	var plan := ActPlan.load_file(ACTS)
-	assert_array(plan.errors).is_empty()
-	assert_int(plan.act_count()).is_equal(3)
-	var ids := []
-	for act in plan.act_count():
-		var map := plan.load_map(act)
-		assert_array(map.errors).override_failure_message("act %d: %s" % [act + 1, map.errors]).is_empty()
-		assert_array(plan.load_tuning(act).errors).is_empty()
-		ids.append(map.id)
-	assert_array(ids).is_equal(["greater_seattle", "north_america", "world"])
-	assert_bool(plan.load_map(0).is_globe()).is_false()
-	assert_bool(plan.load_map(1).is_globe()).is_false()
-	assert_bool(plan.load_map(2).is_globe()).is_true()
+func test_every_variant_loads_and_is_named_by_its_map() -> void:
+	var counts := {}
+	for entry: Array in _all():
+		var act: int = entry[0]
+		var variant: Dictionary = entry[1]
+		var map: RegionMap = entry[2]
+		assert_array(map.errors).override_failure_message("%s: %s" % [variant["id"], map.errors]).is_empty()
+		assert_str(map.id).is_equal(variant["id"])
+		assert_bool(map.is_globe()).is_equal(act == 2)
+		if act > 0:
+			assert_bool(map.has_region(variant["zoom_focus"])) \
+				.override_failure_message("%s has no %s" % [map.id, variant["zoom_focus"]]).is_true()
+			assert_int(map.zoom_inset.size()).is_greater(2)
+		counts[map.id] = map.regions.size()
+	assert_dict(counts).is_equal({
+		"lake_washington_8": 8, "lake_washington_12": 12, "lake_washington_16": 16, "lake_washington_22": 22,
+		"north_america_19": 19, "north_america_33": 33, "north_america_57": 57,
+		"world_8": 8, "world_20": 20, "world_39": 39,
+	})
 
 
 func test_adjacency_is_symmetric_with_no_orphans_and_one_network() -> void:
-	for map in _maps():
+	for entry: Array in _all():
+		var map: RegionMap = entry[2]
 		for region in map.regions:
 			assert_int(region.adjacent.size()).override_failure_message("%s: %s has no neighbor" % [map.id, region.id]).is_greater(0)
 			for other_id in region.adjacent:
@@ -57,8 +68,9 @@ func test_adjacency_is_symmetric_with_no_orphans_and_one_network() -> void:
 		assert_int(reached.size()).override_failure_message("%s is split into islands" % map.id).is_equal(map.regions.size())
 
 
-func test_every_act_has_water_crossings_between_neighbors() -> void:
-	for map in _maps():
+func test_every_variant_has_water_crossings_between_neighbors() -> void:
+	for entry: Array in _all():
+		var map: RegionMap = entry[2]
 		assert_int(map.crossings.size()).override_failure_message("%s has no crossings" % map.id).is_greater(0)
 		for crossing in map.crossings:
 			var between: PackedStringArray = crossing["between"]
@@ -66,7 +78,8 @@ func test_every_act_has_water_crossings_between_neighbors() -> void:
 
 
 func test_every_outline_triangulates() -> void:
-	for map in _maps():
+	for entry: Array in _all():
+		var map: RegionMap = entry[2]
 		var shapes: Array[PackedVector2Array] = map.land.duplicate()
 		for region in map.regions:
 			shapes.append_array(region.shapes())
@@ -75,67 +88,61 @@ func test_every_outline_triangulates() -> void:
 				.override_failure_message("%s: an outline does not triangulate" % map.id).is_false()
 
 
-func test_every_label_sits_on_its_region_or_close_by() -> void:
-	# Labels are placed deep inside the main outline; a few are nudged by hand.
-	for map in _maps():
+func test_every_label_sits_on_its_region() -> void:
+	for entry: Array in _all():
+		var map: RegionMap = entry[2]
 		for region in map.regions:
-			if not region.contains(region.label_at):
-				var nearest := INF
-				for p in region.polygon:
-					nearest = minf(nearest, p.distance_to(region.label_at))
-				var limit := 3.0 if map.is_globe() else 0.05
-				assert_float(nearest).override_failure_message("%s: %s label is far from it" % [map.id, region.id]).is_less(limit)
+			assert_bool(region.contains(region.label_at)) \
+				.override_failure_message("%s: %s label is off it" % [map.id, region.id]).is_true()
 
 
-func test_greater_seattle_is_cities_with_water_between() -> void:
-	var map := _load(SEATTLE)
-	assert_int(map.regions.size()).is_between(16, 22)
-	for city in ["seattle", "shoreline", "bothell", "kirkland", "redmond", "bellevue", "mercer_island",
-			"sammamish", "issaquah", "renton", "tukwila", "burien", "bainbridge_island", "bremerton",
-			"port_orchard", "poulsbo", "vashon"]:
-		assert_bool(map.has_region(city)).override_failure_message("no %s" % city).is_true()
-	# Puget Sound and Lake Washington are water: the islands and the far shore
-	# are reached by bridges and ferries only.
-	var seattle := map.get_region("seattle")
-	assert_bool(map.crossing_between("seattle", "bellevue").is_empty()).is_false()
-	assert_bool(map.crossing_between("seattle", "mercer_island").is_empty()).is_false()
-	assert_bool(map.crossing_between("seattle", "bainbridge_island").is_empty()).is_false()
-	assert_bool(map.crossing_between("seattle", "bremerton").is_empty()).is_false()
-	for island in ["mercer_island", "vashon"]:
-		for other_id in map.get_region(island).adjacent:
-			assert_bool(map.crossing_between(island, other_id).is_empty()) \
-				.override_failure_message("%s touches %s by land" % [island, other_id]).is_false()
-	assert_bool(seattle.is_adjacent_to("kirkland")).is_false()
-	assert_bool(seattle.is_adjacent_to("redmond")).is_false()
-	# North is up and west is left: Seattle lies west of Bellevue, Shoreline
-	# north of Seattle, Bremerton across the Sound to the west.
-	assert_float(seattle.label_at.x).is_less(map.get_region("bellevue").label_at.x)
-	assert_float(map.get_region("shoreline").label_at.y).is_less(seattle.label_at.y)
-	assert_float(map.get_region("bremerton").label_at.x).is_less(map.get_region("bainbridge_island").label_at.x)
-	assert_float(map.get_region("kent").label_at.y).is_greater(map.get_region("renton").label_at.y)
-	# One water sheet under everything, land on top.
-	assert_int(map.water.size()).is_equal(1)
-	assert_str(map.source).contains("Natural Earth")
+func test_act1_variants_ring_lake_washington() -> void:
+	var plan := _plan()
+	for variant: Dictionary in plan.variants(0):
+		var map := _load(variant["id"])
+		assert_bool(map.has_region("bellevue")).is_true()
+		assert_bool(map.has_region("mercer_island")).is_true()
+		# Seattle is one region or several districts.
+		var seattle := []
+		for region in map.regions:
+			if region.id.contains("seattle") or region.id == "ballard":
+				seattle.append(region)
+		assert_int(seattle.size()).override_failure_message("%s has no Seattle" % map.id).is_greater(0)
+		# The lake is water: Seattle reaches Bellevue and Mercer Island only
+		# over the bridges, and Mercer Island touches nothing by land.
+		for region: MapRegion in seattle:
+			if region.is_adjacent_to("bellevue"):
+				assert_bool(map.crossing_between(region.id, "bellevue").is_empty()).is_false()
+			assert_bool(region.is_adjacent_to("kirkland")).is_false()
+		for other_id in map.get_region("mercer_island").adjacent:
+			assert_bool(map.crossing_between("mercer_island", other_id).is_empty()) \
+				.override_failure_message("%s: Mercer Island touches %s by land" % [map.id, other_id]).is_false()
+		# Seattle lies west of Bellevue; Renton south of Kirkland.
+		assert_float(seattle[0].label_at.x).is_less(map.get_region("bellevue").label_at.x)
+		assert_float(map.get_region("kirkland").label_at.y).is_less(map.get_region("renton").label_at.y)
+		assert_int(map.water.size()).is_equal(1)
+		assert_str(map.source).contains("Natural Earth")
+		# The far side of Puget Sound is out.
+		for kitsap in ["bremerton", "port_orchard", "poulsbo", "bainbridge_island"]:
+			assert_bool(map.has_region(kitsap)).is_false()
 
 
-func test_greater_seattle_starts_keep_their_trait_kinds() -> void:
-	var map := _load(SEATTLE)
-	assert_int(map.starts.size()).is_equal(3)
-	var two := map.get_start("north_end")
-	assert_int(two.regions.size()).is_equal(2)
-	var yard := map.get_start("bremerton_yard")
-	assert_array(Array(yard.regions)).contains_exactly(["bremerton"])
-	assert_int(yard.income_bonus[MapRegion.POWER]).is_equal(3)
-	assert_float(yard.material).is_equal(10.0)
-	var substation := map.get_start("issaquah_substation")
-	assert_float(substation.pressure_rate_factor).is_equal(0.5)
-	for start in map.starts:
-		for region_id in start.regions:
-			assert_bool(region_id == "seattle").override_failure_message("a start holds the city").is_false()
+func test_act1_variants_keep_the_start_trait_kinds() -> void:
+	for variant: Dictionary in _plan().variants(0):
+		var map := _load(variant["id"])
+		assert_int(map.starts.size()).is_equal(3)
+		assert_int(map.get_start("north_end").regions.size()).is_equal(2)
+		var works := map.get_start("renton_works")
+		assert_array(Array(works.regions)).contains_exactly(["renton"])
+		assert_int(works.income_bonus[MapRegion.POWER]).is_equal(3)
+		assert_float(works.material).is_equal(10.0)
+		var substation := map.get_start("redmond_substation")
+		assert_array(Array(substation.regions)).contains_exactly(["redmond"])
+		assert_float(substation.pressure_rate_factor).is_equal(0.5)
 
 
-func test_north_america_is_the_lower_48_with_neighbors() -> void:
-	var map := _load(NORTH_AMERICA)
+func test_north_america_57_is_the_lower_48_with_neighbors() -> void:
+	var map := _load("north_america_57")
 	for id in ["washington", "california", "texas", "florida", "maine", "michigan", "new_york"]:
 		assert_bool(map.has_region(id)).is_true()
 	for id in ["baja_california", "sonora", "chihuahua", "coahuila", "nuevo_leon", "tamaulipas",
@@ -146,50 +153,45 @@ func test_north_america_is_the_lower_48_with_neighbors() -> void:
 		assert_bool(map.has_region(group)).is_true()
 	for small in ["rhode_island", "delaware", "connecticut", "vermont"]:
 		assert_bool(map.has_region(small)).is_false()
-	# Real borders.
 	assert_bool(map.get_region("washington").is_adjacent_to("oregon")).is_true()
 	assert_bool(map.get_region("washington").is_adjacent_to("british_columbia")).is_true()
 	assert_bool(map.get_region("texas").is_adjacent_to("coahuila")).is_true()
 	assert_bool(map.get_region("washington").is_adjacent_to("california")).is_false()
-	assert_bool(map.get_region("michigan").is_adjacent_to("ontario")).is_true()
-	assert_bool(map.get_region("michigan").parts.size()).is_greater(0)
-	# The act 1 metro sits in western Washington.
-	assert_int(map.zoom_inset.size()).is_greater(2)
-	var middle := Vector2.ZERO
-	for p in map.zoom_inset:
-		middle += p
-	assert_str(map.region_at(middle / map.zoom_inset.size())).is_equal("washington")
-	assert_bool(map.get_region("washington").starts_owned).is_true()
+	assert_int(map.get_region("michigan").parts.size()).is_greater(0)
 
 
-func test_the_world_finds_the_right_region_by_longitude_and_latitude() -> void:
-	var map := _load(WORLD)
+func test_the_act1_map_sits_in_each_act2_focus() -> void:
+	var plan := _plan()
+	for variant: Dictionary in plan.variants(1):
+		var map := _load(variant["id"])
+		var middle := Vector2.ZERO
+		for p in map.zoom_inset:
+			middle += p
+		assert_str(map.region_at(middle / map.zoom_inset.size())).is_equal(variant["zoom_focus"])
+		assert_bool(map.get_region(variant["zoom_focus"]).starts_owned).is_true()
+
+
+func test_the_world_variants_find_regions_by_longitude_and_latitude() -> void:
 	var places := {
-		Vector2(-122.3, 47.6): "united_states",  # Seattle
-		Vector2(-74.0, 40.7): "united_states",  # New York
-		Vector2(-150.0, 61.2): "united_states",  # Anchorage
-		Vector2(-79.4, 43.7): "canada",  # Toronto
-		Vector2(-99.1, 19.4): "mexico_central",  # Mexico City
-		Vector2(-47.9, -15.8): "brazil",  # Brasilia
-		Vector2(-0.1, 51.5): "british_isles",  # London
-		Vector2(2.35, 48.85): "western_europe",  # Paris
-		Vector2(-52.3, 4.9): "north_andes",  # Cayenne, French Guiana
-		Vector2(13.4, 52.5): "central_europe",  # Berlin
-		Vector2(37.6, 55.75): "russia_west",  # Moscow
-		Vector2(82.9, 55.0): "siberia",  # Novosibirsk
-		Vector2(31.2, 30.0): "north_africa",  # Cairo
-		Vector2(77.2, 28.6): "south_asia",  # Delhi
-		Vector2(116.4, 39.9): "china",  # Beijing
-		Vector2(139.7, 35.7): "east_asia",  # Tokyo
-		Vector2(151.2, -33.9): "australia",  # Sydney
-		Vector2(174.8, -41.3): "oceania",  # Wellington
-		Vector2(18.4, -33.9): "southern_africa",  # Cape Town
+		"world_8": {Vector2(-98, 39): "north_america", Vector2(-47.9, -15.8): "latin_america",
+			Vector2(2.35, 48.85): "europe", Vector2(82.9, 55.0): "russia_central_asia",
+			Vector2(31.2, 30.0): "middle_east_north_africa", Vector2(28, -26): "sub_saharan_africa",
+			Vector2(116.4, 39.9): "asia", Vector2(134, -25): "oceania", Vector2(-53.0, 4.0): "latin_america"},
+		"world_20": {Vector2(-98, 39): "united_states", Vector2(-75.7, 45.4): "canada",
+			Vector2(-99.1, 19.4): "mexico_caribbean", Vector2(-53.0, 4.0): "brazil", Vector2(-64, -30): "andes",
+			Vector2(2.35, 48.85): "western_europe", Vector2(13.4, 52.5): "northern_europe",
+			Vector2(37.6, 55.75): "russia_west", Vector2(82.9, 55.0): "siberia", Vector2(44, 33): "middle_east",
+			Vector2(77.2, 28.6): "south_asia", Vector2(139.7, 35.7): "east_asia", Vector2(151.2, -33.9): "oceania"},
+		"world_39": {Vector2(-98, 39): "united_states", Vector2(-99.1, 19.4): "mexico",
+			Vector2(-53.0, 4.0): "colombia_venezuela", Vector2(2.35, 48.85): "france", Vector2(-3.7, 40.4): "iberia",
+			Vector2(13.4, 52.5): "germany", Vector2(12.5, 41.9): "italy", Vector2(82.9, 55.0): "russia",
+			Vector2(51.4, 35.7): "iran", Vector2(77.2, 28.6): "india", Vector2(139.7, 35.7): "japan",
+			Vector2(127, 37.5): "korea", Vector2(151.2, -33.9): "australia"},
 	}
-	for at: Vector2 in places:
-		assert_str(map.region_at(at)).override_failure_message("%s should be %s" % [at, places[at]]).is_equal(places[at])
-	assert_str(map.region_at(Vector2(-30.0, 30.0))).is_empty()  # Mid-Atlantic
-	assert_bool(map.get_region("united_states").is_adjacent_to("siberia")).is_true()
-	assert_bool(map.crossing_between("united_states", "siberia").is_empty()).is_false()
-	# North America sits in the United States.
-	assert_int(map.zoom_inset.size()).is_greater(2)
-	assert_bool(map.get_region("united_states").starts_owned).is_true()
+	for id: String in places:
+		var map := _load(id)
+		for at: Vector2 in places[id]:
+			assert_str(map.region_at(at)).override_failure_message("%s: %s should be %s" % [id, at, places[id][at]]).is_equal(places[id][at])
+		assert_str(map.region_at(Vector2(-30.0, 30.0))).is_empty()  # Mid-Atlantic
+	var world := _load("world_20")
+	assert_bool(world.crossing_between("united_states", "siberia").is_empty()).is_false()

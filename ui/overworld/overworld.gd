@@ -21,6 +21,9 @@ const RESOURCE_LABELS := {MapRegion.POWER: "Grid power", MapRegion.ENERGY: "Ener
 @export_file("*.json") var region_file := ""
 ## When set, act 1 uses this tuning file instead of the acts file's.
 @export_file("*.json") var tuning_file := ""
+## Dev option: the map variant to play in each act, by act index; "" or a
+## missing entry plays the act's default_variant from the acts file.
+@export var act_variants: PackedStringArray = []
 
 ## The two contracts the map talks to. Swap these for real implementations;
 ## nothing else on the map changes.
@@ -98,6 +101,9 @@ func start_new_run(start_id := "") -> String:
 	plan = ActPlan.load_file(acts_file)
 	if not plan.is_valid():
 		return "\n".join(plan.errors)
+	for act in mini(act_variants.size(), plan.act_count()):
+		if not plan.choose_variant(act, act_variants[act]):
+			return "act %d has no map variant '%s'" % [act + 1, act_variants[act]]
 	var map := _load_map(0)
 	var tuning := _load_tuning(0)
 	var problems: Array[String] = map.errors + tuning.errors
@@ -165,6 +171,12 @@ func load_run(path := SAVE_PATH) -> bool:
 ## current run kept, if it does not fit the acts file.
 func load_state(state: RunState) -> bool:
 	if state == null or state.act < 0 or state.act >= plan.act_count():
+		_event("No saved run for this map.")
+		return false
+	# Play on the variant the save was made on. Act 1 on a region_file
+	# override has no variant to pick.
+	var on_override := state.act == 0 and not region_file.is_empty()
+	if not on_override and not plan.choose_variant(state.act, state.region_set_id):
 		_event("No saved run for this map.")
 		return false
 	var map := _load_map(state.act)
