@@ -42,6 +42,10 @@ class Spread:
 		s.max_value = values.max()
 		return s
 
+	## "mean ± spread", for per-unit lines.
+	func short_text() -> String:
+		return "%.1f ± %.1f" % [mean, stddev]
+
 	func text(decimals := 1) -> String:
 		var f := "%." + str(decimals) + "f"
 		return (f + " ± " + f + "  (min " + f + ", max " + f + ")") % [mean, stddev, min_value, max_value]
@@ -107,6 +111,6 @@ func format_text() -> String:
 		return [per_unit[a].side != "player", a] < [per_unit[b].side != "player", b])
 	for id: String in ids:
 		var u: Dictionary = per_unit[id]
-		lines.append("  %-6s %-34s fights %4d  damage %s  energy %s" % [
-			u.side, "%s (%s)" % [u.name, id], u.fights, (u.damage as Spread).text(), (u.energy as Spread).text()])
+		lines.append("  %-6s %-34s fights %4d  damage %-12s energy %s" % [
+			u.side, "%s (%s)" % [u.name, id], u.fights, (u.damage as Spread).short_text(), (u.energy as Spread).short_text()])
 	return "\n".join(lines)
