@@ -162,6 +162,15 @@ func _gui_input(event: InputEvent) -> void:
 		if _dragging:
 			drag_by(motion.relative)
 		accept_event()
+	if motion != null:
+		_hover_at(null if _dragging else motion.position)
+
+
+func region_polygons(region: MapRegion) -> Array[PackedVector2Array]:
+	var out: Array[PackedVector2Array] = []
+	for shape: PackedVector3Array in _region_spheres.get(region.id, []):
+		out.append_array(_project_sphere_shape(shape))
+	return out
 
 
 # --- Drawing ---------------------------------------------------------------------
@@ -174,21 +183,13 @@ func _draw() -> void:
 	for shape in _land_spheres:
 		for points in _project_sphere_shape(shape):
 			_fill(points, Palette.LAND)
-	for region in campaign.map.regions:
-		var fill := Palette.region_fill(campaign.standing(region.id), region.id == selected_id)
-		for shape: PackedVector3Array in _region_spheres[region.id]:
-			for points in _project_sphere_shape(shape):
-				_fill(points, fill)
-				_outline(points, Palette.MAP_BACKGROUND, 3.0)
-	if _region_spheres.has(selected_id):
-		for shape: PackedVector3Array in _region_spheres[selected_id]:
-			for points in _project_sphere_shape(shape):
-				_outline(points, Palette.TEXT_BRIGHT, 2.0)
+	_draw_regions(3.0)
 	for arc in _crossing_arcs:
 		_draw_arc_on_globe(arc)
 	_draw_foreground()
 	if inset_map != null and inset_alpha > 0.0:
 		_draw_inset()
+	_pulsing = false
 	if zoom > NODE_ZOOM_LIMIT:
 		return
 	# Nodes facing the viewer most squarely win where nodes would overlap.

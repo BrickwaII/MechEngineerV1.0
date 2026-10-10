@@ -30,6 +30,7 @@ func test_demo_panel_shows_counters_level_ups_and_shifts() -> void:
 	await runner.simulate_frames(2)
 	var demo := runner.scene()
 	var r: BotFightReport = demo.report.bots[0]
+	demo.readout.skip()
 	var texts := "\n".join(_texts(demo.readout.bot_panel(r.bot_id)))
 	assert_str(texts).contains(r.display_name)
 	assert_str(texts).contains("Hit an enemy")

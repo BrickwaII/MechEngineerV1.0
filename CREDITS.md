@@ -26,6 +26,8 @@ replacing the file (same size and layout) and updating its row here.
 | Mech Pixel font (5x7 bitmap, BMFont) | `assets/fonts/mech_pixel.fnt`, `assets/fonts/mech_pixel.png` | `tools/asset_gen/gen_font.py` | CC0 1.0 |
 | Sound effects (interface, hits, shots, swings, charge, energy, heal, guard, down) | `assets/audio/sfx/*.wav` | `tools/asset_gen/gen_sfx.py` (synthesized) | CC0 1.0 |
 | Placeholder music loop | `assets/audio/music/*.wav` | `tools/asset_gen/gen_sfx.py` (synthesized) | CC0 1.0 |
+| Map and between-fight sounds (region select, capture, resource gain and loss, card flip and snap, tally tick, level-up, personality shift, screen and zoom whooshes) | `assets/map/audio/sfx/*.wav` | `tools/asset_gen/gen_map_audio.py` (synthesized) | CC0 1.0 |
+| Act music loops (Lake Washington metro, North America, globe) | `assets/map/audio/music/*.wav` | `tools/asset_gen/gen_map_audio.py` (synthesized) | CC0 1.0 |
 | Audio bus layout (Music, Effects, Interface) | `assets/audio/default_bus_layout.tres` | hand-written | CC0 1.0 |
 | Asset license text | `assets/LICENSE.md` | hand-written | CC0 1.0 |
 

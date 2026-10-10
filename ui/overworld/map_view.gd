@@ -9,8 +9,13 @@ extends Control
 ## act's map inside the rectangle it covers on this one.
 ##
 ## ui/overworld/globe_view.gd draws a globe instead by overriding the
-## projection hooks: project_point(), project_shape(), view_to_map() and
-## zoom_space_rect().
+## projection hooks: project_point(), project_shape(), view_to_map(),
+## zoom_space_rect() and region_polygons().
+##
+## Feel (MapFx, data/feel/screens.json "map"): regions light up under the
+## cursor, the selection outline pops, a capture sweeps the owned color out
+## from the region's node with a ring and a flash, and pressure rings slide to
+## new values and pulse once they reach the warning level.
 
 const Palette := preload("res://ui/overworld/palette.gd")
 
@@ -27,6 +32,9 @@ const COMPACT_RING_RADIUS := 8.0
 const COMPACT_RING_WIDTH := 3.5
 const COMPACT_PIP := 4.0
 const COMPACT_FONT := 10
+## Node text sizes: the pixel font's 1x and 2x steps (data/feel/feel.json "theme").
+const FONT_SMALL := 10
+const FONT_NAME := 10
 ## Space kept clear around each node.
 const NODE_MARGIN := 2.0
 const CROSSING_DASH := 5.0
@@ -62,14 +70,33 @@ var inset_alpha := 0.0:
 		inset_alpha = v
 		queue_redraw()
 
+## The moving parts: hover, selection pop, captures, ring fill and pulse.
+var fx := MapFx.new()
+
 ## Map-space ends of each of the map's crossings, in its order.
 var _crossing_ends: Array[PackedVector2Array] = []
+## True when the last draw had a pulsing ring, so the next frame redraws.
+var _pulsing := false
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
 	resized.connect(queue_redraw)
+	mouse_exited.connect(_hover_at.bind(null))
+
+
+func _process(delta: float) -> void:
+	var was_animating := fx.is_animating()
+	fx.advance(delta)
+	if was_animating or _pulsing or fx.is_animating():
+		queue_redraw()
+
+
+## Plays the takeover animation on a region that just became the player's.
+func play_capture(region_id: String) -> void:
+	fx.start_capture(region_id)
+	queue_redraw()
 
 
 ## The region under a point in this control's coordinates, or "".
@@ -87,6 +114,10 @@ func label_position(region_id: String) -> Variant:
 
 
 func select(region_id: String) -> void:
+	if region_id != selected_id:
+		fx.selected()
+		if not region_id.is_empty():
+			SoundPlayer.fire(&"map_select")
 	selected_id = region_id
 	region_selected.emit(region_id)
 
@@ -121,8 +152,17 @@ func zoom_space_rect(points: PackedVector2Array) -> Rect2:
 	return rect
 
 
+## A region's outlines in this control's coordinates, as drawn.
+func region_polygons(region: MapRegion) -> Array[PackedVector2Array]:
+	var out: Array[PackedVector2Array] = []
+	for shape in region.shapes():
+		out.append_array(project_shape(shape))
+	return out
+
+
 ## Called when the campaign, and so maybe the map, changes.
 func _map_changed() -> void:
+	fx.reset()
 	_crossing_ends.clear()
 	if campaign == null:
 		return
@@ -135,6 +175,20 @@ func _gui_input(event: InputEvent) -> void:
 	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
 		select(region_at(click.position))
 		accept_event()
+		return
+	var motion := event as InputEventMouseMotion
+	if motion != null:
+		_hover_at(motion.position)
+
+
+## Lights the region under `point` (null for none) and shows a hand over it.
+func _hover_at(point: Variant) -> void:
+	var id := "" if point == null else region_at(point)
+	if id == fx.hovered_id:
+		return
+	fx.set_hovered(id)
+	mouse_default_cursor_shape = Control.CURSOR_ARROW if id.is_empty() else Control.CURSOR_POINTING_HAND
+	queue_redraw()
 
 
 ## Zoom space to this control's coordinates.
@@ -159,21 +213,13 @@ func _draw() -> void:
 	for shape in campaign.map.land:
 		for points in project_shape(shape):
 			_fill(points, Palette.LAND)
-	for region in campaign.map.regions:
-		var fill := Palette.region_fill(campaign.standing(region.id), region.id == selected_id)
-		for shape in region.shapes():
-			for points in project_shape(shape):
-				_fill(points, fill)
-				_outline(points, Palette.MAP_BACKGROUND, 4.0)
-	if not selected_id.is_empty() and campaign.map.has_region(selected_id):
-		for shape in campaign.map.get_region(selected_id).shapes():
-			for points in project_shape(shape):
-				_outline(points, Palette.TEXT_BRIGHT, 2.0)
+	_draw_regions(4.0)
 	for ends in _crossing_ends:
 		_draw_crossing(ends)
 	_draw_foreground()
 	if inset_map != null and inset_alpha > 0.0:
 		_draw_inset()
+	_pulsing = false
 	if zoom > NODE_ZOOM_LIMIT:
 		return
 	var entries := []
@@ -182,6 +228,81 @@ func _draw() -> void:
 		if at != null:
 			entries.append([region, at, 0.0])
 	_draw_nodes(entries)
+
+
+## The region fills with their borders, hover light, captures in progress and
+## the selection outline. `border` is the width of the gaps between regions.
+func _draw_regions(border: float) -> void:
+	var hover_lighten := ScreenFeel.number("map.hover_lighten")
+	var polygons := {}
+	for region in campaign.map.regions:
+		polygons[region.id] = region_polygons(region)
+		var fill := Palette.region_fill(campaign.standing(region.id), region.id == selected_id)
+		var lit := fx.hover_amount(region.id)
+		if lit > 0.0:
+			fill = fill.lightened(hover_lighten * lit)
+		var capturing := fx.is_capturing(region.id)
+		for points: PackedVector2Array in polygons[region.id]:
+			_fill(points, Palette.region_fill(Campaign.Standing.IN_RANGE, false) if capturing else fill)
+			if capturing:
+				_draw_capture_fill(region, points, fill)
+			_outline(points, Palette.MAP_BACKGROUND, border)
+	for region in campaign.map.regions:
+		var lit := fx.hover_amount(region.id)
+		if lit > 0.0 and region.id != selected_id:
+			for points: PackedVector2Array in polygons[region.id]:
+				_outline(points, Color(Palette.TEXT_DIM, lit), ScreenFeel.number("map.hover_outline_px"))
+	for id: String in fx.capturing_ids():
+		if polygons.has(id):
+			_draw_capture_ring(campaign.map.get_region(id))
+	if polygons.has(selected_id):
+		var width := ScreenFeel.number("map.select_outline_px") + fx.select_pop_px()
+		for points: PackedVector2Array in polygons[selected_id]:
+			_outline(points, Palette.TEXT_BRIGHT, width)
+
+
+## The owned color sweeping out from the region's node across `points`, and
+## the flash as it starts.
+func _draw_capture_fill(region: MapRegion, points: PackedVector2Array, fill: Color) -> void:
+	var at: Variant = project_point(region.label_at)
+	var progress := fx.capture_progress(region.id)
+	var center: Vector2 = at if at != null else _middle(points)
+	var reach := 0.0
+	for p in points:
+		reach = maxf(reach, p.distance_to(center))
+	var eased := 1.0 - pow(1.0 - progress, 3.0)
+	var circle := _circle(center, maxf(reach * eased, 1.0))
+	for piece in Geometry2D.intersect_polygons(points, circle):
+		_fill(piece, fill)
+	var flash := fx.capture_flash(region.id)
+	if flash > 0.0:
+		_fill(points, Color(Palette.TEXT_BRIGHT, 0.6 * flash))
+
+
+## The expanding ring of a capture, fading as it grows.
+func _draw_capture_ring(region: MapRegion) -> void:
+	if GameSettings.shared().reduced_motion:
+		return
+	var at: Variant = project_point(region.label_at)
+	if at == null:
+		return
+	var progress := fx.capture_progress(region.id)
+	var radius := ScreenFeel.number("map.capture_ring_px") * (0.4 + progress)
+	draw_arc(at, radius, 0.0, TAU, 40, Color(Palette.ACCENT, 1.0 - progress), 3.0, true)
+
+
+static func _circle(center: Vector2, radius: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in 32:
+		out.append(center + Vector2.from_angle(TAU * i / 32.0) * radius)
+	return out
+
+
+static func _middle(points: PackedVector2Array) -> Vector2:
+	var sum := Vector2.ZERO
+	for p in points:
+		sum += p
+	return sum / maxf(points.size(), 1)
 
 
 ## Draws nodes without overlaps. `entries` is [[region, view position, depth]];
@@ -257,11 +378,11 @@ func _node_rect(region: MapRegion, center: Vector2, compact: bool) -> Rect2:
 		var tag := _cause_tag(region.id) if owned else ""
 		var top_h := RING_RADIUS * 2.0 + RING_WIDTH if owned else 16.0
 		h = top_h + GAP + 18.0 + GAP + 16.0 + (GAP + 16.0 if not tag.is_empty() else 0.0)
-		w = font.get_string_size(region.name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x + 14.0
+		w = font.get_string_size(region.name.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_NAME).x + 14.0
 		w = maxf(w, _chips_width(font, _chips(region)))
-		w = maxf(w, font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x + 14.0)
+		w = maxf(w, font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x + 14.0)
 		if not owned:
-			w = maxf(w, font.get_string_size("DEF", HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x + MapRegion.MAX_DEFENSE * (PIP + 2.0) + 15.0)
+			w = maxf(w, font.get_string_size("DEF", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x + MapRegion.MAX_DEFENSE * (PIP + 2.0) + 15.0)
 	return Rect2(center - Vector2(w, h) / 2.0, Vector2(w, h)).grow(NODE_MARGIN)
 
 
@@ -356,16 +477,16 @@ func _draw_node(region: MapRegion, center: Vector2) -> void:
 	var top := center.y - height / 2.0
 
 	if owned:
-		_draw_ring(Vector2(center.x, top + top_h / 2.0), campaign.pressure_of(region.id), RING_RADIUS, RING_WIDTH, true)
+		_draw_ring(Vector2(center.x, top + top_h / 2.0), region.id, RING_RADIUS, RING_WIDTH, true)
 	else:
 		_draw_pips(font, Vector2(center.x, top), region.defense)
 	top += top_h + GAP
-	_label(font, region.name.to_upper(), center.x, top, 13, Palette.TEXT_BRIGHT, 18.0)
+	_label(font, region.name.to_upper(), center.x, top, FONT_NAME, Palette.TEXT_BRIGHT, 18.0)
 	top += 18.0 + GAP
 	_draw_chips(font, chips, center.x, top)
 	top += 16.0 + GAP
 	if not tag.is_empty():
-		_label(font, tag, center.x, top, 10, _tag_color(region.id), 16.0)
+		_label(font, tag, center.x, top, FONT_SMALL, _tag_color(region.id), 16.0)
 
 
 ## A small ring or pips over the short name.
@@ -375,8 +496,7 @@ func _draw_compact_node(region: MapRegion, center: Vector2) -> void:
 	var height := top_h + 2.0 + 14.0
 	var top := center.y - height / 2.0
 	if campaign.is_owned(region.id):
-		_draw_ring(Vector2(center.x, top + top_h / 2.0), campaign.pressure_of(region.id),
-			COMPACT_RING_RADIUS, COMPACT_RING_WIDTH, false)
+		_draw_ring(Vector2(center.x, top + top_h / 2.0), region.id, COMPACT_RING_RADIUS, COMPACT_RING_WIDTH, false)
 	else:
 		var w := MapRegion.MAX_DEFENSE * (COMPACT_PIP + 1.0) + 3.0
 		var x := center.x - w / 2.0
@@ -390,14 +510,26 @@ func _draw_compact_node(region: MapRegion, center: Vector2) -> void:
 	_label(font, region.short_name.to_upper(), center.x, top + top_h + 2.0, COMPACT_FONT, Palette.TEXT_BRIGHT, 14.0)
 
 
-func _draw_ring(at: Vector2, pressure: float, radius: float, width: float, with_text: bool) -> void:
+## A held region's pressure ring. It slides to a new value rather than
+## jumping, and from the warning level on a halo swells and fades in time:
+## slowly, then fast once an attack is imminent. The halo and the color change
+## together, so the warning reads without color.
+func _draw_ring(at: Vector2, region_id: String, radius: float, width: float, with_text: bool) -> void:
 	var t := campaign.tuning
+	var real := campaign.pressure_of(region_id)
+	var pressure := fx.ring_pressure(region_id, real)
 	var ratio := clampf(pressure / t.forces_defense_at, 0.0, 1.0)
 	var color := Palette.ACCENT
-	if pressure >= t.imminent_at:
+	if real >= t.imminent_at:
 		color = Palette.DANGER
-	elif pressure >= t.ring_warning_at:
+	elif real >= t.ring_warning_at:
 		color = Palette.WARNING
+	if real >= t.ring_warning_at:
+		var swell := fx.ring_pulse_px(real, t)
+		_pulsing = _pulsing or not GameSettings.shared().reduced_motion
+		var max_swell := ScreenFeel.number("map.ring_pulse_px")
+		var alpha := 0.55 * (1.0 - swell / maxf(max_swell, 0.001)) + 0.15
+		draw_arc(at, radius + width / 2.0 + 1.0 + swell, 0.0, TAU, 48, Color(color, alpha), 2.0, true)
 	draw_circle(at, radius + width / 2.0, Palette.BACKGROUND)
 	draw_arc(at, radius, 0.0, TAU, 48, Color(1, 1, 1, 0.2), width, true)
 	if ratio > 0.0:
@@ -405,16 +537,17 @@ func _draw_ring(at: Vector2, pressure: float, radius: float, width: float, with_
 	if with_text:
 		var font := get_theme_default_font()
 		var text := "%d%%" % roundi(pressure)
-		draw_string(font, Vector2(at.x - 20.0, at.y + 4.0), text, HORIZONTAL_ALIGNMENT_CENTER, 40.0, 11, Palette.TEXT_BRIGHT)
+		var font_size := FONT_SMALL
+		draw_string(font, Vector2(at.x - 20.0, at.y + font.get_ascent(font_size) / 2.0), text, HORIZONTAL_ALIGNMENT_CENTER, 40.0, font_size, Palette.TEXT_BRIGHT)
 
 
 func _draw_pips(font: Font, top_center: Vector2, defense: int) -> void:
-	var label_w := font.get_string_size("DEF", HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+	var label_w := font.get_string_size("DEF", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x
 	var pips_w := MapRegion.MAX_DEFENSE * (PIP + 2.0) - 2.0
 	var w := label_w + 5.0 + pips_w + 12.0
 	var x := top_center.x - w / 2.0
 	draw_rect(Rect2(x, top_center.y, w, 16.0), Palette.LABEL_BACK)
-	draw_string(font, Vector2(x + 6.0, top_center.y + 12.0), "DEF", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Palette.DEFENSE_TEXT)
+	draw_string(font, Vector2(x + 6.0, top_center.y + 12.0), "DEF", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL, Palette.DEFENSE_TEXT)
 	var px := x + 6.0 + label_w + 5.0
 	for i in MapRegion.MAX_DEFENSE:
 		var pip := Rect2(px + i * (PIP + 2.0), top_center.y + 4.5, PIP, PIP)
@@ -437,7 +570,7 @@ func _chips_width(font: Font, chips: Array) -> float:
 		return 0.0
 	var total := 6.0
 	for chip: Array in chips:
-		total += 8.0 + 3.0 + font.get_string_size(chip[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x + 6.0
+		total += 8.0 + 3.0 + font.get_string_size(chip[1], HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x + 6.0
 	return total
 
 
@@ -446,14 +579,14 @@ func _draw_chips(font: Font, chips: Array, center_x: float, top: float) -> void:
 		return
 	var widths := []
 	for chip: Array in chips:
-		widths.append(8.0 + 3.0 + font.get_string_size(chip[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x)
+		widths.append(8.0 + 3.0 + font.get_string_size(chip[1], HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x)
 	var total := _chips_width(font, chips)
 	var x := center_x - total / 2.0
 	draw_rect(Rect2(x, top, total, 16.0), Palette.LABEL_BACK)
 	x += 6.0
 	for i in chips.size():
 		draw_rect(Rect2(x, top + 4.0, 8.0, 8.0), Palette.resource_color(chips[i][0]))
-		draw_string(font, Vector2(x + 11.0, top + 12.0), chips[i][1], HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Palette.TEXT)
+		draw_string(font, Vector2(x + 11.0, top + 12.0), chips[i][1], HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL, Palette.TEXT)
 		x += widths[i] + 6.0
 
 
