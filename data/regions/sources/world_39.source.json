@@ -1,0 +1,1009 @@
+{
+	"id": "world_39",
+	"name": "The World",
+	"output": "data/regions/world_39.json",
+	"credit": "Natural Earth 1:50m admin-0 countries, lakes cut out (public domain). Countries are grouped into world regions. Built by tools/region_prep/prepare_regions.py.",
+	"output_projection": "globe",
+	"projection": {
+		"type": "lonlat"
+	},
+	"frame": {
+		"lonlat_box": [
+			-180.0,
+			-90.0,
+			180.0,
+			90.0
+		]
+	},
+	"raster": [
+		1440,
+		720
+	],
+	"inputs": {
+		"admin0": {
+			"files": [
+				"ne_50m_admin_0_countries_lakes.geojson"
+			],
+			"urls": [
+				"https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries_lakes.geojson"
+			]
+		}
+	},
+	"land": {
+		"inputs": [
+			"admin0"
+		]
+	},
+	"members": {
+		"input": "admin0",
+		"key": "ADM0_A3"
+	},
+	"relabel": [
+		{
+			"from": "france",
+			"to": "colombia_venezuela",
+			"box": [
+				-60.0,
+				0.0,
+				-50.0,
+				8.0
+			],
+			"note": "French Guiana"
+		}
+	],
+	"simplify_px": 1.2,
+	"min_part_px": 14,
+	"min_land_px": 14,
+	"min_shared_px": 2,
+	"regions": [
+		{
+			"id": "united_states",
+			"name": "United States",
+			"short_name": "USA",
+			"kind": "Industrial heartland and carrier fleets",
+			"members": [
+				"USA",
+				"PRI",
+				"VIR",
+				"ASM",
+				"GUM",
+				"MNP"
+			],
+			"provides": {
+				"power": 3,
+				"energy": 4,
+				"material": 3
+			},
+			"defense": 4,
+			"pressure_base": 2,
+			"starts_owned": true
+		},
+		{
+			"id": "canada",
+			"name": "Canada",
+			"short_name": "CAN",
+			"kind": "Hydro grid and oil sands",
+			"members": [
+				"CAN",
+				"SPM"
+			],
+			"provides": {
+				"power": 3,
+				"energy": 1,
+				"material": 2
+			},
+			"defense": 2,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "mexico",
+			"name": "Mexico",
+			"short_name": "MEX",
+			"kind": "Border factories and oil",
+			"members": [
+				"MEX"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 1,
+				"material": 2
+			},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "central_america",
+			"name": "Central America and the Caribbean",
+			"short_name": "C.AM",
+			"kind": "The canal and island ports",
+			"members": [
+				"GTM",
+				"BLZ",
+				"HND",
+				"SLV",
+				"NIC",
+				"CRI",
+				"PAN",
+				"CUB",
+				"HTI",
+				"DOM",
+				"JAM",
+				"BHS",
+				"TTO",
+				"ABW",
+				"AIA",
+				"ATG",
+				"BLM",
+				"BMU",
+				"BRB",
+				"CUW",
+				"CYM",
+				"DMA",
+				"GRD",
+				"KNA",
+				"LCA",
+				"MAF",
+				"MSR",
+				"SXM",
+				"TCA",
+				"VCT",
+				"VGB"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 1,
+				"material": 1
+			},
+			"defense": 1,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "colombia_venezuela",
+			"name": "Colombia and Venezuela",
+			"short_name": "COL·VEN",
+			"kind": "Oil fields and Andean passes",
+			"members": [
+				"COL",
+				"VEN",
+				"ECU",
+				"GUY",
+				"SUR"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 0,
+				"material": 2
+			},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "brazil",
+			"name": "Brazil",
+			"short_name": "BRA",
+			"kind": "Rainforest dams and steel",
+			"members": [
+				"BRA"
+			],
+			"provides": {
+				"power": 3,
+				"energy": 1,
+				"material": 3
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "peru_bolivia",
+			"name": "Peru and Bolivia",
+			"short_name": "PER·BOL",
+			"kind": "Andean mines and lithium",
+			"members": [
+				"PER",
+				"BOL",
+				"PRY"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 0,
+				"material": 3
+			},
+			"defense": 2,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "argentina_chile",
+			"name": "Argentina and Chile",
+			"short_name": "ARG·CHL",
+			"kind": "Copper, pampas and lithium flats",
+			"members": [
+				"ARG",
+				"CHL",
+				"URY",
+				"FLK",
+				"SGS"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 1,
+				"material": 3
+			},
+			"defense": 2,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "british_isles",
+			"name": "British Isles",
+			"short_name": "UK·IE",
+			"kind": "Finance and undersea cables",
+			"members": [
+				"GBR",
+				"IRL",
+				"IMN",
+				"GGY",
+				"JEY"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 4,
+				"material": 1
+			},
+			"defense": 4,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "france",
+			"name": "France and the Low Countries",
+			"short_name": "FRA",
+			"kind": "Reactors and aerospace",
+			"members": [
+				"FRA",
+				"BEL",
+				"NLD",
+				"LUX",
+				"MCO",
+				"AND"
+			],
+			"provides": {
+				"power": 3,
+				"energy": 3,
+				"material": 2
+			},
+			"defense": 4,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "iberia",
+			"name": "Spain and Portugal",
+			"short_name": "IBERIA",
+			"kind": "Solar plants and ports",
+			"members": [
+				"ESP",
+				"PRT"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 1,
+				"material": 1
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "germany",
+			"name": "Germany and the Alps",
+			"short_name": "GER",
+			"kind": "Auto works and machine tools",
+			"members": [
+				"DEU",
+				"AUT",
+				"CHE",
+				"LIE"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 3,
+				"material": 3
+			},
+			"defense": 5,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "italy",
+			"name": "Italy",
+			"short_name": "ITA",
+			"kind": "Shipyards and design studios",
+			"members": [
+				"ITA",
+				"MLT",
+				"SMR",
+				"VAT"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 2,
+				"material": 2
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "poland",
+			"name": "Poland and Central Europe",
+			"short_name": "POL",
+			"kind": "Factories and coal",
+			"members": [
+				"POL",
+				"CZE",
+				"SVK",
+				"HUN"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 1,
+				"material": 3
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "nordic",
+			"name": "Nordic Countries",
+			"short_name": "NORD",
+			"kind": "Hydro power and server halls",
+			"members": [
+				"NOR",
+				"SWE",
+				"FIN",
+				"DNK",
+				"ISL",
+				"FRO",
+				"ALD",
+				"GRL"
+			],
+			"provides": {
+				"power": 3,
+				"energy": 2,
+				"material": 1
+			},
+			"defense": 3,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "balkans",
+			"name": "Balkans",
+			"short_name": "BALK",
+			"kind": "Ports and mountain bases",
+			"members": [
+				"GRC",
+				"ALB",
+				"MKD",
+				"SRB",
+				"MNE",
+				"BIH",
+				"HRV",
+				"SVN",
+				"BGR",
+				"KOS",
+				"ROU"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 0,
+				"material": 2
+			},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "ukraine",
+			"name": "Ukraine, Belarus and the Baltics",
+			"short_name": "UKR",
+			"kind": "Grain belt and steel plants",
+			"members": [
+				"UKR",
+				"BLR",
+				"MDA",
+				"LTU",
+				"LVA",
+				"EST"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 0,
+				"material": 3
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "russia",
+			"name": "Russia",
+			"short_name": "RUS",
+			"kind": "Command bunkers, gas fields and Siberian mines",
+			"members": [
+				"RUS"
+			],
+			"provides": {
+				"power": 4,
+				"energy": 1,
+				"material": 4
+			},
+			"defense": 5,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "turkey",
+			"name": "Turkey and the Caucasus",
+			"short_name": "TUR",
+			"kind": "Straits and pipelines",
+			"members": [
+				"TUR",
+				"GEO",
+				"ARM",
+				"AZE",
+				"CYP",
+				"CYN"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 1,
+				"material": 2
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "iran",
+			"name": "Iran",
+			"short_name": "IRN",
+			"kind": "Mountain enrichment sites",
+			"members": [
+				"IRN"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 1,
+				"material": 2
+			},
+			"defense": 4,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "arabia",
+			"name": "Arabia",
+			"short_name": "ARABIA",
+			"kind": "Oil fields and desert ports",
+			"members": [
+				"SAU",
+				"YEM",
+				"OMN",
+				"ARE",
+				"QAT",
+				"BHR",
+				"KWT"
+			],
+			"provides": {
+				"power": 4,
+				"energy": 1,
+				"material": 1
+			},
+			"defense": 4,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "levant",
+			"name": "Iraq and the Levant",
+			"short_name": "LEVANT",
+			"kind": "Pipelines and old cities",
+			"members": [
+				"IRQ",
+				"SYR",
+				"JOR",
+				"ISR",
+				"PSX",
+				"LBN"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 1,
+				"material": 1
+			},
+			"defense": 3,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "egypt",
+			"name": "Egypt and Libya",
+			"short_name": "EGY",
+			"kind": "The Suez and desert oil",
+			"members": [
+				"EGY",
+				"LBY"
+			],
+			"provides": {
+				"power": 3,
+				"energy": 0,
+				"material": 1
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "maghreb",
+			"name": "The Maghreb",
+			"short_name": "MAGH",
+			"kind": "Solar fields and gas",
+			"members": [
+				"MAR",
+				"DZA",
+				"TUN",
+				"SAH"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 0,
+				"material": 1
+			},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "west_africa",
+			"name": "West Africa",
+			"short_name": "W.AFR",
+			"kind": "Oil deltas and ports",
+			"members": [
+				"MRT",
+				"MLI",
+				"NER",
+				"SEN",
+				"GMB",
+				"GIN",
+				"GNB",
+				"SLE",
+				"LBR",
+				"CIV",
+				"BFA",
+				"GHA",
+				"TGO",
+				"BEN",
+				"NGA",
+				"CPV"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 1,
+				"material": 2
+			},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "central_africa",
+			"name": "Central Africa",
+			"short_name": "C.AFR",
+			"kind": "Cobalt mines and rainforest",
+			"members": [
+				"TCD",
+				"CAF",
+				"CMR",
+				"GAB",
+				"COG",
+				"COD",
+				"GNQ",
+				"STP",
+				"SDN",
+				"SDS"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 0,
+				"material": 4
+			},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "east_africa",
+			"name": "East Africa",
+			"short_name": "E.AFR",
+			"kind": "Highland relays and the Horn",
+			"members": [
+				"ETH",
+				"ERI",
+				"DJI",
+				"SOM",
+				"SOL",
+				"KEN",
+				"UGA",
+				"TZA",
+				"RWA",
+				"BDI"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 2,
+				"material": 1
+			},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "southern_africa",
+			"name": "Southern Africa",
+			"short_name": "S.AFR",
+			"kind": "Gold, platinum and the Cape route",
+			"members": [
+				"AGO",
+				"ZMB",
+				"MWI",
+				"MOZ",
+				"ZWE",
+				"BWA",
+				"NAM",
+				"ZAF",
+				"LSO",
+				"SWZ",
+				"MDG",
+				"COM",
+				"MUS"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 1,
+				"material": 3
+			},
+			"defense": 3,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "central_asia",
+			"name": "Central Asia and Mongolia",
+			"short_name": "C.ASIA",
+			"kind": "Launch pads and steppe mines",
+			"members": [
+				"KAZ",
+				"UZB",
+				"TKM",
+				"KGZ",
+				"TJK",
+				"MNG"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 1,
+				"material": 3
+			},
+			"defense": 2,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "pakistan",
+			"name": "Pakistan and Afghanistan",
+			"short_name": "PAK",
+			"kind": "Mountain passes and dams",
+			"members": [
+				"PAK",
+				"AFG"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 1,
+				"material": 2
+			},
+			"defense": 4,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "india",
+			"name": "India",
+			"short_name": "IND",
+			"kind": "Call centers and megacities",
+			"members": [
+				"IND",
+				"NPL",
+				"BTN",
+				"LKA",
+				"BGD",
+				"MDV",
+				"KAS"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 3,
+				"material": 2
+			},
+			"defense": 4,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "china",
+			"name": "China",
+			"short_name": "CHN",
+			"kind": "Factory belt and rare earths",
+			"members": [
+				"CHN",
+				"TWN",
+				"HKG",
+				"MAC"
+			],
+			"provides": {
+				"power": 3,
+				"energy": 3,
+				"material": 4
+			},
+			"defense": 5,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "japan",
+			"name": "Japan",
+			"short_name": "JPN",
+			"kind": "Chip fabs and robot plants",
+			"members": [
+				"JPN"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 4,
+				"material": 1
+			},
+			"defense": 5,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "korea",
+			"name": "Korea",
+			"short_name": "KOR",
+			"kind": "Shipyards and memory fabs",
+			"members": [
+				"KOR",
+				"PRK"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 3,
+				"material": 2
+			},
+			"defense": 4,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "mainland_se_asia",
+			"name": "Mainland Southeast Asia",
+			"short_name": "SE.ASIA",
+			"kind": "Assembly lines and river dams",
+			"members": [
+				"MMR",
+				"THA",
+				"LAO",
+				"KHM",
+				"VNM"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 1,
+				"material": 2
+			},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "indonesia",
+			"name": "Indonesia and Malaysia",
+			"short_name": "INDO",
+			"kind": "Straits, ports and palm oil",
+			"members": [
+				"IDN",
+				"MYS",
+				"SGP",
+				"BRN",
+				"TLS"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 1,
+				"material": 2
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "philippines",
+			"name": "Philippines",
+			"short_name": "PHL",
+			"kind": "Island ports and call centers",
+			"members": [
+				"PHL",
+				"PLW"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 2,
+				"material": 1
+			},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "australia",
+			"name": "Australia",
+			"short_name": "AUS",
+			"kind": "Iron ore and desert test ranges",
+			"members": [
+				"AUS"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 1,
+				"material": 4
+			},
+			"defense": 3,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "new_zealand_pacific",
+			"name": "New Zealand and the Pacific",
+			"short_name": "NZ·PAC",
+			"kind": "Geothermal plants and island cables",
+			"members": [
+				"NZL",
+				"PNG",
+				"FJI",
+				"SLB",
+				"VUT",
+				"NCL"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 1,
+				"material": 0
+			},
+			"defense": 2,
+			"pressure_base": 1,
+			"starts_owned": false
+		}
+	],
+	"crossings": [
+		[
+			"united_states",
+			"russia",
+			"Bering Strait"
+		],
+		[
+			"canada",
+			"nordic",
+			"Davis Strait"
+		],
+		[
+			"united_states",
+			"british_isles",
+			"Transatlantic cable"
+		],
+		[
+			"united_states",
+			"central_america",
+			"Florida Straits"
+		],
+		[
+			"central_america",
+			"colombia_venezuela",
+			"Gulf of Paria"
+		],
+		[
+			"british_isles",
+			"france",
+			"Channel Tunnel"
+		],
+		[
+			"british_isles",
+			"nordic",
+			"North Sea ferries"
+		],
+		[
+			"iberia",
+			"maghreb",
+			"Strait of Gibraltar"
+		],
+		[
+			"italy",
+			"maghreb",
+			"Strait of Sicily"
+		],
+		[
+			"arabia",
+			"east_africa",
+			"Bab-el-Mandeb"
+		],
+		[
+			"arabia",
+			"iran",
+			"Strait of Hormuz"
+		],
+		[
+			"japan",
+			"korea",
+			"Korea Strait"
+		],
+		[
+			"japan",
+			"russia",
+			"La Pérouse Strait"
+		],
+		[
+			"china",
+			"philippines",
+			"Luzon Strait"
+		],
+		[
+			"indonesia",
+			"philippines",
+			"Celebes Sea"
+		],
+		[
+			"indonesia",
+			"australia",
+			"Timor Sea"
+		],
+		[
+			"australia",
+			"new_zealand_pacific",
+			"Tasman Sea"
+		],
+		[
+			"brazil",
+			"west_africa",
+			"South Atlantic cable"
+		],
+		[
+			"nordic",
+			"ukraine",
+			"Gulf of Finland ferries"
+		],
+		[
+			"india",
+			"indonesia",
+			"Andaman Sea"
+		]
+	],
+	"zoom_inset_from": "data/regions/sources/north_america_57.source.json",
+	"variant_name": "The world, 39 countries and groups"
+}

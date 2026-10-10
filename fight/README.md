@@ -17,5 +17,13 @@ Combat core (M2), pure logic with no scenes:
   `power_percent_per_level`. Every bot keeps the basic attack (Strike).
   Enemies keep their enemy-table skills. Read a unit's skills with
   `Combatant.skill(id)`, not `CombatTuning.skill(id)`.
+- `variants/`: the fight side of the variant switchboard. `FightVariants`
+  reads this layer's switches from `data/variants/variants.json` (plus the
+  player's choices in `user://variants.json`); `CombatTuning.variants` holds
+  them for a fight. `WaitRules` (d-wait, d-wait-length), `ElasticityRules`
+  (d-elasticity) and `HpCarryover` (hp-carryover) implement the options;
+  d-personality-map picks a drift rule set in `PostFightTuning`.
+- `PatientFightPolicy`: waits for its strongest attack; batch runs use it so
+  the wait options show.
 - `HeadlessFightRunner`: plays a fight from a seed and policies, with a text log.
 - `AutoFightService`: a contracts FightService built on the runner.

@@ -2,6 +2,23 @@
 
 Dev tools. May import any layer except ui/.
 
+## Region prep
+
+`region_prep/prepare_regions.py` builds the act maps in `data/regions/` from
+public-domain outlines (Natural Earth, US Census TIGER). It is offline data
+prep in Python (standard library only), not game code; the game reads only
+its JSON output. Each map has a source file in `data/regions/sources/`.
+
+```sh
+python3 tools/region_prep/prepare_regions.py fetch --cache /tmp/region_cache data/regions/sources/*.source.json
+python3 tools/region_prep/prepare_regions.py build --cache /tmp/region_cache data/regions/sources/*.source.json
+```
+
+`--preview DIR` also writes a PNG of each map's raster. It rasterizes the
+outlines, grows city cores over land (act 1), traces and simplifies each
+region (retrying with a finer tolerance until no outline crosses itself),
+finds land borders, and adds the source file's water crossings.
+
 ## Batch simulator
 
 Runs a scenario many times headless and prints win rate, fight length (actions
@@ -14,6 +31,23 @@ godot --headless --path . -s res://tools/batch_sim.gd -- \
 
 Options: `--runs N`, `--seed N` (fight i uses seed + i), `--log PATH` or `--log none`.
 Defaults live in `data/scenarios/_dev_tools.json`.
+
+## Variant comparison
+
+Plays the same seeded fights under every option of one switchboard decision
+(`data/variants/variants.json`) and prints win rate, fight length, energy use
+and personality drift side by side; for `hp-carryover`, each run plays several
+fights in a row and the table adds runs won and end hp.
+
+```sh
+godot --headless --path . -s res://tools/compare_variants.gd -- --decision d-wait --runs 200
+```
+
+Decisions: `d-wait`, `d-wait-length`, `d-elasticity`, `d-personality-map`,
+`hp-carryover`, `draft-rule`. Options: `--runs N`, `--seed N`, `--level N`,
+`--policy NAME` (the squad's; default `patient`, which waits so the wait
+options show), `--enemy-policy NAME` (default `intent`), `--chain N`. Run i
+drafts a fresh squad from seed + i. Defaults live in `data/scenarios/_dev_tools.json`.
 
 ## Fight stats log
 
@@ -32,6 +66,7 @@ dealt, energy spent and hp left.
 | `simulated_fight.gd` | Plays a fight like HeadlessFightRunner, counting per-unit damage |
 | `batch_simulator.gd`, `batch_report.gd` | Many seeded fights and their totals |
 | `fight_stats_log.gd` | The JSON-lines log |
+| `variant_comparison.gd`, `compare_variants.gd` | Every option of one decision on the same seeded fights |
 | `bot_library.gd`, `bot_json.gd` | Saved bots (one BotSquadStorage file each) and inline bots |
 
 The scenario format is in `data/scenarios/README.md`. The screens that use

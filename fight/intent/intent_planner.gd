@@ -97,14 +97,16 @@ func options_for(fight: Fight, unit: Combatant) -> Array[UnitIntent]:
 		var aims: Array[Combatant] = opponents
 		if skill.hits_all() and not opponents.is_empty():
 			aims = [opponents[0]]
+		# The d-wait "bonus_damage" option: the turn that ends a wait hits harder.
+		var bonus := WaitRules.damage_bonus_percent(unit.is_waiting() or not affordable, fight.tuning)
 		for target in aims:
-			var dmg := DamageRules.damage_to(unit, target, skill, fight.tuning)
+			var dmg := DamageRules.damage_to(unit, target, skill, fight.tuning, bonus)
 			var score := _attack_score(dmg, target, target == latest, skill, p)
 			if skill.hits_all():
 				dmg = 0
 				score = -_cost_score(skill, p)
 				for o in opponents:
-					var each := DamageRules.damage_to(unit, o, skill, fight.tuning)
+					var each := DamageRules.damage_to(unit, o, skill, fight.tuning, bonus)
 					dmg += each
 					score += _attack_score(each, o, o == latest, null, p)
 			if affordable:

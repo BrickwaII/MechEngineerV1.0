@@ -6,7 +6,7 @@ extends GdUnitTestSuite
 
 const SCENE := preload("res://ui/run/run_flow.tscn")
 const Helpers := preload("res://tests/ui/fight/fight_ui_helpers.gd")
-const SAVE_PATH := "user://run_flow_test.tres"
+const SAVE_PATH := "user://run_flow_test.res"
 ## Bots fight with their own drafted skills, so the seed must draft a squad
 ## that wins its first fight. 13 does under both draft rules.
 const RUN_SEED := 13
@@ -109,7 +109,7 @@ func test_the_drafted_bots_reach_the_map_through_real_contracts() -> void:
 
 func test_the_seeded_start_follows_the_seed() -> void:
 	await _open()
-	var options: Array = RegionMap.load_file("res://data/regions/seattle.json").start_options()
+	var options: Array = RegionMap.load_file("res://data/regions/lake_washington_12.json").start_options()
 	var picked := {}
 	for seed_value in range(options.size()):
 		_flow.current_seed = seed_value

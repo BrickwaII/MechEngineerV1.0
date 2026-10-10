@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## RunSave: the map state, the bots and the ledger in one resource file.
 
-const PATH := "user://run_save_test.tres"
+const PATH := "user://run_save_test.res"
 
 
 func after_test() -> void:

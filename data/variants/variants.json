@@ -1,0 +1,157 @@
+{
+	"_comment": "The variant switchboard: every open design decision, its options and its default. Each layer reads only its own decisions (layer). applies: live (takes effect at once), next_fight, or next_run. built: false marks an option listed for the dev screen that no code implements yet; choosing it changes nothing. params are the option's tunable numbers. The player's choices are stored in user://variants.json as {\"choices\": {decision id: option id}}, holding non-default choices only. A decision with default_from takes its default and options from another data file instead (options_from). See data/variants/README.md. Every number in params is a first guess, not balance.",
+	"decisions": [
+		{
+			"id": "d-wait",
+			"name": "Wait bonus form",
+			"layer": "fight",
+			"applies": "next_fight",
+			"default": "banked",
+			"options": [
+				{"id": "banked", "name": "Banked charge toward the next action", "description": "While waiting, energy recharges faster by wait.recharge_bonus_percent (data/combat/combat_tuning.json)."},
+				{"id": "extra_energy", "name": "Extra energy", "description": "Waiting recharges at the normal rate; starting a wait grants extra_energy_points at once.", "params": {"extra_energy_points": 2}},
+				{"id": "bonus_damage", "name": "Bonus damage on the next action", "description": "Waiting recharges at the normal rate; the damage skill that ends the wait deals bonus_damage_percent more.", "params": {"bonus_damage_percent": 25}}
+			]
+		},
+		{
+			"id": "d-wait-length",
+			"name": "Wait length",
+			"layer": "fight",
+			"applies": "next_fight",
+			"default": "snap",
+			"options": [
+				{"id": "snap", "name": "Snap to the first affordable tick", "description": "A wait ends on the first tick the unit can afford the skill it waited for."},
+				{"id": "exact", "name": "Choose an exact wait", "description": "A wait may name an exact number of ticks (1 to max_wait_ticks); it ends then, affordable or not. A wait naming none still snaps. Policies keep snapping; the battle screen shows a tick picker.", "params": {"max_wait_ticks": 60}}
+			]
+		},
+		{
+			"id": "d-elasticity",
+			"name": "Elasticity in combat",
+			"layer": "fight",
+			"applies": "next_fight",
+			"default": "none",
+			"options": [
+				{"id": "none", "name": "No effect", "description": "Elasticity is stored but does nothing."},
+				{"id": "reduce_big_hits", "name": "Reduces big hits", "description": "The part of a hit above big_hit_percent of the defender's max hp is cut by elasticity x reduce_percent_per_point percent, at most max_reduce_percent.", "params": {"big_hit_percent": 20, "reduce_percent_per_point": 10, "max_reduce_percent": 60}},
+				{"id": "resist_knockback", "name": "Resists turn-order knockback", "description": "Every damaging hit knocks the target's gauge back by knockback_gauge, less elasticity x resist_gauge_per_point (never below 0).", "params": {"knockback_gauge": 20, "resist_gauge_per_point": 4}},
+				{"id": "energy_when_hit", "name": "Regains energy when hit", "description": "A unit that takes damage regains elasticity x energy_milli_per_point thousandths of energy, capped at its pool.", "params": {"energy_milli_per_point": 250}}
+			]
+		},
+		{
+			"id": "d-personality-map",
+			"name": "Actions to personality",
+			"layer": "fight",
+			"applies": "next_fight",
+			"default": "current",
+			"options": [
+				{"id": "current", "name": "Current mapping", "description": "drift_rules in data/post_fight/post_fight.json.", "params": {"rule_set": "current"}},
+				{"id": "by_target", "name": "Mapping by target choice", "description": "Only what a bot aims at moves it: drift_rule_sets.by_target in data/post_fight/post_fight.json.", "params": {"rule_set": "by_target"}},
+				{"id": "off", "name": "Drift off", "description": "No decision moves a personality.", "params": {"rule_set": "off"}}
+			]
+		},
+		{
+			"id": "hp-carryover",
+			"name": "HP between fights",
+			"layer": "fight",
+			"applies": "next_fight",
+			"default": "full_heal",
+			"options": [
+				{"id": "full_heal", "name": "Full heal", "description": "Every bot heals to full after each fight."},
+				{"id": "carry", "name": "Carry damage over", "description": "Bots keep the hp they ended the fight with; a downed bot comes back with downed_hp.", "params": {"downed_hp": 1}},
+				{"id": "partial_heal", "name": "Partial heal", "description": "Bots keep their end hp plus heal_percent of max hp, capped at max; a downed bot starts from downed_hp.", "params": {"heal_percent": 50, "downed_hp": 1}}
+			]
+		},
+		{
+			"id": "draft-rule",
+			"name": "Draft rule",
+			"layer": "bot_data",
+			"applies": "next_run",
+			"default_from": "res://data/bot_data/tuning.json",
+			"default_key": "draft_rule",
+			"options": [
+				{"id": "random", "name": "Random", "description": "Every starting skill at random."},
+				{"id": "damage_guarantee", "name": "Damage guarantee", "description": "As random, but a bot with no damage skill swaps one in."},
+				{"id": "non_strike_damage", "name": "Non-strike damage", "description": "As damage_guarantee, but the basic attack does not count."}
+			]
+		},
+		{
+			"id": "act-maps",
+			"name": "Act maps",
+			"layer": "campaign",
+			"applies": "next_run",
+			"per_act": true,
+			"options_from": "res://data/tuning/acts.json",
+			"options": []
+		},
+		{
+			"id": "energy-grid",
+			"name": "Energy and grid",
+			"layer": "campaign",
+			"applies": "next_run",
+			"default": "separate",
+			"options": [
+				{"id": "separate", "name": "Separate (current)"},
+				{"id": "shared_pool", "name": "One shared pool", "built": false}
+			]
+		},
+		{
+			"id": "grid-cost-owner",
+			"name": "Defeat grid cost",
+			"layer": "campaign",
+			"applies": "next_fight",
+			"default": "map_surcharge",
+			"options": [
+				{"id": "map_surcharge", "name": "Map adds 1.5x (current)"},
+				{"id": "fight_service", "name": "Fight service charges it", "built": false},
+				{"id": "no_surcharge", "name": "No surcharge", "built": false}
+			]
+		},
+		{
+			"id": "squad-size",
+			"name": "Squad size",
+			"layer": "campaign",
+			"applies": "next_run",
+			"default": "draft5_field3",
+			"options": [
+				{"id": "draft5_field3", "name": "Draft 5, field 3 (current)"},
+				{"id": "draft4_field3", "name": "Draft 4, field 3", "built": false},
+				{"id": "draft6_field4", "name": "Draft 6, field 4", "built": false}
+			]
+		},
+		{
+			"id": "act-pacing",
+			"name": "Act pacing",
+			"layer": "campaign",
+			"applies": "next_run",
+			"default": "current",
+			"options": [
+				{"id": "current", "name": "Per-act tuning files (current)"},
+				{"id": "even", "name": "Even length", "built": false},
+				{"id": "faster_later", "name": "Faster later acts", "built": false}
+			]
+		},
+		{
+			"id": "auto-expansion",
+			"name": "Later-act expansion",
+			"layer": "campaign",
+			"applies": "next_run",
+			"default": "off",
+			"options": [
+				{"id": "off", "name": "Off (current)"},
+				{"id": "simple", "name": "A simple version", "built": false}
+			]
+		},
+		{
+			"id": "tier-rule",
+			"name": "Bot tier rule",
+			"layer": "bot_data",
+			"applies": "live",
+			"default": "generation",
+			"options": [
+				{"id": "generation", "name": "Tier from generation (current)"},
+				{"id": "skill_levels", "name": "Tier from skill levels", "built": false},
+				{"id": "augments", "name": "Tier from augments", "built": false}
+			]
+		}
+	]
+}

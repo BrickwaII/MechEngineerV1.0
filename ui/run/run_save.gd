@@ -1,7 +1,8 @@
 class_name RunSave
 extends Resource
 ## A saved run: the map's RunState, the bots and their banked skill uses, and
-## the run's seed. One Godot resource file (.tres for text, .res for binary).
+## the run's seed. One Godot resource file. Use .res (binary): a .tres text file
+## rounds some floats in their last digit, so a reload would not be exact.
 
 const FORMAT_VERSION := 1
 

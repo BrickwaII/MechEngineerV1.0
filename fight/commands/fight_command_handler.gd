@@ -59,7 +59,7 @@ func apply(command: FightCommand) -> String:
 		FightCommand.Kind.SELECT_TARGET:
 			problem = _select_target(command.arg)
 		FightCommand.Kind.WAIT:
-			problem = _wait(command.arg)
+			problem = _wait(command.arg, command.ticks)
 		FightCommand.Kind.CANCEL:
 			problem = _cancel()
 	if problem.is_empty():
@@ -188,18 +188,22 @@ func _select_target(target_id: String) -> String:
 	return ""
 
 
-func _wait(skill_id: String) -> String:
+func _wait(skill_id: String, ticks := 0) -> String:
 	var problem := _check_selected_bot_acts()
 	if not problem.is_empty():
 		return problem
 	if skill_id.is_empty():
 		skill_id = default_wait_skill()
+	# An exact wait needs no skill to save up for; it names the first one.
+	if skill_id.is_empty() and ticks > 0 and not actor().skill_ids.is_empty():
+		skill_id = actor().skill_ids[0]
 	if skill_id.is_empty():
 		return "nothing to wait for: every skill is ready"
-	problem = fight.check_action(FightAction.wait_for(skill_id))
+	var action := FightAction.wait_exact(skill_id, ticks)
+	problem = fight.check_action(action)
 	if not problem.is_empty():
 		return problem
-	_submit(FightAction.wait_for(skill_id))
+	_submit(action)
 	return ""
 
 

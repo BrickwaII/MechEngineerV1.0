@@ -17,6 +17,9 @@ extends RefCounted
 ## Each push moves its scale by drift.per_push toward the pole; opposite pushes
 ## cancel; the net move per scale is capped at drift.max_per_scale_per_fight.
 ## Only scales active for the bot's generation move.
+## The d-personality-map switch (data/variants/variants.json) can swap this
+## mapping for drift_rule_sets.by_target or turn drift off; see
+## PostFightTuning.for_variants().
 
 
 ## The scale a pole belongs to, or -1 if `pole` names no pole.

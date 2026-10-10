@@ -11,6 +11,9 @@ var kind: Kind
 ## Bot id for SELECT_BOT, skill id for SELECT_SKILL and WAIT, combatant id for
 ## SELECT_TARGET. Empty for CANCEL, and for a WAIT on the default skill.
 var arg: String
+## WAIT only: the exact ticks to wait, or 0 to wait until the skill is
+## affordable. Above 0 needs the d-wait-length "exact" option.
+var ticks := 0
 
 
 func _init(p_kind := Kind.CANCEL, p_arg := "") -> void:
@@ -33,8 +36,10 @@ static func select_target(target_id: String) -> FightCommand:
 ## Wait for `skill_id`. When it is empty, wait for the handler's
 ## default_wait_skill(): the selected skill, else the cheapest one not yet
 ## affordable.
-static func wait(skill_id := "") -> FightCommand:
-	return FightCommand.new(Kind.WAIT, skill_id)
+static func wait(skill_id := "", p_ticks := 0) -> FightCommand:
+	var c := FightCommand.new(Kind.WAIT, skill_id)
+	c.ticks = p_ticks
+	return c
 
 
 static func cancel() -> FightCommand:

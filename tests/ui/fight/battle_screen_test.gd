@@ -3,6 +3,7 @@ extends GdUnitTestSuite
 ## handlers and the buttons' pressed signals, as the mouse would.
 
 const Helpers := preload("res://tests/ui/fight/fight_ui_helpers.gd")
+const BATTLE_SCENE := preload("res://ui/fight/battle_screen.tscn")
 
 var _runner: GdUnitSceneRunner
 var _screen: BattleScreen
@@ -183,3 +184,29 @@ func test_shield_ally_marks_the_bots_panel() -> void:
 	Helpers.click(_screen.unit_panels["stub_anvil"])
 	assert_int(_screen.fight.combatant("stub_anvil").guard_percent).is_equal(40)
 	assert_str(_screen.unit_panels["stub_anvil"].status_label.text).contains("GUARD 40%")
+
+
+func test_the_wait_ticks_box_is_hidden_by_default() -> void:
+	assert_bool(_screen.wait_ticks_box.visible).is_false()
+	assert_int(_screen.exact_wait_ticks()).is_equal(0)
+
+
+func test_exact_waits_from_the_ticks_box() -> void:
+	var v := FightVariants.defaults()
+	v.choose(FightVariants.WAIT_LENGTH, FightVariants.WAIT_LENGTH_EXACT)
+	var screen := BATTLE_SCENE.instantiate() as BattleScreen
+	screen.setup(Helpers.request(), 1, Helpers.fast_tuning(), CombatTuning.load_default().with_variants(v))
+	screen.enemy_turn_delay = 0.0
+	var runner := scene_runner(auto_free(screen))
+	await runner.simulate_frames(1)
+	var guard := 0
+	while screen.handler.is_enemy_turn() and guard < 200:
+		await runner.simulate_frames(1)
+		guard += 1
+	assert_bool(screen.wait_ticks_box.visible).is_true()
+	screen.wait_ticks_box.value = 3
+	assert_str(screen.wait_button.text).is_equal("WAIT 3 ticks")
+	assert_bool(screen.wait_button.disabled).is_false()
+	screen.wait_button.pressed.emit()
+	assert_int(screen.fight.decision_tags.filter(func(t: ActionTag) -> bool: return t.kind == FightAction.Kind.WAIT).size()).is_equal(1)
+	assert_str(screen.fight.log_text()).contains("waits 3 ticks")

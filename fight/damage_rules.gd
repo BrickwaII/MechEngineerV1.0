@@ -7,20 +7,22 @@ extends RefCounted
 ##   heal   = min(attack x power% / 100, hp the target has lost)
 ##
 ## A guarded target takes max(min_damage, damage x (100 - guard%) / 100) from
-## its next hit; see damage_to().
+## its next hit; see damage_to(). `bonus_percent` raises the raw damage (the
+## d-wait "bonus_damage" option); elasticity applies by the d-elasticity
+## switch, see ElasticityRules.
 
 
 @warning_ignore("integer_division")
-static func damage(attacker: UnitStats, defender: UnitStats, skill: CombatSkill, tuning: CombatTuning) -> int:
-	var raw := attacker.attack * skill.power_percent - defender.defense * tuning.defense_percent
+static func damage(attacker: UnitStats, defender: UnitStats, skill: CombatSkill, tuning: CombatTuning, bonus_percent := 0) -> int:
+	var raw := attacker.attack * skill.power_percent * (100 + bonus_percent) / 100 - defender.defense * tuning.defense_percent
 	var base := maxi(tuning.min_damage, raw / 100)
-	return apply_elasticity(base, defender)
+	return apply_elasticity(base, defender, tuning)
 
 
 ## Damage `attacker` deals `target` with `skill`, the target's guard included.
 ## Reads only; the fight clears the guard when the hit lands.
-static func damage_to(attacker: Combatant, target: Combatant, skill: CombatSkill, tuning: CombatTuning) -> int:
-	return guarded(damage(attacker.stats, target.stats, skill, tuning), target.guard_percent, tuning)
+static func damage_to(attacker: Combatant, target: Combatant, skill: CombatSkill, tuning: CombatTuning, bonus_percent := 0) -> int:
+	return guarded(damage(attacker.stats, target.stats, skill, tuning, bonus_percent), target.guard_percent, tuning)
 
 
 ## `p_damage` after a guard blocking `guard_percent` of it.
@@ -32,9 +34,10 @@ static func guarded(p_damage: int, guard_percent: int, tuning: CombatTuning) -> 
 
 
 ## TODO(decision: d-elasticity): what Elasticity does in combat is undecided.
-## Placeholder: returns the damage unchanged. Elasticity has no effect yet.
-static func apply_elasticity(p_damage: int, _defender: UnitStats) -> int:
-	return p_damage
+## Default ("none"), and with no tuning: the damage unchanged. The options
+## live in ElasticityRules.
+static func apply_elasticity(p_damage: int, defender: UnitStats, tuning: CombatTuning = null) -> int:
+	return ElasticityRules.reduce(p_damage, defender, tuning)
 
 
 ## Hp `skill` restores to `target` when `healer` uses it. Never more than the

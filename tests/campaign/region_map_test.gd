@@ -103,20 +103,70 @@ static func _two_regions() -> Dictionary:
 	}
 
 
-func test_seattle_follows_the_real_layout() -> void:
-	var map := RegionMap.load_file("res://data/regions/seattle.json")
+func test_short_name_defaults_to_the_name() -> void:
+	var data := _two_regions()
+	data["regions"][1]["short_name"] = "BB"
+	var map := RegionMap.from_dict(data)
+	assert_str(map.get_region("a").short_name).is_equal("A")
+	assert_str(map.get_region("b").short_name).is_equal("BB")
+
+
+func test_parts_are_drawn_and_clicked_like_the_polygon() -> void:
+	var data := _two_regions()
+	data["regions"][0]["polygon"] = [[0, 0], [0.2, 0], [0.2, 0.2], [0, 0.2]]
+	data["regions"][0]["parts"] = [[[0, 0.8], [0.2, 0.8], [0.2, 1], [0, 1]]]
+	var map := RegionMap.from_dict(data)
 	assert_array(map.errors).is_empty()
-	assert_int(map.regions.size()).is_between(12, 16)
-	# Water crossings are the links: the Ballard Locks, the Fremont and Montlake
-	# bridges, and the West Seattle Bridge, West Seattle's only way out.
-	assert_bool(map.get_region("ballard").is_adjacent_to("magnolia")).is_true()
-	assert_bool(map.get_region("fremont").is_adjacent_to("queen_anne")).is_true()
-	assert_bool(map.get_region("university_district").is_adjacent_to("capitol_hill")).is_true()
-	assert_array(Array(map.get_region("west_seattle").adjacent)).contains_exactly(["sodo"])
-	assert_bool(map.get_region("ballard").is_adjacent_to("downtown")).is_false()
-	# North is up: Ballard lies north of Downtown, which lies north of SoDo.
-	assert_float(map.get_region("ballard").label_at.y).is_less(map.get_region("downtown").label_at.y)
-	assert_float(map.get_region("downtown").label_at.y).is_less(map.get_region("sodo").label_at.y)
-	# West Seattle lies west of Beacon Hill.
-	assert_float(map.get_region("west_seattle").label_at.x).is_less(map.get_region("beacon_hill").label_at.x)
-	assert_int(map.water.size()).is_greater(0)
+	assert_int(map.get_region("a").shapes().size()).is_equal(2)
+	assert_str(map.region_at(Vector2(0.1, 0.1))).is_equal("a")
+	assert_str(map.region_at(Vector2(0.1, 0.9))).is_equal("a")
+	assert_str(map.region_at(Vector2(0.1, 0.5))).is_empty()
+	assert_str(map.region_at(Vector2(0.75, 0.5))).is_equal("b")
+
+
+func test_a_globe_file_reads_longitude_and_latitude() -> void:
+	var data := _two_regions()
+	data["projection"] = RegionMap.GLOBE
+	data["regions"][0]["polygon"] = [[-120, 30], [-80, 30], [-80, 50], [-120, 50]]
+	data["regions"][1]["polygon"] = [[-80, 30], [-60, 30], [-60, 50], [-80, 50]]
+	var map := RegionMap.from_dict(data)
+	assert_array(map.errors).is_empty()
+	assert_bool(map.is_globe()).is_true()
+	assert_str(map.region_at(Vector2(-100, 40))).is_equal("a")
+	# The same points are out of range on a flat map.
+	data["projection"] = RegionMap.FLAT
+	assert_bool(RegionMap.from_dict(data).is_valid()).is_false()
+	data["projection"] = "mercator"
+	assert_bool(RegionMap.from_dict(data).is_valid()).is_false()
+	data["projection"] = RegionMap.GLOBE
+	data["regions"][0]["polygon"] = [[-190, 30], [-80, 30], [-80, 50]]
+	assert_bool(RegionMap.from_dict(data).is_valid()).is_false()
+
+
+func test_crossings_must_join_adjacent_regions() -> void:
+	var data := _two_regions()
+	data["crossings"] = [{"between": ["a", "b"], "name": "Ferry"}]
+	var map := RegionMap.from_dict(data)
+	assert_array(map.errors).is_empty()
+	assert_str(map.crossing_between("b", "a")["name"]).is_equal("Ferry")
+	assert_int(map.crossing_ends(map.crossings[0]).size()).is_equal(2)
+	data["crossings"] = [{"between": ["a", "nowhere"], "name": "Ferry"}]
+	assert_bool(RegionMap.from_dict(data).is_valid()).is_false()
+	data["crossings"] = [{"between": ["a"], "name": "Ferry"}]
+	assert_bool(RegionMap.from_dict(data).is_valid()).is_false()
+	data["crossings"] = [{"between": ["a", "b"], "name": "Ferry"}]
+	data["regions"][0]["adjacent"] = []
+	data["regions"][1]["adjacent"] = []
+	assert_bool(RegionMap.from_dict(data).is_valid()).is_false()
+
+
+func test_land_and_zoom_inset_are_read() -> void:
+	var data := _two_regions()
+	data["land"] = [[[0, 0], [0.1, 0], [0.1, 0.1]]]
+	data["zoom_inset"] = [[0.1, 0.1], [0.3, 0.2]]
+	var map := RegionMap.from_dict(data)
+	assert_array(map.errors).is_empty()
+	assert_int(map.land.size()).is_equal(1)
+	assert_int(map.zoom_inset.size()).is_equal(2)
+	data["zoom_inset"] = [[0.1, 0.1]]
+	assert_bool(RegionMap.from_dict(data).is_valid()).is_false()

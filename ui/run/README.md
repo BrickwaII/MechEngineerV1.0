@@ -15,11 +15,17 @@ One playable run: the project's main scene (`ui/main/main.tscn`) opens it.
   `PostFight` to the fielded bots (personality drift, skill levels, banked
   uses in a `SkillUseLedger`), emits `fight_reported`, then passes the result
   to the map. TODO(decision: hp-carryover): bots heal to full after each fight.
-- `RunSave`: one resource file (`user://run.tres`) with the map's `RunState`,
+- `RunSave`: one binary resource file (`user://run.res`; binary keeps every
+  float exact, text `.tres` rounds the last digit) with the map's `RunState`,
   the `BotSquad`, the ledger and the run seed. Loading restores the squad, the
   map state and the act.
 - Battle screen: F3 toggles the `DebugOverlay` (hidden by default). It shows
   the intents the screen telegraphs.
+- Variants: F4 anywhere in a run opens the variant switchboard over the game;
+  the bottom-left label lists the active non-default choices. A new run drafts
+  with the switchboard's draft rule and plays its act maps; each fight plays
+  its fight-side choices (`RunFightService.variants_source`), which also pick
+  the drift rules and the hp after the fight (hp-carryover).
 - Run seed: random per new run unless `run_seed` is set. Act 1's start is
   picked from it (`seeded_start()`); no start choice in normal play. Dev
   option: `choose_start = true` brings the choice back.
