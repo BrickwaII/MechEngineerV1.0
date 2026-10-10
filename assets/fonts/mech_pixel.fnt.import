@@ -1,0 +1,17 @@
+[remap]
+
+importer="font_data_bmfont"
+type="FontFile"
+uid="uid://cgtyllx5rvar8"
+path="res://.godot/imported/mech_pixel.fnt-2e12fd287f8bb67eb29524725b28c3d2.fontdata"
+
+[deps]
+
+source_file="res://assets/fonts/mech_pixel.fnt"
+dest_files=["res://.godot/imported/mech_pixel.fnt-2e12fd287f8bb67eb29524725b28c3d2.fontdata"]
+
+[params]
+
+fallbacks=[]
+compress=true
+scaling_mode=1

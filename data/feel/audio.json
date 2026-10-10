@@ -1,0 +1,159 @@
+{
+	"_comment": "Sounds by id. Each play picks one of `files` (not the same one twice in a row when there are several), shifts pitch by up to +/- pitch_variation, and is dropped when `throttle.max` plays of that id already started within `throttle.window_ms`. Missing fields take the defaults.",
+	"buses": [
+		"Music",
+		"Effects",
+		"Interface"
+	],
+	"voices": 12,
+	"defaults": {
+		"bus": "Effects",
+		"volume_db": 0.0,
+		"pitch_variation": 0.05,
+		"throttle": {
+			"max": 2,
+			"window_ms": 90
+		}
+	},
+	"sounds": {
+		"ui_hover": {
+			"bus": "Interface",
+			"files": [
+				"res://assets/audio/sfx/ui_hover.wav"
+			],
+			"volume_db": -8.0,
+			"pitch_variation": 0.03,
+			"throttle": {
+				"max": 1,
+				"window_ms": 60
+			}
+		},
+		"ui_click": {
+			"bus": "Interface",
+			"files": [
+				"res://assets/audio/sfx/ui_click_1.wav",
+				"res://assets/audio/sfx/ui_click_2.wav"
+			],
+			"volume_db": -4.0,
+			"pitch_variation": 0.04
+		},
+		"ui_confirm": {
+			"bus": "Interface",
+			"files": [
+				"res://assets/audio/sfx/ui_confirm.wav"
+			],
+			"volume_db": -4.0,
+			"pitch_variation": 0.02
+		},
+		"ui_back": {
+			"bus": "Interface",
+			"files": [
+				"res://assets/audio/sfx/ui_back.wav"
+			],
+			"volume_db": -4.0,
+			"pitch_variation": 0.02
+		},
+		"ui_error": {
+			"bus": "Interface",
+			"files": [
+				"res://assets/audio/sfx/ui_error.wav"
+			],
+			"volume_db": -6.0,
+			"pitch_variation": 0.0
+		},
+		"hit_light": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/audio/sfx/hit_light_1.wav",
+				"res://assets/audio/sfx/hit_light_2.wav",
+				"res://assets/audio/sfx/hit_light_3.wav"
+			],
+			"volume_db": 0.0,
+			"pitch_variation": 0.08
+		},
+		"hit_heavy": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/audio/sfx/hit_heavy_1.wav",
+				"res://assets/audio/sfx/hit_heavy_2.wav"
+			],
+			"volume_db": 0.0,
+			"pitch_variation": 0.06
+		},
+		"shot": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/audio/sfx/shot_1.wav",
+				"res://assets/audio/sfx/shot_2.wav"
+			],
+			"volume_db": -3.0,
+			"pitch_variation": 0.06
+		},
+		"swing": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/audio/sfx/swing_1.wav",
+				"res://assets/audio/sfx/swing_2.wav"
+			],
+			"volume_db": -2.0,
+			"pitch_variation": 0.1
+		},
+		"charge": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/audio/sfx/charge.wav"
+			],
+			"volume_db": -4.0,
+			"pitch_variation": 0.03,
+			"throttle": {
+				"max": 1,
+				"window_ms": 200
+			}
+		},
+		"energy_tick": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/audio/sfx/energy_tick.wav"
+			],
+			"volume_db": -10.0,
+			"pitch_variation": 0.1,
+			"throttle": {
+				"max": 1,
+				"window_ms": 120
+			}
+		},
+		"heal": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/audio/sfx/heal_1.wav",
+				"res://assets/audio/sfx/heal_2.wav"
+			],
+			"volume_db": -3.0,
+			"pitch_variation": 0.03
+		},
+		"guard": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/audio/sfx/guard_1.wav",
+				"res://assets/audio/sfx/guard_2.wav"
+			],
+			"volume_db": -3.0,
+			"pitch_variation": 0.05
+		},
+		"down": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/audio/sfx/down.wav"
+			],
+			"volume_db": -2.0,
+			"pitch_variation": 0.04
+		}
+	},
+	"music": {
+		"placeholder_loop": {
+			"file": "res://assets/audio/music/loop_placeholder.wav",
+			"volume_db": -6.0
+		}
+	},
+	"music_fade_ms": 400
+}

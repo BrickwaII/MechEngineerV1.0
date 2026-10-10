@@ -1,0 +1,303 @@
+{
+	"_comment": "Unit sprite manifest. Format documented in assets/README.md. Paths are res:// paths to PNG sheets; every sheet uses frame_size and the animations layout unless a unit overrides them.",
+	"version": 1,
+	"frame_size": [
+		32,
+		32
+	],
+	"display_scale": 3,
+	"tiers": [
+		"beginner",
+		"medium",
+		"advanced"
+	],
+	"animations": {
+		"idle": {
+			"row": 0,
+			"frames": 4,
+			"fps": 6,
+			"loop": true
+		},
+		"windup": {
+			"row": 1,
+			"frames": 3,
+			"fps": 12,
+			"loop": false
+		},
+		"attack": {
+			"row": 2,
+			"frames": 4,
+			"fps": 12,
+			"loop": false
+		},
+		"hit": {
+			"row": 3,
+			"frames": 3,
+			"fps": 12,
+			"loop": false
+		},
+		"guard": {
+			"row": 4,
+			"frames": 2,
+			"fps": 4,
+			"loop": true
+		},
+		"heal": {
+			"row": 5,
+			"frames": 4,
+			"fps": 10,
+			"loop": false
+		},
+		"down": {
+			"row": 6,
+			"frames": 4,
+			"fps": 8,
+			"loop": false
+		}
+	},
+	"key_colors": {
+		"primary": [
+			"key_primary_dark",
+			"key_primary",
+			"key_primary_light"
+		],
+		"secondary": [
+			"key_secondary_dark",
+			"key_secondary",
+			"key_secondary_light"
+		],
+		"glow": [
+			"key_glow"
+		]
+	},
+	"ally_palettes": {
+		"teal": {
+			"primary": [
+				"#1d6f68",
+				"#2aa597",
+				"#4fd8c5"
+			],
+			"secondary": [
+				"#3a4a5c",
+				"#5c7088",
+				"#8aa0b4"
+			],
+			"glow": [
+				"#8ff7ff"
+			]
+		},
+		"amber": {
+			"primary": [
+				"#8a5a1c",
+				"#c98a2e",
+				"#f2b84b"
+			],
+			"secondary": [
+				"#3b3f4a",
+				"#5f6574",
+				"#9aa1b0"
+			],
+			"glow": [
+				"#fff1a8"
+			]
+		},
+		"violet": {
+			"primary": [
+				"#4f347a",
+				"#7a55b3",
+				"#a988e6"
+			],
+			"secondary": [
+				"#2f4a5a",
+				"#4f7488",
+				"#7fa6b8"
+			],
+			"glow": [
+				"#ffb3f5"
+			]
+		},
+		"steel": {
+			"primary": [
+				"#2c4a6e",
+				"#40699a",
+				"#6b96c8"
+			],
+			"secondary": [
+				"#6a4a2e",
+				"#9a6b3e",
+				"#c99a62"
+			],
+			"glow": [
+				"#9fe8ff"
+			]
+		},
+		"lime": {
+			"primary": [
+				"#3e6a1e",
+				"#5f9a2c",
+				"#93cf4a"
+			],
+			"secondary": [
+				"#4a4038",
+				"#706254",
+				"#9e8e7c"
+			],
+			"glow": [
+				"#e6ff8a"
+			]
+		},
+		"rose": {
+			"primary": [
+				"#7a2e44",
+				"#b04864",
+				"#e07892"
+			],
+			"secondary": [
+				"#34444f",
+				"#566a78",
+				"#8a9eab"
+			],
+			"glow": [
+				"#ffd0a0"
+			]
+		}
+	},
+	"units": {
+		"ally_frame": {
+			"kind": "ally",
+			"display_name": "Frame bot",
+			"facing": "right",
+			"layers": [
+				"legs",
+				"body",
+				"head",
+				"arm"
+			],
+			"parts": {
+				"legs": {
+					"biped": {
+						"beginner": "res://assets/sprites/units/ally_frame/legs_biped_beginner.png",
+						"medium": "res://assets/sprites/units/ally_frame/legs_biped_medium.png",
+						"advanced": "res://assets/sprites/units/ally_frame/legs_biped_advanced.png"
+					},
+					"treads": {
+						"beginner": "res://assets/sprites/units/ally_frame/legs_treads_beginner.png",
+						"medium": "res://assets/sprites/units/ally_frame/legs_treads_medium.png",
+						"advanced": "res://assets/sprites/units/ally_frame/legs_treads_advanced.png"
+					}
+				},
+				"body": {
+					"box": {
+						"beginner": "res://assets/sprites/units/ally_frame/body_box_beginner.png",
+						"medium": "res://assets/sprites/units/ally_frame/body_box_medium.png",
+						"advanced": "res://assets/sprites/units/ally_frame/body_box_advanced.png"
+					},
+					"round": {
+						"beginner": "res://assets/sprites/units/ally_frame/body_round_beginner.png",
+						"medium": "res://assets/sprites/units/ally_frame/body_round_medium.png",
+						"advanced": "res://assets/sprites/units/ally_frame/body_round_advanced.png"
+					}
+				},
+				"head": {
+					"visor": {
+						"beginner": "res://assets/sprites/units/ally_frame/head_visor_beginner.png",
+						"medium": "res://assets/sprites/units/ally_frame/head_visor_medium.png",
+						"advanced": "res://assets/sprites/units/ally_frame/head_visor_advanced.png"
+					},
+					"dome": {
+						"beginner": "res://assets/sprites/units/ally_frame/head_dome_beginner.png",
+						"medium": "res://assets/sprites/units/ally_frame/head_dome_medium.png",
+						"advanced": "res://assets/sprites/units/ally_frame/head_dome_advanced.png"
+					}
+				},
+				"arm": {
+					"blaster": {
+						"beginner": "res://assets/sprites/units/ally_frame/arm_blaster_beginner.png",
+						"medium": "res://assets/sprites/units/ally_frame/arm_blaster_medium.png",
+						"advanced": "res://assets/sprites/units/ally_frame/arm_blaster_advanced.png"
+					},
+					"claw": {
+						"beginner": "res://assets/sprites/units/ally_frame/arm_claw_beginner.png",
+						"medium": "res://assets/sprites/units/ally_frame/arm_claw_medium.png",
+						"advanced": "res://assets/sprites/units/ally_frame/arm_claw_advanced.png"
+					}
+				}
+			},
+			"palettes": [
+				"teal",
+				"amber",
+				"violet",
+				"steel",
+				"lime",
+				"rose"
+			]
+		},
+		"enemy_drone": {
+			"kind": "enemy",
+			"display_name": "Hunter drone",
+			"faction": "rival_ai",
+			"facing": "left",
+			"sheets": {
+				"beginner": "res://assets/sprites/units/enemy_drone/drone_beginner.png",
+				"medium": "res://assets/sprites/units/enemy_drone/drone_medium.png",
+				"advanced": "res://assets/sprites/units/enemy_drone/drone_advanced.png"
+			}
+		}
+	},
+	"effects": {
+		"hit_spark": {
+			"sheet": "res://assets/sprites/effects/hit_spark.png",
+			"frame_size": [
+				16,
+				16
+			],
+			"frames": 4,
+			"fps": 20
+		},
+		"heal_plus": {
+			"sheet": "res://assets/sprites/effects/heal_plus.png",
+			"frame_size": [
+				16,
+				16
+			],
+			"frames": 4,
+			"fps": 10
+		},
+		"energy_spark": {
+			"sheet": "res://assets/sprites/effects/energy_spark.png",
+			"frame_size": [
+				16,
+				16
+			],
+			"frames": 4,
+			"fps": 16
+		},
+		"muzzle_flash": {
+			"sheet": "res://assets/sprites/effects/muzzle_flash.png",
+			"frame_size": [
+				16,
+				16
+			],
+			"frames": 3,
+			"fps": 24
+		},
+		"shield_shimmer": {
+			"sheet": "res://assets/sprites/effects/shield_shimmer.png",
+			"frame_size": [
+				32,
+				32
+			],
+			"frames": 4,
+			"fps": 10
+		},
+		"down_burst": {
+			"sheet": "res://assets/sprites/effects/down_burst.png",
+			"frame_size": [
+				32,
+				32
+			],
+			"frames": 6,
+			"fps": 14
+		}
+	}
+}
