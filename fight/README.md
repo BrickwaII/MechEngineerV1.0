@@ -6,7 +6,8 @@ Combat core (M2), pure logic with no scenes:
 - `Fight`: one fight in ATB wait mode. `advance()` runs time until a unit is
   ready, `submit()` resolves its action. `upcoming(n)` previews the order.
 - `Timeline`: gauge-based turn order. `Combatant`: per-unit hp, energy, gauge.
-- `DamageRules`: deterministic damage. `CombatTuning`, `EnemyTable`: read
-  data/combat/.
+- `DamageRules`: deterministic damage and healing. `CombatTuning`,
+  `EnemyTable`: read data/combat/. A skill with `"effect": "heal"` (Repair)
+  restores attack x power% / 100 hp to a living ally, capped at what it lost.
 - `HeadlessFightRunner`: plays a fight from a seed and policies, with a text log.
 - `AutoFightService`: a contracts FightService built on the runner.

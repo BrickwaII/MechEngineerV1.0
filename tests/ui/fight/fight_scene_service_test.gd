@@ -59,14 +59,17 @@ func test_finished_reports_the_fight_result_then_the_screen_goes() -> void:
 	assert_bool(is_instance_valid(screen)).is_false()
 
 
-func test_the_same_play_gives_the_auto_service_result() -> void:
+func test_the_same_play_gives_the_headless_result() -> void:
 	var request := Helpers.request()
 	_service.start_fight(request)
 	await _frames(1)
 	await _play_to_the_end(_service.screen)
 	await _frames(2)
-	# AutoFightService plays SimpleFightPolicy for the squad, as the helper does.
-	var auto := AutoFightService.new().resolve(request)
+	# The helper plays the squad as SimpleFightPolicy would; the screen plays
+	# enemies by intent. AutoFightService still plays enemies by
+	# SimpleFightPolicy, so compare with the runner on the same seed.
+	var auto := HeadlessFightRunner.run(
+		request, _service.seed_for(request), SimpleFightPolicy.new(), IntentFightPolicy.new()).result()
 	assert_int(_results[0].outcome).is_equal(auto.outcome)
 	assert_float(_results[0].grid_cost).is_equal(auto.grid_cost)
 

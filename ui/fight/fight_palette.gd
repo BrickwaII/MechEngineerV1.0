@@ -15,6 +15,11 @@ const ACTIVE := Color("#f2b84b")
 const SELECTED := Color("#8fd3ff")
 const TARGETABLE := Color("#ff9a8f")
 const DOWN := Color("#3a3a48")
+## A revised enemy intent, for one turn.
+const CHANGED := Color("#c58bff")
+## What a previewed choice would do.
+const PREVIEW := Color("#ffe08a")
+const TAG := Color("#a9bccd")
 
 const HP := Color("#6fdc8c")
 const HP_LOW := Color("#ff6b5e")
