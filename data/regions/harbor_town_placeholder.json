@@ -1,0 +1,72 @@
+{
+	"id": "harbor_town_placeholder",
+	"name": "Harbor town placeholder",
+	"regions": [
+		{
+			"id": "north_pier",
+			"name": "North Pier",
+			"kind": "Ferry dock",
+			"polygon": [[0.0, 0.0], [0.34, 0.0], [0.34, 0.5], [0.0, 0.5]],
+			"adjacent": ["lighthouse", "old_town"],
+			"provides": {"power": 0, "energy": 1, "material": 2},
+			"defense": 2,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "lighthouse",
+			"name": "Lighthouse",
+			"kind": "Signal tower",
+			"polygon": [[0.34, 0.0], [0.67, 0.0], [0.67, 0.5], [0.34, 0.5]],
+			"adjacent": ["north_pier", "cannery", "rail_yard"],
+			"provides": {"power": 0, "energy": 3, "material": 0},
+			"defense": 1,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "cannery",
+			"name": "Cannery",
+			"kind": "Food processing",
+			"polygon": [[0.67, 0.0], [1.0, 0.0], [1.0, 0.5], [0.67, 0.5]],
+			"adjacent": ["lighthouse", "garrison"],
+			"provides": {"power": 1, "energy": 0, "material": 3},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "old_town",
+			"name": "Old Town",
+			"kind": "Your origin",
+			"polygon": [[0.0, 0.5], [0.34, 0.5], [0.34, 1.0], [0.0, 1.0]],
+			"adjacent": ["north_pier", "rail_yard"],
+			"provides": {"power": 2, "energy": 2, "material": 0},
+			"defense": 0,
+			"pressure_base": 1,
+			"starts_owned": true
+		},
+		{
+			"id": "rail_yard",
+			"name": "Rail Yard",
+			"kind": "Freight rail",
+			"polygon": [[0.34, 0.5], [0.67, 0.5], [0.67, 1.0], [0.34, 1.0]],
+			"adjacent": ["lighthouse", "old_town", "garrison"],
+			"provides": {"power": 0, "energy": 0, "material": 4},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "garrison",
+			"name": "Garrison",
+			"kind": "Military post",
+			"polygon": [[0.67, 0.5], [1.0, 0.5], [1.0, 1.0], [0.67, 1.0]],
+			"adjacent": ["cannery", "rail_yard"],
+			"provides": {"power": 0, "energy": 1, "material": 2},
+			"defense": 5,
+			"pressure_base": 3,
+			"starts_owned": false
+		}
+	]
+}

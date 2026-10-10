@@ -77,6 +77,16 @@ func test_ui_may_import_every_layer() -> void:
 	assert_array(_rules.find_violations(files)).is_empty()
 
 
+func test_campaign_and_ui_may_read_data_but_contracts_may_not() -> void:
+	var files := {
+		"res://campaign/map.gd": "const REGIONS := \"res://data/regions/act1.json\"\n",
+		"res://ui/screen.gd": "const TUNING := \"res://data/tuning/overworld.json\"\n",
+		"res://contracts/x.gd": "const T := \"res://data/tuning/overworld.json\"\n",
+	}
+	assert_array(_rules.find_violations(files)).contains_exactly(
+		["res://contracts/x.gd: contracts/ may not import data/"])
+
+
 func test_data_holds_no_code() -> void:
 	var files := {"res://data/regions/helper.gd": "extends Node\n"}
 	assert_array(_rules.find_violations(files)).has_size(1)

@@ -10,11 +10,11 @@ extends RefCounted
 ## tests/ and addons/ are not layers and are not checked.
 const ALLOWED := {
 	"contracts": [],
-	"bot_data": ["contracts"],
-	"fight": ["contracts", "bot_data"],
-	"campaign": ["contracts"],
-	"ui": ["contracts", "bot_data", "fight", "campaign", "tools"],
-	"tools": ["contracts", "bot_data", "fight", "campaign"],
+	"bot_data": ["contracts", "data"],
+	"fight": ["contracts", "bot_data", "data"],
+	"campaign": ["contracts", "data"],
+	"ui": ["contracts", "bot_data", "fight", "campaign", "tools", "data"],
+	"tools": ["contracts", "bot_data", "fight", "campaign", "data"],
 	"data": [],
 }
 
