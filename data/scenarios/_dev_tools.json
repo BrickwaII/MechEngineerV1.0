@@ -1,0 +1,14 @@
+{
+	"_comment": "Settings for the dev tools (tools/ and ui/dev/). Not a scenario: files starting with _ are skipped when scenarios are listed.",
+	"default_runs": 200,
+	"default_base_seed": 1,
+	"stats_log_path": "user://fight_stats.jsonl",
+	"bot_dir": "user://dev/bots",
+	"enemy_dir": "user://dev/enemies",
+	"scenario_dir": "user://dev/scenarios",
+	"overlay_timeline_count": 8,
+	"overlay_refresh_seconds": 0.1,
+	"demo_seconds_per_action": 0.6,
+	"builder_max_stat": 99,
+	"builder_max_skill_level": 10
+}
