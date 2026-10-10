@@ -29,6 +29,9 @@ var enemy_table: EnemyTable
 var screen: BattleScreen
 ## The last fight played, kept for logs and debugging.
 var last_fight: Fight
+## Returns the drafted Bot for a squad member id, or null. Optional: the
+## battle screen reads each bot's tier from it (BattleTierRule).
+var bot_source: Callable
 
 
 func _init(p_host: Node, p_tuning: FightScreenTuning = null) -> void:
@@ -47,6 +50,7 @@ func start_fight(request: FightRequest) -> void:
 		return
 	screen = BATTLE_SCENE.instantiate()
 	screen.setup(request, seed_for(request), tuning, combat_tuning, enemy_table)
+	screen.bot_source = bot_source
 	last_fight = screen.fight
 	screen.fight_finished.connect(_on_fight_finished, CONNECT_ONE_SHOT)
 	host.add_child(screen)

@@ -3,7 +3,6 @@ extends Control
 ## draft -> fight -> result text, then back to the draft.
 
 const Palette := preload("res://ui/fight/fight_palette.gd")
-const FightTheme := preload("res://ui/fight/fight_theme.gd")
 const DRAFT_SCENE := preload("res://ui/draft/draft_screen.tscn")
 
 var tuning: FightScreenTuning
@@ -17,7 +16,7 @@ var last_result: FightResult
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	theme = FightTheme.make()
+	theme = PixelTheme.theme()
 	tuning = FightScreenTuning.load_default()
 	service = FightSceneService.new(self, tuning)
 	service.finished.connect(_on_finished)
@@ -75,7 +74,7 @@ func _build_result_panel() -> void:
 	result_label = Label.new()
 	result_label.name = "ResultLabel"
 	result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	result_label.add_theme_font_size_override("font_size", 24)
+	result_label.theme_type_variation = &"TitleLabel"
 	result_label.add_theme_color_override("font_color", Palette.TEXT_BRIGHT)
 	result_panel.add_child(result_label)
 	var again := Button.new()

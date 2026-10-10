@@ -15,17 +15,28 @@ extends Control
 ##   point at an enemy     preview the selected skill on it (changes nothing)
 ##
 ## Enemies telegraph their intent and act by it (IntentFightPolicy), so what
-## each enemy panel says is what that enemy does next. FightTelegraph holds
-## the intents, the revision marks and the choice preview.
+## each enemy panel says is what that enemy does next: an icon and words on
+## the enemy, and an arrow to its target. FightTelegraph holds the intents,
+## the revision marks and the choice preview; the preview is also drawn on the
+## units (targets marked, the predicted hp loss blinking on their meters,
+## enemies whose plan would change marked).
+##
+## Presentation (M7): every unit is an animated sprite (BattleArt picks the
+## look and tier), and BattlePresenter plays each action as it resolves. The
+## fight never waits for animation; only the next enemy turn waits for the
+## current one to finish playing. When the fight ends, the victory or defeat
+## moment plays (OutcomeBanner) before fight_finished.
 ##
 ## Call setup() before adding the screen to the tree.
 
-const Palette := preload("res://ui/fight/fight_palette.gd")
-const FightTheme := preload("res://ui/fight/fight_theme.gd")
 const UnitPanel := preload("res://ui/fight/unit_panel.gd")
 const TimelineBar := preload("res://ui/fight/timeline_bar.gd")
+const IntentArrows := preload("res://ui/fight/intent_arrows.gd")
+const OutcomeBanner := preload("res://ui/fight/outcome_banner.gd")
 
-const LOG_LINES_SHOWN := 14
+const LOG_LINES_SHOWN := 8
+## Enemy cards go two to a row past this many enemies.
+const ENEMIES_PER_COLUMN := 3
 
 ## Emitted once, when the fight is over.
 signal fight_finished(result: FightResult)
@@ -56,6 +67,18 @@ var hovered_id := ""
 ## The preview shown now, or null. Read-only; for tests.
 var shown_preview: ChoicePreview
 var header_label: Label
+## Returns the drafted Bot for a squad member id, or null (tier rule input).
+## Optional; without it tiers come from what the fight knows.
+var bot_source: Callable
+## The player's variant choices (the tier-rule switch is read when the fight starts).
+var variants_path := FightVariants.USER_PATH
+var tier_rule: BattleTierRule
+var presenter: BattlePresenter
+var arrows: IntentArrows
+var outcome_banner: OutcomeBanner
+var field_root: Control
+var shake: ScreenShake
+var settings: GameSettings
 
 var _enemy_clock := 0.0
 var _finished_sent := false
@@ -63,6 +86,12 @@ var _finished_sent := false
 var _planned_at := 0
 ## The unit that took the latest action, or "".
 var _last_actor_id := ""
+## Events of the action resolving now, handed to the presenter when it ends.
+var _pending_events: Array[FightEvent] = []
+## Unit id -> its energy after its last action, for the energy gain popup.
+var _energy_after_turn: Dictionary[String, int] = {}
+var _announced_actor := ""
+var _outcome_started := false
 
 
 ## Builds the fight. `p_tuning` defaults to data/ui/fight_screen.json; the
@@ -72,6 +101,7 @@ func setup(request: FightRequest, fight_seed: int, p_tuning: FightScreenTuning =
 	tuning = p_tuning if p_tuning != null else FightScreenTuning.load_default()
 	enemy_turn_delay = tuning.enemy_turn_delay_seconds
 	fight = Fight.new(request, fight_seed, combat_tuning, enemy_table)
+	fight.event_raised.connect(_on_event_raised)
 	var planner := IntentPlanner.new()
 	handler = FightCommandHandler.new(fight, IntentFightPolicy.new(planner), false)
 	# Planned once time has run to the first decision, as after every action.
@@ -85,7 +115,9 @@ func setup(request: FightRequest, fight_seed: int, p_tuning: FightScreenTuning =
 func _ready() -> void:
 	assert(handler != null, "BattleScreen.setup() must be called before _ready")
 	set_anchors_preset(Control.PRESET_FULL_RECT)
-	theme = FightTheme.make()
+	theme = PixelTheme.theme()
+	if tier_rule == null:
+		tier_rule = BattleTierRule.load_active(variants_path)
 	_build_layout()
 	refresh()
 	if fight.is_over():
@@ -93,6 +125,10 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	# The next enemy waits for the current action to finish playing.
+	if presenter != null and presenter.is_busy():
+		_enemy_clock = 0.0
+		return
 	if not handler.is_enemy_turn():
 		_enemy_clock = 0.0
 		return
@@ -183,12 +219,20 @@ func refresh() -> void:
 	var actor := handler.actor()
 	var action := previewed_action()
 	shown_preview = telegraph.preview_choice(fight, action) if action != null else null
+	var arrow_list: Array[Dictionary] = []
 	for c in fight.combatants:
 		var panel := unit_panels[c.id]
-		panel.refresh(c, _highlight_for(c))
+		panel.refresh(c, _highlight_for(c), presenter.shown_hp(c.id, c.hp), presenter.shown_energy(c.id, c.energy()))
+		var intent := telegraph.intent_of(c.id) if c.is_alive() else null
 		panel.show_intent(telegraph.tag_of(c.id),
-			telegraph.intent_text(fight, c.id) if c.is_alive() else "", telegraph.change_text(c.id))
+			telegraph.intent_text(fight, c.id) if c.is_alive() else "", telegraph.change_text(c.id), _intent_kind(intent))
 		panel.show_preview(_panel_preview(c.id))
+		panel.show_meter_preview(shown_preview.effect_on(c.id) if shown_preview != null else null,
+			shown_preview != null and shown_preview.change_for(c.id) != null and not _goes_down(c.id))
+		if intent != null and c.side == Combatant.Side.ENEMY and fight.combatant(intent.target_id()) != null:
+			arrow_list.append({"from": c.id, "to": intent.target_id(), "kind": _intent_kind(intent),
+				"changed": telegraph.is_marked(c.id)})
+	arrows.set_arrows(arrow_list, _arrow_focus())
 	_refresh_preview_box(action)
 	var upcoming: Array[TimelineEntry] = []
 	if not fight.is_over():
@@ -209,6 +253,52 @@ func refresh() -> void:
 			actor.display_name, chosen.display_name, "an enemy" if chosen.targets_opponents() else "a bot"]
 	else:
 		prompt_label.text = "%s is ready. Choose a skill, or Wait." % actor.display_name
+	_announce_turn(actor)
+
+
+## "attack", "heal" or "wait" for an intent (a guard skill reads "guard"), or "".
+func _intent_kind(intent: UnitIntent) -> String:
+	if intent == null:
+		return ""
+	var unit := fight.combatant(intent.unit_id)
+	var skill := unit.skill(intent.skill_id()) if unit != null else null
+	if skill != null and skill.is_guard():
+		return "guard"
+	return intent.kind_name()
+
+
+## The enemy whose arrow leads the eye: the one under the pointer, else the
+## next enemy to act.
+func _arrow_focus() -> String:
+	var hovered := fight.combatant(hovered_id)
+	if hovered != null and hovered.side == Combatant.Side.ENEMY:
+		return hovered_id
+	if fight.is_over():
+		return ""
+	for entry in fight.upcoming(tuning.timeline_length):
+		if entry.side == Combatant.Side.ENEMY:
+			return entry.combatant_id
+	return ""
+
+
+func _goes_down(unit_id: String) -> bool:
+	var effect := shown_preview.effect_on(unit_id) if shown_preview != null else null
+	return effect != null and effect.would_go_down()
+
+
+## An energy popup on the unit whose turn comes up, for what it gained since
+## its last turn.
+func _announce_turn(actor: Combatant) -> void:
+	if actor == null or actor.id == _announced_actor or presenter.is_busy():
+		return
+	_announced_actor = actor.id
+	if not _energy_after_turn.has(actor.id):
+		return
+	var gained := actor.energy() - _energy_after_turn[actor.id]
+	if gained >= int(BattleArt.number("energy_popup_min_gain", 1)) and not presenter.is_instant():
+		var view: Control = unit_panels[actor.id].view
+		NumberPopup.spawn(presenter, presenter._local(view.center_global()) + Vector2(0, 30), gained, "energy", settings)
+		SoundPlayer.fire(&"energy_tick")
 
 
 func _highlight_for(c: Combatant) -> UnitPanel.Highlight:
@@ -248,9 +338,22 @@ func _refresh_commands() -> void:
 	cancel_button.disabled = not can_act or not handler.is_choosing_target()
 
 
+func _on_event_raised(event: FightEvent) -> void:
+	_pending_events.append(event)
+
+
 func _on_action_resolved(actor_id: String, _tag: String) -> void:
 	_last_actor_id = actor_id
 	message_label.text = ""
+	var events := _pending_events
+	_pending_events = []
+	var actor := fight.combatant(actor_id)
+	if actor != null:
+		_energy_after_turn[actor_id] = actor.energy()
+	if _announced_actor == actor_id:
+		_announced_actor = ""
+	if presenter != null:
+		presenter.present(events)
 
 
 ## Re-plans the enemies once per action, after time has run to the next
@@ -284,17 +387,35 @@ func _panel_preview(unit_id: String) -> String:
 func _refresh_preview_box(action: FightAction) -> void:
 	if action != null:
 		preview_label.text = "PREVIEW\n" + telegraph.describe_choice(fight, action, shown_preview)
-		preview_label.add_theme_color_override("font_color", Palette.PREVIEW)
+		preview_label.add_theme_color_override("font_color", FeelData.color("preview"))
 	elif handler.is_player_turn() and handler.is_choosing_target():
 		preview_label.text = "PREVIEW\n%s: point at a target to see what it does." % (
 			handler.actor().skill(handler.selected_skill_id).display_name)
-		preview_label.add_theme_color_override("font_color", Palette.TEXT_DIM)
+		preview_label.add_theme_color_override("font_color", FeelData.color("text_dim"))
 	else:
 		preview_label.text = "PREVIEW\nChoose a skill, then point at a target."
-		preview_label.add_theme_color_override("font_color", Palette.TEXT_DIM)
+		preview_label.add_theme_color_override("font_color", FeelData.color("text_dim"))
 
 
 func _on_fight_over(result: FightResult) -> void:
+	if _finished_sent or _outcome_started:
+		return
+	_outcome_started = true
+	refresh()
+	if presenter != null and presenter.is_busy():
+		await presenter.idle
+	if not is_inside_tree() or outcome_banner == null:
+		_send_finished(result)
+		return
+	var winners: Array = []
+	var side := Combatant.Side.PLAYER if result.is_victory() else Combatant.Side.ENEMY
+	for c in fight.living(side):
+		winners.append(unit_panels[c.id].view)
+	outcome_banner.finished.connect(_send_finished.bind(result), CONNECT_ONE_SHOT)
+	outcome_banner.play(result.is_victory(), winners)
+
+
+func _send_finished(result: FightResult) -> void:
 	if _finished_sent:
 		return
 	_finished_sent = true
@@ -303,59 +424,72 @@ func _on_fight_over(result: FightResult) -> void:
 
 
 func _build_layout() -> void:
+	settings = GameSettings.shared()
 	var back := ColorRect.new()
-	back.color = Palette.BACKGROUND
+	back.color = FeelData.color("background")
 	back.set_anchors_preset(Control.PRESET_FULL_RECT)
 	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(back)
 
 	var root := VBoxContainer.new()
+	root.name = "Root"
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.offset_left = 16
-	root.offset_top = 12
+	root.offset_top = 10
 	root.offset_right = -16
-	root.offset_bottom = -12
-	root.add_theme_constant_override("separation", 10)
+	root.offset_bottom = -10
+	root.add_theme_constant_override("separation", 8)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
+	field_root = root
 
 	var request := fight.request
 	header_label = _label(root, "%s  -  %s  -  DEFENSE %d" % [
 		FightRequest.Kind.keys()[request.kind], request.territory_id.capitalize().to_upper(),
-		request.defense_level], 18, Palette.TEXT_BRIGHT)
+		request.defense_level], "DimLabel")
 	timeline_bar = TimelineBar.new()
 	timeline_bar.name = "TimelineBar"
+	timeline_bar.settings = settings
 	root.add_child(timeline_bar)
 
 	var field := HBoxContainer.new()
+	field.name = "Field"
 	field.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	field.add_theme_constant_override("separation", 16)
+	field.add_theme_constant_override("separation", 12)
 	field.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(field)
 	var bots := _column(field, "SQUAD")
 	var middle := VBoxContainer.new()
 	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	middle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	middle.alignment = BoxContainer.ALIGNMENT_END
 	field.add_child(middle)
-	_label(middle, "LOG", 12, Palette.TEXT_DIM)
-	log_label = _label(middle, "", 11, Palette.TEXT_DIM)
+	_label(middle, "LOG", "SmallLabel")
+	log_label = _label(middle, "", "SmallLabel")
 	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	log_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	log_label.clip_text = true
-	var enemies := _column(field, "ENEMIES")
+	log_label.custom_minimum_size = Vector2(0, 10 * LOG_LINES_SHOWN + 16)
+	var enemy_col := _column(field, "ENEMIES")
+	var enemy_count := fight.combatants.filter(func(c: Combatant) -> bool: return c.side == Combatant.Side.ENEMY).size()
+	var enemies := GridContainer.new()
+	enemies.columns = 2 if enemy_count > ENEMIES_PER_COLUMN else 1
+	enemies.add_theme_constant_override("h_separation", 8)
+	enemies.add_theme_constant_override("v_separation", 8)
+	enemies.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	enemy_col.add_child(enemies)
 	for c in fight.combatants:
 		var panel := UnitPanel.new()
 		(enemies if c.side == Combatant.Side.ENEMY else bots).add_child(panel)
-		panel.setup(c)
+		var bot: Bot = bot_source.call(c.id) if bot_source.is_valid() and c.side == Combatant.Side.PLAYER else null
+		panel.setup(c, BattleArt.look_for(c, fight.request.defense_level, tier_rule, bot))
+		panel.view.settings = settings
 		panel.clicked.connect(on_unit_clicked)
 		panel.hovered.connect(on_unit_hovered)
 		unit_panels[c.id] = panel
+		_energy_after_turn[c.id] = c.energy()
 
 	var bar := PanelContainer.new()
-	var bar_style := StyleBoxFlat.new()
-	bar_style.bg_color = Palette.PANEL
-	bar_style.set_content_margin_all(10)
-	bar.add_theme_stylebox_override("panel", bar_style)
+	bar.name = "CommandBar"
 	root.add_child(bar)
 	var bar_row := HBoxContainer.new()
 	bar_row.add_theme_constant_override("separation", 16)
@@ -363,9 +497,11 @@ func _build_layout() -> void:
 	var commands := VBoxContainer.new()
 	commands.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar_row.add_child(commands)
-	prompt_label = _label(commands, "", 15, Palette.TEXT_BRIGHT)
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 8)
+	prompt_label = _label(commands, "", "")
+	prompt_label.add_theme_color_override("font_color", FeelData.color("text_bright"))
+	var buttons := HFlowContainer.new()
+	buttons.add_theme_constant_override("h_separation", 8)
+	buttons.add_theme_constant_override("v_separation", 6)
 	commands.add_child(buttons)
 	for skill_id in _all_player_skills():
 		var button := _button(buttons, skill_button_text(fight.tuning.skill(skill_id)))
@@ -389,21 +525,43 @@ func _build_layout() -> void:
 	cancel_button = _button(buttons, "CANCEL")
 	cancel_button.name = "CancelButton"
 	cancel_button.pressed.connect(on_cancel_pressed)
-	message_label = _label(commands, "", 12, Palette.TARGETABLE)
+	message_label = _label(commands, "", "SmallLabel")
+	message_label.add_theme_color_override("font_color", FeelData.color("danger"))
 
 	preview_area = PanelContainer.new()
 	preview_area.name = "PreviewArea"
 	preview_area.custom_minimum_size = Vector2(380, 0)
-	var preview_style := StyleBoxFlat.new()
-	preview_style.bg_color = Palette.PANEL_RAISED
-	preview_style.border_color = Palette.RULE
-	preview_style.set_border_width_all(1)
-	preview_style.set_content_margin_all(8)
-	preview_area.add_theme_stylebox_override("panel", preview_style)
 	bar_row.add_child(preview_area)
-	preview_label = _label(preview_area, "", 12, Palette.TEXT_DIM)
+	preview_label = _label(preview_area, "", "SmallLabel")
 	preview_label.name = "PreviewLabel"
 	preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+	# Overlays: intent arrows, then the action presenter, then the outcome.
+	var views := {}
+	for id: String in unit_panels:
+		views[id] = unit_panels[id].view
+	arrows = IntentArrows.new()
+	arrows.name = "IntentArrows"
+	arrows.views = views
+	arrows.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(arrows)
+	presenter = BattlePresenter.new()
+	presenter.name = "Presenter"
+	presenter.fight = fight
+	presenter.panels = unit_panels
+	presenter.settings = settings
+	presenter.set_anchors_preset(Control.PRESET_FULL_RECT)
+	presenter.idle.connect(refresh)
+	add_child(presenter)
+	shake = ScreenShake.new(root, settings)
+	shake.name = "Shake"
+	add_child(shake)
+	presenter.shake = shake
+	outcome_banner = OutcomeBanner.new()
+	outcome_banner.name = "OutcomeBanner"
+	outcome_banner.settings = settings
+	outcome_banner.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(outcome_banner)
 
 
 ## "PATCH UP  [3]", or "PATCH UP Lv2  [3]" above level 1.
@@ -428,15 +586,15 @@ func _column(parent: Node, title: String) -> VBoxContainer:
 	col.add_theme_constant_override("separation", 8)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(col)
-	_label(col, title, 12, Palette.TEXT_DIM)
+	_label(col, title, "SmallLabel")
 	return col
 
 
-static func _label(parent: Node, text: String, font_size: int, color: Color) -> Label:
+static func _label(parent: Node, text: String, variation: String) -> Label:
 	var label := Label.new()
 	label.text = text
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", color)
+	if not variation.is_empty():
+		label.theme_type_variation = StringName(variation)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(label)
 	return label

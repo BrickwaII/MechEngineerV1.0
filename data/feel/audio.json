@@ -147,6 +147,138 @@
 			],
 			"volume_db": -2.0,
 			"pitch_variation": 0.04
+		},
+		"skill_strike": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/fight/audio/skill_strike.wav"
+			],
+			"volume_db": -3.0,
+			"pitch_variation": 0.08
+		},
+		"skill_overcharge_shot": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/fight/audio/skill_overcharge_shot.wav"
+			],
+			"volume_db": -4.0,
+			"pitch_variation": 0.04
+		},
+		"skill_heavy_strike": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/fight/audio/skill_heavy_strike.wav"
+			],
+			"volume_db": -2.0,
+			"pitch_variation": 0.05
+		},
+		"skill_arc_sweep": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/fight/audio/skill_arc_sweep.wav"
+			],
+			"volume_db": -5.0,
+			"pitch_variation": 0.04
+		},
+		"skill_brace": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/fight/audio/skill_brace.wav"
+			],
+			"volume_db": -4.0,
+			"pitch_variation": 0.04
+		},
+		"skill_patch_up": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/fight/audio/skill_patch_up.wav"
+			],
+			"volume_db": -4.0,
+			"pitch_variation": 0.03
+		},
+		"skill_shield_ally": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/fight/audio/skill_shield_ally.wav"
+			],
+			"volume_db": -5.0,
+			"pitch_variation": 0.03
+		},
+		"skill_overload": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/fight/audio/skill_overload.wav"
+			],
+			"volume_db": -2.0,
+			"pitch_variation": 0.03
+		},
+		"skill_repair": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/fight/audio/skill_repair.wav"
+			],
+			"volume_db": -4.0,
+			"pitch_variation": 0.03
+		},
+		"skill_layer_impact": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/fight/audio/skill_layer_impact.wav"
+			],
+			"volume_db": -8.0,
+			"pitch_variation": 0.06,
+			"throttle": {
+				"max": 1,
+				"window_ms": 120
+			}
+		},
+		"skill_layer_shimmer": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/fight/audio/skill_layer_shimmer.wav"
+			],
+			"volume_db": -12.0,
+			"pitch_variation": 0.04,
+			"throttle": {
+				"max": 1,
+				"window_ms": 120
+			}
+		},
+		"skill_layer_bass": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/fight/audio/skill_layer_bass.wav"
+			],
+			"volume_db": -9.0,
+			"pitch_variation": 0.03,
+			"throttle": {
+				"max": 1,
+				"window_ms": 200
+			}
+		},
+		"battle_victory": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/fight/audio/battle_victory.wav"
+			],
+			"volume_db": -4.0,
+			"pitch_variation": 0.0,
+			"throttle": {
+				"max": 1,
+				"window_ms": 1000
+			}
+		},
+		"battle_defeat": {
+			"bus": "Effects",
+			"files": [
+				"res://assets/fight/audio/battle_defeat.wav"
+			],
+			"volume_db": -4.0,
+			"pitch_variation": 0.0,
+			"throttle": {
+				"max": 1,
+				"window_ms": 1000
+			}
 		}
 	},
 	"music": {
