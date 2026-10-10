@@ -12,7 +12,7 @@ Build Board: https://claude.ai/artifact/T31MSnVskLzhNyQiDxDYNM
 contracts/   Shared interfaces and stubs. Imports nothing. Every folder may import it.
 bot_data/    Layer 1. Pure state: stats, personality, skills, augment slots. No behavior.
 fight/       Layer 2. Combat, energy, intent, preview, post-fight.
-             May import bot_data and contracts.
+             May import bot_data and contracts, and read data/.
 campaign/    Layer 3. Map, time, pressure, run state.
              May import contracts only until the integration step.
 ui/          Screens and input. May import any layer. Nothing outside ui/ imports ui/.

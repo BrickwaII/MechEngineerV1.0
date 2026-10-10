@@ -11,7 +11,7 @@ extends RefCounted
 const ALLOWED := {
 	"contracts": [],
 	"bot_data": ["contracts"],
-	"fight": ["contracts", "bot_data"],
+	"fight": ["contracts", "bot_data", "data"],
 	"campaign": ["contracts"],
 	"ui": ["contracts", "bot_data", "fight", "campaign", "tools"],
 	"tools": ["contracts", "bot_data", "fight", "campaign"],
