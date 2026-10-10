@@ -39,6 +39,9 @@ var wait_recharge_milli: int
 var wait_target_milli := NOT_WAITING
 ## Ticks spent in the current wait.
 var wait_ticks := 0
+## Exact length of the current wait in ticks, or 0 for a wait that ends on the
+## first tick the unit can afford its skill. See WaitRules (d-wait-length).
+var wait_length := 0
 var energy_spent_milli := 0
 ## Percent of the next hit this unit takes that is blocked. 0 when unguarded.
 var guard_percent := 0
@@ -84,7 +87,7 @@ func _init(
 	recharge_milli = maxi(
 		tuning.recharge_floor_milli_per_tick,
 		maxi(0, p_stats.battery_capacity) * tuning.recharge_milli_per_battery_per_tick)
-	wait_recharge_milli = recharge_milli * (100 + tuning.wait_recharge_bonus_percent) / 100
+	wait_recharge_milli = WaitRules.wait_recharge_milli(recharge_milli, tuning)
 
 
 func is_alive() -> bool:
@@ -130,13 +133,15 @@ func spend(skill: CombatSkill) -> void:
 
 
 ## True when the unit is ready to act at the current tick.
-## TODO(decision: d-wait): a waiting unit snaps to the first tick it can afford
-## the skill it waited for (at least one tick later). The alternative, picking
-## an exact wait length, is open.
+## TODO(decision: d-wait-length): by default a waiting unit snaps to the first
+## tick it can afford the skill it waited for (at least one tick later). With
+## the "exact" option a wait may instead last `wait_length` ticks.
 func is_ready(threshold: int) -> bool:
 	if not is_alive():
 		return false
 	if is_waiting():
+		if wait_length > 0:
+			return wait_ticks >= wait_length
 		return wait_ticks >= 1 and energy_milli >= wait_target_milli
 	return gauge >= threshold
 
@@ -153,9 +158,12 @@ func tick() -> void:
 		energy_milli = mini(max_energy_milli, energy_milli + recharge_milli)
 
 
-func begin_wait(target_milli: int) -> void:
+## Starts a wait for `target_milli` energy, or for exactly `length` ticks when
+## it is above 0.
+func begin_wait(target_milli: int, length := 0) -> void:
 	wait_target_milli = target_milli
 	wait_ticks = 0
+	wait_length = maxi(0, length)
 
 
 ## Called after the unit acts: spend one threshold of gauge, keep the overflow.
@@ -163,6 +171,7 @@ func finish_action(threshold: int) -> void:
 	gauge = maxi(0, gauge - threshold)
 	wait_target_milli = NOT_WAITING
 	wait_ticks = 0
+	wait_length = 0
 
 
 ## A copy of the timing and guard state, for previews. Shares stats and skills.
@@ -174,4 +183,5 @@ func clone_for_preview() -> Combatant:
 	c.energy_milli = energy_milli
 	c.wait_target_milli = wait_target_milli
 	c.wait_ticks = wait_ticks
+	c.wait_length = wait_length
 	return c

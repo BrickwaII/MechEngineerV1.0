@@ -1,12 +1,15 @@
 extends Control
 ## Entry point to the dev screens. Run it with
 ##   godot --path . res://ui/dev/dev_menu.tscn
+## Map variants per act and the draft rule are picked on the variant
+## switchboard, with every other open decision.
 
 const Ui := preload("res://ui/dev/dev_ui.gd")
 const RUN_SCENE := "res://ui/run/run_flow.tscn"
-const ACTS_FILE := "res://data/tuning/acts.json"
+const Palette := preload("res://ui/dev/dev_palette.gd")
 
 const SCREENS := [
+	["Variant switchboard (also F4 in a run)", "res://ui/dev/switchboard_screen.tscn"],
 	["Robot and enemy builder", "res://ui/dev/bot_builder.tscn"],
 	["Scenario builder and batch runs", "res://ui/dev/scenario_builder.tscn"],
 	["Debug overlay demo", "res://ui/dev/debug_overlay_demo.tscn"],
@@ -25,37 +28,16 @@ func _ready() -> void:
 	for screen: Array in SCREENS:
 		var path: String = screen[1]
 		box.add_child(Ui.button(screen[0], func() -> void: get_tree().change_scene_to_file(path)))
-	_add_map_variants(box)
+	box.add_child(Ui.heading("Play a run"))
+	box.add_child(Ui.label(
+		"Plays the switchboard's choices, act maps and draft rule included.", Palette.TEXT_DIM, 13))
+	var play := Ui.button("Play a run", func() -> void: play_run(PackedStringArray()))
+	play.name = "PlayRunButton"
+	box.add_child(play)
 
 
-## Map variants: one picker per act, and a button that plays a run on them.
-func _add_map_variants(box: VBoxContainer) -> void:
-	var plan := ActPlan.load_file(ACTS_FILE)
-	if not plan.is_valid():
-		return
-	box.add_child(Ui.heading("Play a run on map variants"))
-	var pickers: Array[OptionButton] = []
-	for act in plan.act_count():
-		var picker := OptionButton.new()
-		picker.name = "Act%dVariant" % (act + 1)
-		for variant: Dictionary in plan.variants(act):
-			picker.add_item(variant["name"])
-			picker.set_item_metadata(picker.item_count - 1, variant["id"])
-			if variant["id"] == plan.chosen_variant(act):
-				picker.select(picker.item_count - 1)
-		pickers.append(picker)
-		box.add_child(Ui.row([Ui.label("Act %d · %s" % [act + 1, plan.act_name(act)]), picker]))
-	box.add_child(Ui.button("Play a run", func() -> void: play_run(_picked(pickers))))
-
-
-static func _picked(pickers: Array[OptionButton]) -> PackedStringArray:
-	var ids := PackedStringArray()
-	for picker in pickers:
-		ids.append(picker.get_item_metadata(picker.selected))
-	return ids
-
-
-## Opens a run that plays these map variants, one id per act.
+## Opens a run that plays these map variants, one id per act; empty plays the
+## switchboard's act maps.
 func play_run(variant_ids: PackedStringArray) -> void:
 	var run: Node = load(RUN_SCENE).instantiate()
 	run.map_variants = variant_ids

@@ -23,6 +23,11 @@ func _init(p_tuning: CombatTuning = null, p_enemy_table: EnemyTable = null) -> v
 	enemy_table = p_enemy_table if p_enemy_table != null else EnemyTable.load_default()
 
 
+## Plays the next fights with `variants` (the switchboard's fight choices).
+func use_variants(variants: FightVariants) -> void:
+	tuning = tuning.with_variants(variants)
+
+
 func start_fight(request: FightRequest) -> void:
 	var result := resolve(request)
 	Engine.get_main_loop().process_frame.connect(func() -> void: finished.emit(result), CONNECT_ONE_SHOT)

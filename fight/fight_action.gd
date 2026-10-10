@@ -8,6 +8,9 @@ var kind: Kind
 var skill_id: String
 ## Id of the target combatant. Unused for WAIT.
 var target_id: String
+## WAIT only: the exact number of ticks to wait, or 0 to wait until the skill
+## is affordable. Above 0 needs the d-wait-length "exact" option.
+var wait_ticks := 0
 
 
 func _init(p_kind := Kind.SKILL, p_skill_id := "", p_target_id := "") -> void:
@@ -25,7 +28,14 @@ static func wait_for(p_skill_id: String) -> FightAction:
 	return FightAction.new(Kind.WAIT, p_skill_id)
 
 
+## Wait exactly `ticks` ticks, then take another turn (d-wait-length "exact").
+static func wait_exact(p_skill_id: String, ticks: int) -> FightAction:
+	var a := FightAction.new(Kind.WAIT, p_skill_id)
+	a.wait_ticks = ticks
+	return a
+
+
 func _to_string() -> String:
 	if kind == Kind.WAIT:
-		return "wait for %s" % skill_id
+		return "wait for %s" % skill_id if wait_ticks == 0 else "wait %d ticks (%s)" % [wait_ticks, skill_id]
 	return "%s on %s" % [skill_id, target_id]

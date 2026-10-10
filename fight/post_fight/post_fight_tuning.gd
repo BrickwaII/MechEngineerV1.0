@@ -4,6 +4,8 @@ extends RefCounted
 ## Tests may build one with from_dict() and change fields directly.
 
 const DEFAULT_PATH := "res://data/post_fight/post_fight.json"
+const RULE_SET_CURRENT := "current"
+const RULE_SET_OFF := "off"
 
 ## One drift rule: a decision carrying `label` (and, when `skills` is not
 ## empty, using one of those skills) pushes `pole`.
@@ -17,6 +19,8 @@ class DriftRule:
 
 
 var drift_rules: Array[DriftRule] = []
+## Rule set name -> other drift rules the d-personality-map switch can pick.
+var drift_rule_sets: Dictionary[String, Array] = {}
 ## Personality change per push, before the cap.
 var drift_per_push: float
 ## The most one scale may move in one fight, either way.
@@ -44,13 +48,10 @@ static func load_file(path: String) -> PostFightTuning:
 
 static func from_dict(d: Dictionary) -> PostFightTuning:
 	var t := PostFightTuning.new()
-	for r: Dictionary in d.drift_rules:
-		var rule := DriftRule.new()
-		rule.label = r.label
-		rule.pole = r.pole
-		for s: String in r.get("skills", []):
-			rule.skills.append(s)
-		t.drift_rules.append(rule)
+	t.drift_rules = _read_rules(d.drift_rules)
+	var sets: Dictionary = d.get("drift_rule_sets", {})
+	for set_name: String in sets:
+		t.drift_rule_sets[set_name] = _read_rules(sets[set_name])
 	t.drift_per_push = float(d.drift.per_push)
 	t.max_drift_per_scale_per_fight = float(d.drift.max_per_scale_per_fight)
 	t.uses_per_level = int(d.skill_levels.uses_per_level)
@@ -61,10 +62,50 @@ static func from_dict(d: Dictionary) -> PostFightTuning:
 	return t
 
 
+## The drift rules for the d-personality-map rule set `set_name`: "current"
+## keeps drift_rules, "off" has none, any other name is one of
+## drift_rule_sets. False, and nothing changes, for an unknown name.
+func use_rule_set(set_name: String) -> bool:
+	match set_name:
+		RULE_SET_CURRENT:
+			return true
+		RULE_SET_OFF:
+			drift_rules = []
+			return true
+	if not drift_rule_sets.has(set_name):
+		return false
+	drift_rules.assign(drift_rule_sets[set_name])
+	return true
+
+
+## This file's tuning with the drift rules `variants` picks.
+static func for_variants(variants: FightVariants, path := DEFAULT_PATH) -> PostFightTuning:
+	var t := load_file(path)
+	var set_name := variants.param_string(FightVariants.PERSONALITY_MAP, "rule_set", RULE_SET_CURRENT)
+	if not t.use_rule_set(set_name):
+		push_error("PostFightTuning: no drift rule set '%s'" % set_name)
+	return t
+
+
+static func _read_rules(list: Array) -> Array[DriftRule]:
+	var out: Array[DriftRule] = []
+	for r: Dictionary in list:
+		var rule := DriftRule.new()
+		rule.label = r.label
+		rule.pole = r.pole
+		for s: String in r.get("skills", []):
+			rule.skills.append(s)
+		out.append(rule)
+	return out
+
+
 ## Problems that would make post-fight misbehave; empty when usable.
 func validate() -> Array[String]:
 	var problems: Array[String] = []
-	for rule in drift_rules:
+	var all_rules: Array[DriftRule] = drift_rules.duplicate()
+	for set_name in drift_rule_sets:
+		all_rules.append_array(drift_rule_sets[set_name])
+	for rule in all_rules:
 		if not rule.label in ActionTag.ALL_LABELS:
 			problems.append("drift rule label %s is not an ActionTag label" % rule.label)
 		if PersonalityDrift.scale_of_pole(rule.pole) < 0:
