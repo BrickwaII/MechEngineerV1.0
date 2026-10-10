@@ -62,6 +62,18 @@
 			]
 		},
 		{
+			"id": "enemy-factions",
+			"name": "Enemy factions",
+			"layer": "fight",
+			"applies": "next_fight",
+			"default": "by_act",
+			"options": [
+				{"id": "by_act", "name": "By act table", "description": "Each region's faction from regions in data/combat/factions.json (act 1 human resistance, act 2 enhanced humans and the rival AI, act 3 aliens and the rival AI); tier by act and defense level."},
+				{"id": "mixed", "name": "Mixed random per region", "description": "Each region gets a faction from mixed_pool in data/combat/factions.json, fixed by its id; tier by act and defense level."},
+				{"id": "generic", "name": "Generic", "description": "No factions: the generic pools in data/combat/enemy_tables.json (scrap drones, rust hounds, sentry turrets, warden mechs)."}
+			]
+		},
+		{
 			"id": "draft-rule",
 			"name": "Draft rule",
 			"layer": "bot_data",

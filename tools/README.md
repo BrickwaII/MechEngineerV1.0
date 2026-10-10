@@ -49,6 +49,16 @@ Decisions: `d-wait`, `d-wait-length`, `d-elasticity`, `d-personality-map`,
 options show), `--enemy-policy NAME` (default `intent`), `--chain N`. Run i
 drafts a fresh squad from seed + i. Defaults live in `data/scenarios/_dev_tools.json`.
 
+## Faction check
+
+Win rates at defense levels 0 to 5 for every enemy faction at every act's
+tiers (`data/combat/factions.json`), next to the generic roster (today's
+enemies), on the same seeded squads:
+
+```sh
+godot --headless --path . -s res://tools/check_factions.gd -- --runs 200 [--markdown 1]
+```
+
 ## Fight stats log
 
 Every simulated fight appends one JSON line to `user://fight_stats.jsonl`
@@ -67,6 +77,7 @@ dealt, energy spent and hp left.
 | `batch_simulator.gd`, `batch_report.gd` | Many seeded fights and their totals |
 | `fight_stats_log.gd` | The JSON-lines log |
 | `variant_comparison.gd`, `compare_variants.gd` | Every option of one decision on the same seeded fights |
+| `faction_win_rates.gd`, `check_factions.gd` | Win rates per enemy faction, act tier and defense level |
 | `bot_library.gd`, `bot_json.gd` | Saved bots (one BotSquadStorage file each) and inline bots |
 
 The scenario format is in `data/scenarios/README.md`. The screens that use
@@ -77,4 +88,5 @@ these tools are in `ui/dev/`.
 `tools/asset_gen/` makes the placeholder art, font and sounds in `assets/`
 (CC0, see `CREDITS.md`) from `data/feel/palette.json` and
 `data/feel/sprite_manifest.json`. Python 3; the sprite and font scripts need
-Pillow. Commands are in `assets/README.md`.
+Pillow. `gen_enemies.py` draws the enemy faction sprites in `assets/enemies/`.
+Commands are in `assets/README.md`.

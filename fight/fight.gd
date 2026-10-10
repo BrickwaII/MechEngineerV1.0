@@ -276,7 +276,7 @@ func _build_roster(rng: RandomNumberGenerator) -> void:
 			SquadSkills.ids_for(member, tuning), tuning, SquadSkills.overrides_for(member, tuning)))
 		order += 1
 	var counts := {}
-	for enemy_id in enemy_table.pick(request.defense_level, rng):
+	for enemy_id in enemy_table.pick_for(request, rng, tuning.variants.option(FightVariants.ENEMY_FACTIONS)):
 		counts[enemy_id] = counts.get(enemy_id, 0) + 1
 		var stats := enemy_table.stats_of(enemy_id)
 		combatants.append(Combatant.new(

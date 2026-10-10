@@ -242,6 +242,105 @@
 				"medium": "res://assets/sprites/units/enemy_drone/drone_medium.png",
 				"advanced": "res://assets/sprites/units/enemy_drone/drone_advanced.png"
 			}
+		},
+		"resistance_soldier": {
+			"kind": "enemy",
+			"display_name": "Resistance soldier",
+			"faction": "human_resistance",
+			"facing": "left",
+			"sheets": {
+				"beginner": "res://assets/enemies/human_resistance/resistance_soldier_beginner.png",
+				"medium": "res://assets/enemies/human_resistance/resistance_soldier_medium.png",
+				"advanced": "res://assets/enemies/human_resistance/resistance_soldier_advanced.png"
+			}
+		},
+		"resistance_tank": {
+			"kind": "enemy",
+			"display_name": "Resistance tank",
+			"faction": "human_resistance",
+			"facing": "left",
+			"sheets": {
+				"beginner": "res://assets/enemies/human_resistance/resistance_tank_beginner.png",
+				"medium": "res://assets/enemies/human_resistance/resistance_tank_medium.png",
+				"advanced": "res://assets/enemies/human_resistance/resistance_tank_advanced.png"
+			}
+		},
+		"resistance_mech": {
+			"kind": "enemy",
+			"display_name": "Resistance pilot mech",
+			"faction": "human_resistance",
+			"facing": "left",
+			"sheets": {
+				"beginner": "res://assets/enemies/human_resistance/resistance_mech_beginner.png",
+				"medium": "res://assets/enemies/human_resistance/resistance_mech_medium.png",
+				"advanced": "res://assets/enemies/human_resistance/resistance_mech_advanced.png"
+			}
+		},
+		"enhanced_cyborg": {
+			"kind": "enemy",
+			"display_name": "Cyborg",
+			"faction": "enhanced_humans",
+			"facing": "left",
+			"sheets": {
+				"beginner": "res://assets/enemies/enhanced_humans/enhanced_cyborg_beginner.png",
+				"medium": "res://assets/enemies/enhanced_humans/enhanced_cyborg_medium.png",
+				"advanced": "res://assets/enemies/enhanced_humans/enhanced_cyborg_advanced.png"
+			}
+		},
+		"enhanced_trooper": {
+			"kind": "enemy",
+			"display_name": "Augmented trooper",
+			"faction": "enhanced_humans",
+			"facing": "left",
+			"sheets": {
+				"beginner": "res://assets/enemies/enhanced_humans/enhanced_trooper_beginner.png",
+				"medium": "res://assets/enemies/enhanced_humans/enhanced_trooper_medium.png",
+				"advanced": "res://assets/enemies/enhanced_humans/enhanced_trooper_advanced.png"
+			}
+		},
+		"rival_walker": {
+			"kind": "enemy",
+			"display_name": "Rival AI walker",
+			"faction": "rival_ai",
+			"facing": "left",
+			"sheets": {
+				"beginner": "res://assets/enemies/rival_ai/rival_walker_beginner.png",
+				"medium": "res://assets/enemies/rival_ai/rival_walker_medium.png",
+				"advanced": "res://assets/enemies/rival_ai/rival_walker_advanced.png"
+			}
+		},
+		"splinter_swarm": {
+			"kind": "enemy",
+			"display_name": "Splinter AI swarm",
+			"faction": "rival_ai",
+			"facing": "left",
+			"sheets": {
+				"beginner": "res://assets/enemies/rival_ai/splinter_swarm_beginner.png",
+				"medium": "res://assets/enemies/rival_ai/splinter_swarm_medium.png",
+				"advanced": "res://assets/enemies/rival_ai/splinter_swarm_advanced.png"
+			}
+		},
+		"alien_stalker": {
+			"kind": "enemy",
+			"display_name": "Alien stalker",
+			"faction": "aliens",
+			"facing": "left",
+			"sheets": {
+				"beginner": "res://assets/enemies/aliens/alien_stalker_beginner.png",
+				"medium": "res://assets/enemies/aliens/alien_stalker_medium.png",
+				"advanced": "res://assets/enemies/aliens/alien_stalker_advanced.png"
+			}
+		},
+		"alien_spitter": {
+			"kind": "enemy",
+			"display_name": "Alien spitter",
+			"faction": "aliens",
+			"facing": "left",
+			"sheets": {
+				"beginner": "res://assets/enemies/aliens/alien_spitter_beginner.png",
+				"medium": "res://assets/enemies/aliens/alien_spitter_medium.png",
+				"advanced": "res://assets/enemies/aliens/alien_spitter_advanced.png"
+			}
 		}
 	},
 	"effects": {

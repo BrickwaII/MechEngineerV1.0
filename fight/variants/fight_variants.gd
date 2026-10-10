@@ -41,6 +41,11 @@ const HP_FULL_HEAL := "full_heal"
 const HP_CARRY := "carry"
 const HP_PARTIAL_HEAL := "partial_heal"
 
+const ENEMY_FACTIONS := "enemy-factions"
+const FACTIONS_BY_ACT := "by_act"
+const FACTIONS_MIXED := "mixed"
+const FACTIONS_GENERIC := "generic"
+
 ## Every fight decision this class knows, with the options code implements.
 const KNOWN := {
 	WAIT_FORM: [WAIT_BANKED, WAIT_EXTRA_ENERGY, WAIT_BONUS_DAMAGE],
@@ -48,6 +53,7 @@ const KNOWN := {
 	ELASTICITY: [ELASTICITY_NONE, ELASTICITY_BIG_HITS, ELASTICITY_KNOCKBACK, ELASTICITY_ENERGY],
 	PERSONALITY_MAP: [PERSONALITY_CURRENT, PERSONALITY_BY_TARGET, PERSONALITY_OFF],
 	HP_CARRYOVER: [HP_FULL_HEAL, HP_CARRY, HP_PARTIAL_HEAL],
+	ENEMY_FACTIONS: [FACTIONS_BY_ACT, FACTIONS_MIXED, FACTIONS_GENERIC],
 }
 
 ## Decision id -> its default option id.

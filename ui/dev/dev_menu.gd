@@ -13,6 +13,7 @@ const SCREENS := [
 	["Robot and enemy builder", "res://ui/dev/bot_builder.tscn"],
 	["Scenario builder and batch runs", "res://ui/dev/scenario_builder.tscn"],
 	["Debug overlay demo", "res://ui/dev/debug_overlay_demo.tscn"],
+	["Enemy faction lineup", "res://ui/dev/enemy_lineup.tscn"],
 ]
 
 
