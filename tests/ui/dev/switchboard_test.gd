@@ -93,8 +93,9 @@ func test_reset_clears_every_choice() -> void:
 
 func test_unbuilt_options_are_marked() -> void:
 	var board := _board()
-	assert_bool(board.is_built("energy-grid", "shared_pool")).is_false()
+	assert_bool(board.is_built("tier-rule", "skill_levels")).is_false()
 	assert_bool(board.is_built("d-wait", "bonus_damage")).is_true()
+	assert_bool(board.is_built("energy-grid", "shared_pool")).is_true()
 
 
 func test_screen_shows_a_picker_per_decision_and_saves_picks() -> void:
@@ -121,10 +122,10 @@ func test_screen_refuses_unbuilt_options() -> void:
 	screen.board = _board()
 	add_child(screen)
 	await get_tree().process_frame
-	assert_bool(screen.pick("energy-grid", "shared_pool")).is_false()
-	var picker := screen.pickers["energy-grid"]
+	assert_bool(screen.pick("tier-rule", "skill_levels")).is_false()
+	var picker := screen.pickers["tier-rule"]
 	for i in picker.item_count:
-		assert_bool(picker.is_item_disabled(i)).is_equal(not screen.board.is_built("energy-grid", picker.get_item_metadata(i)))
+		assert_bool(picker.is_item_disabled(i)).is_equal(not screen.board.is_built("tier-rule", picker.get_item_metadata(i)))
 
 
 func test_variant_label_shows_only_non_defaults() -> void:

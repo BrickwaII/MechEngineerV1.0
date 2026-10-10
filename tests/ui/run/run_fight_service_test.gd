@@ -100,3 +100,38 @@ func test_drift_off_leaves_personalities_alone() -> void:
 	await get_tree().process_frame
 	for bot in _squad.bots:
 		assert_array(PersonalityDrift.values_of(bot.personality)).is_equal(before[bot.id])
+
+
+func test_under_fight_service_grid_cost_a_lost_attack_comes_back_surcharged() -> void:
+	var lost := _LostFight.new()
+	var service := RunFightService.new(lost, BotFactory.new(BotTuning.load_default()).build_squad(1), SkillUseLedger.new())
+	var v := CampaignVariants.defaults()
+	v.choose(CampaignVariants.GRID_COST_OWNER, CampaignVariants.GRID_FIGHT_SERVICE)
+	service.campaign_variants_source = func() -> CampaignVariants: return v
+	var got: Array[FightResult] = []
+	service.finished.connect(func(r: FightResult) -> void: got.append(r))
+	var squad: Array[SquadMemberSummary] = [SquadMemberSummary.new("a", "A", 10, 10, "", UnitStats.new(10, 1, 1, 1, 1, 1))]
+	service.start_fight(FightRequest.new(FightRequest.Kind.ATTACK, "x", 1, squad))
+	lost.finished.emit(FightResult.new(FightResult.Outcome.DEFEAT, 10.0, {}))
+	assert_int(got.size()).is_equal(1)
+	assert_float(got[0].grid_cost).is_equal(10.0 * v.param_float(CampaignVariants.GRID_COST_OWNER, "defeat_multiplier"))
+
+
+func test_by_default_the_result_passes_through_unchanged() -> void:
+	var lost := _LostFight.new()
+	var service := RunFightService.new(lost, BotFactory.new(BotTuning.load_default()).build_squad(1), SkillUseLedger.new())
+	service.campaign_variants_source = func() -> CampaignVariants: return CampaignVariants.defaults()
+	var got: Array[FightResult] = []
+	service.finished.connect(func(r: FightResult) -> void: got.append(r))
+	var squad: Array[SquadMemberSummary] = [SquadMemberSummary.new("a", "A", 10, 10, "", UnitStats.new(10, 1, 1, 1, 1, 1))]
+	service.start_fight(FightRequest.new(FightRequest.Kind.ATTACK, "x", 1, squad))
+	lost.finished.emit(FightResult.new(FightResult.Outcome.DEFEAT, 10.0, {}))
+	assert_float(got[0].grid_cost).is_equal(10.0)
+
+
+## A fight service whose fights end when the test says.
+class _LostFight:
+	extends FightService
+
+	func start_fight(_request: FightRequest) -> void:
+		pass
