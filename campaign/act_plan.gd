@@ -19,6 +19,8 @@ extends RefCounted
 ## sets its pacing: countdown, action time costs and pressure.
 ## TODO(decision: act-pacing): every act has the same countdown and costs for
 ## now, and pressure scales with region count; see data/tuning/act*.json.
+## TODO(decision: map-variants): the defaults (Lake Washington 12, North
+## America 33, the world 20) are a first pick; the user is trying the others.
 ## TODO(decision: zoom-carryover): what carries across the zoom (all stock, a
 ## grid top-up, bonus regions for ground held, the start's income bonus) is a
 ## placeholder rule set; the numbers are in acts.json.
