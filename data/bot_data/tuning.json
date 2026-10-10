@@ -1,0 +1,22 @@
+{
+	"_comment": "Bot data tuning. Every number here is a placeholder until playtesting.",
+	"draft_size": 5,
+	"squad_size": 3,
+	"augment_slot_count": 2,
+	"starting_generation": 1,
+	"starting_skill_count": 2,
+	"starting_skill_level": 1,
+	"personality_start_range": [-0.6, 0.6],
+	"stat_ranges": {
+		"hp": [20, 45],
+		"attack": [4, 9],
+		"defense": [2, 8],
+		"speed": [3, 9],
+		"elasticity": [1, 5],
+		"battery_capacity": [8, 14]
+	},
+	"names": [
+		"Bolt", "Anvil", "Spark", "Cog", "Rivet", "Piston", "Gasket", "Ratchet",
+		"Sprocket", "Dynamo", "Flux", "Torque", "Servo", "Widget", "Crank", "Ohm"
+	]
+}

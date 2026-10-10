@@ -8,6 +8,7 @@ extends RefCounted
 
 ## The layers each layer may import. A layer may always use its own files.
 ## tests/ and addons/ are not layers and are not checked.
+## data/ holds no code, so any code layer may read its files.
 const ALLOWED := {
 	"contracts": [],
 	"bot_data": ["contracts", "data"],
