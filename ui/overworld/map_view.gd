@@ -2,6 +2,10 @@ extends Control
 ## Draws the regions of a Campaign's map, colored by standing, with a node on
 ## each: pressure ring and cause on held regions, defense pips on hostile ones,
 ## the name, and what the region provides. Clicking a region selects it.
+##
+## zoom and zoom_center move the camera over the map; the act zoom animates
+## them. While zoomed in, the inset draws the last act's map inside the region
+## it sits in on this one.
 
 const Palette := preload("res://ui/overworld/palette.gd")
 
@@ -13,6 +17,8 @@ const RING_WIDTH := 6.0
 const PIP := 7.0
 const GAP := 4.0
 const GRID_STEP := 40.0
+## Above this zoom the nodes are hidden; they would crowd the close-up.
+const NODE_ZOOM_LIMIT := 1.15
 
 var campaign: Campaign:
 	set(v):
@@ -21,6 +27,24 @@ var campaign: Campaign:
 var selected_id := "":
 	set(v):
 		selected_id = v
+		queue_redraw()
+## Camera scale, 1 for the whole map.
+var zoom := 1.0:
+	set(v):
+		zoom = v
+		queue_redraw()
+## The map-space point at the middle of the view.
+var zoom_center := Vector2(0.5, 0.5):
+	set(v):
+		zoom_center = v
+		queue_redraw()
+## The last act's map, drawn into inset_rect (map space) while inset_alpha > 0.
+var inset_map: RegionMap
+var inset_owned: PackedStringArray = []
+var inset_rect := Rect2()
+var inset_alpha := 0.0:
+	set(v):
+		inset_alpha = v
 		queue_redraw()
 
 
@@ -43,7 +67,7 @@ func region_at(point: Vector2) -> String:
 
 ## Where a region's node sits, in this control's coordinates.
 func label_position(region_id: String) -> Vector2:
-	return campaign.map.get_region(region_id).label_at * size
+	return _point(campaign.map.get_region(region_id).label_at)
 
 
 func select(region_id: String) -> void:
@@ -58,10 +82,14 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 
 
+func _point(p: Vector2) -> Vector2:
+	return ((p - zoom_center) * zoom + Vector2(0.5, 0.5)) * size
+
+
 func _to_view(points: PackedVector2Array) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	for p in points:
-		out.append(p * size)
+		out.append(_point(p))
 	return out
 
 
@@ -77,6 +105,8 @@ func _draw() -> void:
 		y += GRID_STEP
 	if campaign == null:
 		return
+	for shape in campaign.map.water:
+		draw_colored_polygon(_to_view(shape), Palette.WATER)
 	for region in campaign.map.regions:
 		var points := _to_view(region.polygon)
 		draw_colored_polygon(points, Palette.region_fill(campaign.standing(region.id), region.id == selected_id))
@@ -87,8 +117,34 @@ func _draw() -> void:
 		var points := _to_view(campaign.map.get_region(selected_id).polygon)
 		points.append(points[0])
 		draw_polyline(points, Palette.TEXT_BRIGHT, 2.0)
+	if inset_map != null and inset_alpha > 0.0:
+		_draw_inset()
+	if zoom > NODE_ZOOM_LIMIT:
+		return
 	for region in campaign.map.regions:
 		_draw_node(region)
+
+
+func _draw_inset() -> void:
+	var back := Palette.MAP_BACKGROUND
+	back.a = inset_alpha
+	draw_rect(Rect2(_point(inset_rect.position), inset_rect.size * zoom * size), back)
+	var water := Palette.WATER
+	water.a = inset_alpha
+	for shape in inset_map.water:
+		var points := PackedVector2Array()
+		for p in shape:
+			points.append(_point(inset_rect.position + p * inset_rect.size))
+		draw_colored_polygon(points, water)
+	for region in inset_map.regions:
+		var points := PackedVector2Array()
+		for p in region.polygon:
+			points.append(_point(inset_rect.position + p * inset_rect.size))
+		var fill := Palette.INSET_OWNED if region.id in inset_owned else Palette.INSET_HOSTILE
+		fill.a = inset_alpha
+		draw_colored_polygon(points, fill)
+		points.append(points[0])
+		draw_polyline(points, back, 2.0)
 
 
 func _draw_node(region: MapRegion) -> void:

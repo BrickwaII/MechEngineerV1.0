@@ -1,0 +1,16 @@
+{
+	"_comment": "How enemies pick their intent. Every candidate action gets a score; the highest wins. Each weight is base + sum of (lean x personality value), where a personality value runs from -1 (aggressive, solitary, reactive) to +1 (defensive, supportive, methodical). Every number here is a first guess. TODO(decision: d-personality-map).",
+	"weights": {
+		"damage": {"_doc": "per point of damage dealt", "base": 1.0, "aggressive_defensive": -0.5},
+		"energy_cost": {"_doc": "subtracted per energy point the action spends", "base": 0.5, "aggressive_defensive": 0.5},
+		"kill": {"_doc": "added when the action would down its target", "base": 3.0, "aggressive_defensive": -2.0},
+		"heal": {"_doc": "per point of hp restored to an ally", "base": 1.0, "solitary_supportive": 1.0},
+		"retaliate": {"_doc": "added for targeting the opponent that acted most recently", "base": 5.0, "reactive_methodical": -5.0},
+		"focus": {"_doc": "per share of hp the target has already lost, 0 to 1", "base": 5.0, "reactive_methodical": 5.0},
+		"wait": {"_doc": "a wait for an unaffordable skill scores this share of using it now", "base": 0.5, "reactive_methodical": 0.3}
+	},
+	"skill_roles": {
+		"_doc": "Skills that are not plain attacks. A heal skill restores (attack x power_percent / 100) hp to one living ally, capped at what the ally lost.",
+		"repair": "heal"
+	}
+}

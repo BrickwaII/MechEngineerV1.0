@@ -1,9 +1,12 @@
 extends GdUnitTestSuite
 ## The overworld screen, headless. Input events do not arrive in headless mode,
 ## so these drive the screen through the same calls its input handlers make.
+## These run on the act 1 placeholder map; overworld_acts_test.gd covers the
+## shipped Seattle map, the start choice and the act zoom.
 
 const SCENE := "res://ui/overworld/overworld.tscn"
 const SAVE_PATH := "user://overworld_test.save"
+const PLACEHOLDER := "res://data/regions/act1_placeholder.json"
 
 var _runner: GdUnitSceneRunner
 
@@ -11,6 +14,9 @@ var _runner: GdUnitSceneRunner
 func before_test() -> void:
 	_runner = scene_runner(SCENE)
 	await _runner.simulate_frames(2)
+	_screen().region_file = PLACEHOLDER
+	assert_str(_screen().start_new_run()).is_empty()
+	await _runner.simulate_frames(1)
 
 
 func after_test() -> void:
@@ -21,11 +27,15 @@ func _screen() -> Node:
 	return _runner.scene()
 
 
-func test_scene_loads_the_act1_map() -> void:
+func test_a_region_file_override_replaces_the_act1_map() -> void:
 	var screen := _screen()
 	assert_object(screen.campaign).is_not_null()
+	assert_str(screen.campaign.map.id).is_equal("act1_placeholder")
 	assert_int(screen.campaign.map.regions.size()).is_equal(12)
 	assert_str(screen.map_view.selected_id).is_empty()
+	# A map with one start offers no choice.
+	screen.show_start_choice()
+	assert_bool(screen._modal.visible).is_false()
 
 
 func test_every_region_is_hit_at_its_own_label() -> void:
