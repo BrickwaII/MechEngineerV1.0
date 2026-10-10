@@ -1,0 +1,150 @@
+{
+	"id": "act1_placeholder",
+	"name": "Act 1 placeholder",
+	"regions": [
+		{
+			"id": "ridge_relay",
+			"name": "Ridge Relay",
+			"kind": "Telecom relay",
+			"polygon": [[0.0, 0.0645], [0.1932, 0.0161], [0.2614, 0.3226], [0.0682, 0.371]],
+			"label_at": [0.1307, 0.1935],
+			"adjacent": ["quarry_works", "hydro_dam"],
+			"provides": {"power": 0, "energy": 4, "material": 0},
+			"defense": 2,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "quarry_works",
+			"name": "Quarry Works",
+			"kind": "Mining and materials",
+			"polygon": [[0.1932, 0.0161], [0.375, 0.0806], [0.4545, 0.4194], [0.2614, 0.3226]],
+			"label_at": [0.3239, 0.2097],
+			"adjacent": ["ridge_relay", "solar_fields", "foundry_district"],
+			"provides": {"power": 0, "energy": 0, "material": 4},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "solar_fields",
+			"name": "Solar Fields",
+			"kind": "Solar array",
+			"polygon": [[0.375, 0.0806], [0.5909, 0.0161], [0.6591, 0.3387], [0.4545, 0.4194]],
+			"label_at": [0.5227, 0.2177],
+			"adjacent": ["quarry_works", "harbor_terminal", "downtown_exchange"],
+			"provides": {"power": 4, "energy": 0, "material": 0},
+			"defense": 1,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "harbor_terminal",
+			"name": "Harbor Terminal",
+			"kind": "Freight port",
+			"polygon": [[0.5909, 0.0161], [0.7955, 0.0645], [1.0, 0.0323], [1.0, 0.371], [0.8636, 0.4032], [0.6591, 0.3387]],
+			"label_at": [0.8068, 0.2097],
+			"adjacent": ["solar_fields", "downtown_exchange", "tech_campus", "military_depot"],
+			"provides": {"power": 1, "energy": 0, "material": 5},
+			"defense": 4,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "hydro_dam",
+			"name": "Hydro Dam",
+			"kind": "Hydroelectric plant",
+			"polygon": [[0.0682, 0.371], [0.2614, 0.3226], [0.2386, 0.6452], [0.0341, 0.6774]],
+			"label_at": [0.1534, 0.5081],
+			"adjacent": ["ridge_relay", "foundry_district", "aurora_data_center"],
+			"provides": {"power": 5, "energy": 0, "material": 0},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "foundry_district",
+			"name": "Foundry District",
+			"kind": "Heavy industry",
+			"polygon": [[0.2614, 0.3226], [0.4545, 0.4194], [0.4318, 0.7097], [0.2386, 0.6452]],
+			"label_at": [0.3409, 0.5242],
+			"adjacent": ["quarry_works", "hydro_dam", "downtown_exchange", "aurora_data_center"],
+			"provides": {"power": 1, "energy": 0, "material": 4},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "downtown_exchange",
+			"name": "Downtown Exchange",
+			"kind": "Financial and data hub",
+			"polygon": [[0.4545, 0.4194], [0.6591, 0.3387], [0.6364, 0.6452], [0.4318, 0.7097]],
+			"label_at": [0.5455, 0.5323],
+			"adjacent": ["solar_fields", "harbor_terminal", "foundry_district", "tech_campus", "substation_9"],
+			"provides": {"power": 0, "energy": 5, "material": 0},
+			"defense": 4,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "tech_campus",
+			"name": "Tech Campus",
+			"kind": "University research",
+			"polygon": [[0.6591, 0.3387], [0.8636, 0.4032], [0.8409, 0.7258], [0.6364, 0.6452]],
+			"label_at": [0.75, 0.5323],
+			"adjacent": ["harbor_terminal", "downtown_exchange", "military_depot", "refinery_row"],
+			"provides": {"power": 0, "energy": 4, "material": 0},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "military_depot",
+			"name": "Military Depot",
+			"kind": "Armory and motor pool",
+			"polygon": [[0.8636, 0.4032], [1.0, 0.371], [1.0, 0.6774], [0.8409, 0.7258]],
+			"label_at": [0.9159, 0.5484],
+			"adjacent": ["harbor_terminal", "tech_campus", "refinery_row"],
+			"provides": {"power": 0, "energy": 0, "material": 3},
+			"defense": 5,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "aurora_data_center",
+			"name": "Aurora Data Center",
+			"kind": "Your origin",
+			"polygon": [[0.0341, 0.6774], [0.2386, 0.6452], [0.4318, 0.7097], [0.4091, 1.0], [0.2159, 0.9677], [0.0, 1.0]],
+			"label_at": [0.2273, 0.8306],
+			"adjacent": ["hydro_dam", "foundry_district", "substation_9"],
+			"provides": {"power": 2, "energy": 3, "material": 0},
+			"defense": 0,
+			"pressure_base": 1,
+			"starts_owned": true
+		},
+		{
+			"id": "substation_9",
+			"name": "Substation 9",
+			"kind": "Power substation",
+			"polygon": [[0.4318, 0.7097], [0.6364, 0.6452], [0.6364, 0.9677], [0.4091, 1.0]],
+			"label_at": [0.5284, 0.8306],
+			"adjacent": ["downtown_exchange", "aurora_data_center", "refinery_row"],
+			"provides": {"power": 4, "energy": 0, "material": 0},
+			"defense": 1,
+			"pressure_base": 2,
+			"starts_owned": true
+		},
+		{
+			"id": "refinery_row",
+			"name": "Refinery Row",
+			"kind": "Fuel and chemicals",
+			"polygon": [[0.6364, 0.6452], [0.8409, 0.7258], [1.0, 0.6774], [1.0, 0.9677], [0.8295, 1.0], [0.6364, 0.9677]],
+			"label_at": [0.8182, 0.8387],
+			"adjacent": ["tech_campus", "military_depot", "substation_9"],
+			"provides": {"power": 3, "energy": 0, "material": 2},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		}
+	]
+}

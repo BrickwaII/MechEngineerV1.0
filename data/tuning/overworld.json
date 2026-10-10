@@ -1,0 +1,59 @@
+{
+	"time": {
+		"points_per_day": 4,
+		"total_points": 400,
+		"action_cost": {"attack": 3, "reinforce": 1, "wait": 1},
+		"bar_window_points": 48,
+		"bar_history_points": 8
+	},
+	"pressure": {
+		"rate_base": 0.6,
+		"rate_per_pressure_base": 0.6,
+		"border_multiplier": 1.5,
+		"start": 0.0,
+		"forces_defense_at": 100.0,
+		"reinforce_relief": 45.0,
+		"after_capture": 15.0,
+		"after_defense_victory": 30.0,
+		"uprising_defense_level": 2,
+		"cause_warning_at": 40.0,
+		"imminent_at": 75.0,
+		"ring_warning_at": 50.0,
+		"rate_words": [
+			{"below": 1.8, "word": "slowly"},
+			{"below": 2.8, "word": "steadily"},
+			{"below": 1000.0, "word": "quickly"}
+		]
+	},
+	"grid": {
+		"start": 100.0,
+		"max": 100.0,
+		"regen_divisor": 4.0,
+		"attack_base_cost": 4.0,
+		"attack_cost_per_defense": 2.0,
+		"defeat_multiplier": 1.5,
+		"reinforce_cost": 2.0
+	},
+	"resources": {
+		"start_energy": 0.0,
+		"start_material": 0.0
+	},
+	"odds": {
+		"squad_stat_points_per_level": 14,
+		"bands": [
+			{"min_margin": 1, "label": "Favored"},
+			{"min_margin": 0, "label": "Even"},
+			{"min_margin": -1, "label": "Risky"},
+			{"min_margin": -99, "label": "Outmatched"}
+		]
+	},
+	"defense_levels": [
+		{"label": "Undefended", "opposition": "No organized resistance."},
+		{"label": "Light", "opposition": "Scattered security bots."},
+		{"label": "Light", "opposition": "Patrol drones and a single turret."},
+		{"label": "Moderate", "opposition": "Armed responders backed by turrets."},
+		{"label": "Heavy", "opposition": "Heavy mechs in fortified positions."},
+		{"label": "Fortified", "opposition": "A full military garrison with armor."}
+	],
+	"event_log_length": 5
+}
