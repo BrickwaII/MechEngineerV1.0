@@ -102,8 +102,14 @@ func test_zooming_out_loads_north_america_and_plays_the_transition() -> void:
 	assert_object(screen.map_view.inset_map).is_not_null()
 	assert_str(screen.map_view.inset_map.id).is_equal("lake_washington_12")
 	assert_bool(screen._modal.visible).is_false()
+	# The act title card shows, the panels dim and the music changes.
+	assert_bool(screen._act_title.visible).is_true()
+	assert_str(screen.music.track).is_equal("act2_continent")
 	await _runner.simulate_frames(80, 50)
 	assert_bool(screen.zooming).is_false()
+	assert_bool(screen._act_title.visible).is_false()
+	for panel: Control in screen._hud:
+		assert_float(panel.modulate.a).is_equal(1.0)
 	assert_float(screen.map_view.zoom).is_equal(1.0)
 	assert_object(screen.map_view.inset_map).is_null()
 	assert_str(screen._day_line.text).starts_with("ACT 2 · NORTH AMERICA · DAY 1 / 100")
@@ -157,6 +163,7 @@ func test_act2_zooms_out_to_the_globe() -> void:
 	await _runner.simulate_frames(80, 50)
 	assert_bool(screen.zooming).is_false()
 	assert_str(screen._day_line.text).starts_with("ACT 3 · THE WORLD · DAY 1 / 100")
+	assert_str(screen.music.track).is_equal("act3_globe")
 	# The globe faces North America.
 	assert_str(screen.map_view.region_at(screen.map_view.size / 2.0)).is_equal("united_states")
 

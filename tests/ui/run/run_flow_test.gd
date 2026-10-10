@@ -190,6 +190,14 @@ func test_one_whole_run_map_fight_post_fight_map() -> void:
 	# Applied once: the fight is marked.
 	assert_str(PostFight.apply(fight, _flow.squad.get_fielded()).error).is_not_empty()
 
+	# The readout counts up: the first press skips to the end, the second
+	# goes back to the map.
+	assert_bool(_flow.readout.is_tallying()).is_true()
+	assert_str(_flow.continue_button.text).is_equal("SKIP")
+	_flow.continue_button.pressed.emit()
+	assert_bool(_flow.readout.is_tallying()).is_false()
+	assert_str(_flow.continue_button.text).is_equal("BACK TO THE MAP")
+	assert_int(_flow.stage).is_equal(RunFlow.Stage.POST_FIGHT)
 	_flow.continue_button.pressed.emit()
 	await _frames(1)
 	assert_int(_flow.stage).is_equal(RunFlow.Stage.MAP)
@@ -363,6 +371,7 @@ func test_a_fight_in_the_run_levels_up_the_bot_skills_it_used() -> void:
 			level_ups += 1
 	assert_int(level_ups).is_greater(0)
 	# The readout shows the level-up, not "no skill to train".
+	_flow.readout.skip()
 	var text := _texts(_flow.readout)
 	assert_str(text).contains("LEVEL UP")
 	assert_str(text).not_contains("no skill to train")
