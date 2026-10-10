@@ -16,7 +16,11 @@ extends Control
 ## Variants: F4 opens the variant switchboard (ui/dev/) over the game, and a
 ## corner label lists the active non-default choices. A new run reads the
 ## draft rule and the act maps from it; each fight reads the fight-side
-## choices when it starts (RunFightService).
+## choices when it starts (RunFightService). The campaign's choices
+## (CampaignVariants) are read from the same file: squad-size by the draft,
+## the other next-run ones when the map starts a run, grid-cost-owner when
+## each fight starts. Selecting a region on the map makes it the
+## auto-expansion focus.
 
 const DRAFT_SCENE := preload("res://ui/draft/draft_screen.tscn")
 const OVERWORLD_SCENE := preload("res://ui/overworld/overworld.tscn")
@@ -87,7 +91,16 @@ func _ready() -> void:
 	_variant_layer.add_child(variant_label)
 	variant_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, int(LABEL_MARGIN))
 	variant_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	get_tree().node_added.connect(_on_node_added)
 	new_run()
+
+
+func _exit_tree() -> void:
+	# The campaign layer reads choices from this path; stop pointing it here.
+	if CampaignVariants.user_path == variants_path:
+		CampaignVariants.user_path = ""
+	if get_tree().node_added.is_connected(_on_node_added):
+		get_tree().node_added.disconnect(_on_node_added)
 
 
 func _input(event: InputEvent) -> void:
@@ -119,6 +132,7 @@ func new_run() -> void:
 	squad = null
 	ledger = null
 	current_seed = run_seed if run_seed != NO_SEED else randi()
+	CampaignVariants.user_path = variants_path
 	run_board = Switchboard.load_board(variants_path)
 	variant_label.show_board(run_board)
 	draft_screen = DRAFT_SCENE.instantiate()
@@ -191,12 +205,16 @@ func load_run(path := save_path) -> bool:
 
 
 ## Bot tuning for this run's draft: data/bot_data/ with the switchboard's
-## draft rule.
+## draft rule and squad size.
 func run_bot_tuning() -> BotTuning:
 	var tuning := BotTuning.load_default()
 	var rule := run_board.draft_rule() if run_board != null else ""
 	if rule in BotTuning.DRAFT_RULES:
 		tuning.draft_rule = rule
+	var sizes := CampaignVariants.load_active(variants_path).squad_sizes()
+	if not sizes.is_empty():
+		tuning.draft_size = sizes.draft_size
+		tuning.squad_size = sizes.squad_size
 	return tuning
 
 
@@ -245,10 +263,23 @@ func _hand_services_to(screen: Control) -> void:
 	fight_service = RunFightService.new(inner, squad, ledger)
 	var path := variants_path
 	fight_service.variants_source = func() -> FightVariants: return FightVariants.load_active(path)
+	fight_service.campaign_variants_source = func() -> CampaignVariants: return CampaignVariants.load_active(path)
 	fight_service.fight_reported.connect(_on_fight_reported)
 	fight_service.finished.connect(_on_fight_finished)
 	screen.squad_provider = BotSquadProvider.new(squad)
 	screen.fight_service = fight_service
+
+
+## A map view joining the tree (the overworld's, flat or globe): selecting a
+## region on it makes that region the campaign's expansion focus.
+func _on_node_added(node: Node) -> void:
+	if node.has_signal("region_selected") and overworld != null and overworld.is_ancestor_of(node):
+		node.connect("region_selected", _on_region_selected)
+
+
+func _on_region_selected(region_id: String) -> void:
+	if overworld != null and overworld.campaign != null:
+		overworld.campaign.set_focus(region_id)
 
 
 func _on_screen_opened(screen: BattleScreen) -> void:
