@@ -11,6 +11,7 @@ var _flow: RunFlow
 
 func after_test() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(USER_FILE))
+	CampaignVariants.user_path = ""
 
 
 func _save(choices: Dictionary) -> void:
@@ -76,3 +77,43 @@ func test_fights_read_the_variants_file() -> void:
 	await _open()
 	_flow.start_map(BotFactory.new(BotTuning.load_default()).build_squad(13), SkillUseLedger.new())
 	assert_str(_flow.fight_service.variants_source.call().option("d-wait")).is_equal("extra_energy")
+
+
+func test_a_new_run_drafts_with_the_switchboard_squad_size() -> void:
+	_save({"squad-size": "draft6_field4"})
+	await _open()
+	assert_int(_flow.draft_screen.bot_tuning.draft_size).is_equal(6)
+	assert_int(_flow.draft_screen.bot_tuning.squad_size).is_equal(4)
+
+
+func test_the_map_reads_the_campaign_choices_from_the_same_file() -> void:
+	_save({"auto-expansion": "simple", "energy-grid": "shared_pool"})
+	await _open()
+	_flow.start_map(BotFactory.new(BotTuning.load_default()).build_squad(13), SkillUseLedger.new())
+	var c: Campaign = _flow.overworld.campaign
+	assert_str(c.state.variants["auto-expansion"]).is_equal("simple")
+	assert_float(c.state.energy).is_equal(0.0)
+
+
+func test_the_fight_service_charges_a_lost_attack_when_it_owns_the_cost() -> void:
+	_save({"grid-cost-owner": "fight_service"})
+	await _open()
+	_flow.start_map(BotFactory.new(BotTuning.load_default()).build_squad(13), SkillUseLedger.new())
+	var v: CampaignVariants = _flow.fight_service.campaign_variants_source.call()
+	assert_str(v.option("grid-cost-owner")).is_equal("fight_service")
+
+
+func test_selecting_a_region_makes_it_the_expansion_focus() -> void:
+	await _open()
+	_flow.start_map(BotFactory.new(BotTuning.load_default()).build_squad(13), SkillUseLedger.new())
+	var c: Campaign = _flow.overworld.campaign
+	var region_id: String = c.map.ids()[0]
+	_flow.overworld.map_view.region_selected.emit(region_id)
+	assert_str(c.state.focus_id).is_equal(region_id)
+
+
+func test_leaving_the_run_stops_the_campaign_reading_its_file() -> void:
+	await _open()
+	assert_str(CampaignVariants.user_path).is_equal(USER_FILE)
+	_flow.get_parent().remove_child(_flow)
+	assert_str(CampaignVariants.user_path).is_empty()

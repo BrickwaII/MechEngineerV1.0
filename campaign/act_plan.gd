@@ -18,7 +18,9 @@ extends RefCounted
 ## a globe (North America sits in the United States). Each act's tuning file
 ## sets its pacing: countdown, action time costs and pressure.
 ## TODO(decision: act-pacing): every act has the same countdown and costs for
-## now, and pressure scales with region count; see data/tuning/act*.json.
+## now, and pressure scales with region count; see data/tuning/act*.json. The
+## switchboard's act-pacing presets override them per act (ActPacing, applied
+## by Campaign).
 ## TODO(decision: map-variants): the defaults (Lake Washington 12, North
 ## America 33, the world 20) are a first pick; the user is trying the others.
 ## TODO(decision: zoom-carryover): what carries across the zoom (all stock, a
@@ -167,6 +169,8 @@ func zoom_state(from: RunState, next_map: RegionMap, next_tuning: MapTuning) -> 
 	s.time_points = 0
 	for key in MapRegion.RESOURCE_KEYS:
 		s.income_bonus[key] = from.income_bonus.get(key, 0) if keep_income_bonus else 0
+	# The run's variant choices hold for every act; expansion starts afresh.
+	s.variants = from.variants.duplicate()
 	return s
 
 

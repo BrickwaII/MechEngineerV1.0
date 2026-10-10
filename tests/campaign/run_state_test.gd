@@ -91,3 +91,21 @@ func test_the_act_and_start_traits_round_trip() -> void:
 	state.pressure_rate_factor["washington"] = 0.5
 	assert_int(state.save_file(SAVE_PATH)).is_equal(OK)
 	assert_dict(RunState.load_file(SAVE_PATH).to_dict()).is_equal(state.to_dict())
+
+
+func test_a_save_from_before_variants_loads_with_every_default() -> void:
+	var d := _campaign().state.to_dict()
+	for key in ["variants", "expansion", "focus_id"]:
+		d.erase(key)
+	var loaded := RunState.from_dict(d)
+	assert_object(loaded).is_not_null()
+	assert_dict(loaded.variants).is_empty()
+	assert_dict(loaded.expansion).is_empty()
+	assert_str(loaded.focus_id).is_empty()
+	var c := _campaign(loaded)
+	assert_dict(c.variants.non_default()).is_empty()
+
+
+func test_a_new_run_keeps_its_variant_choices() -> void:
+	var c := _campaign()
+	assert_dict(c.state.variants).is_equal(CampaignVariants.defaults().run_choices())
