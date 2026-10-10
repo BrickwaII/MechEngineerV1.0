@@ -6,6 +6,10 @@
 	"starting_generation": 1,
 	"starting_skill_count": 2,
 	"starting_skill_level": 1,
+	"_draft_rule_comment": "How a drafted bot's starting skills are picked. random: all at random from skills.json. damage_guarantee: as random, but a bot that drew no damage skill swaps its last skill for a random damage skill. TODO(decision: draft-rule).",
+	"draft_rule": "damage_guarantee",
+	"_damage_effect_ids_comment": "Skill effect ids that count as damage for damage_guarantee.",
+	"damage_effect_ids": ["damage_single", "damage_single_heavy", "damage_all"],
 	"personality_start_range": [-0.6, 0.6],
 	"stat_ranges": {
 		"hp": [20, 45],
