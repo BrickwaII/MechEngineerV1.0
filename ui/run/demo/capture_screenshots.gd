@@ -70,6 +70,135 @@ func _first_hostile(screen: Control, other := "") -> String:
 	return ""
 
 
+# --- Capture frame strip -----------------------------------------------------------
+
+func _shot_capture() -> void:
+	var screen: Control = load(OVERWORLD).instantiate()
+	screen.start_picker = func(options: Array) -> String: return options[0].id
+	root.add_child(screen)
+	await _settle(6)
+	var target := "north_seattle"
+	screen.map_view.select(target)
+	await _settle(4)
+	screen._on_attack(target)
+	await _wait_until(func() -> bool: return screen._modal.visible)
+	await _settle(4)
+	var view: Control = screen.map_view
+	var at: Vector2 = view.label_position(target) + view.global_position
+	var crop := Rect2i(Rect2(at - Vector2(170, 150), Vector2(340, 300)))
+	var frames: Array[Image] = []
+	frames.append(await _grab(crop))
+	var close: Button = screen._modal_buttons.get_child(0)
+	close.pressed.emit()
+	var start := Time.get_ticks_msec()
+	for ms: int in [40, 140, 260, 400, 560, 760, 1000]:
+		while Time.get_ticks_msec() - start < ms:
+			await process_frame
+		frames.append(await _grab(crop))
+	await _save_strip("capture_frame_strip", frames)
+	await _settle(30)
+	await _save("capture_after")
+	screen.queue_free()
+
+
+# --- Act zoom frame strip ----------------------------------------------------------
+
+func _shot_zoom() -> void:
+	var screen: Control = load(OVERWORLD).instantiate()
+	screen.start_picker = func(options: Array) -> String: return options[0].id
+	root.add_child(screen)
+	await _settle(6)
+	for act in 2:
+		screen.campaign.state.time_points = screen.campaign.tuning.total_points - 1
+		screen._on_wait()
+		await _settle(2)
+		var frames: Array[Image] = []
+		screen.zoom_out()
+		var start := Time.get_ticks_msec()
+		for ms: int in [0, 250, 500, 750, 1000, 1300, 1700, 2100]:
+			while Time.get_ticks_msec() - start < ms:
+				await process_frame
+			var frame := await _grab()
+			frame.resize(frame.get_width() / 2, frame.get_height() / 2, Image.INTERPOLATE_BILINEAR)
+			frames.append(frame)
+		await _wait_until(func() -> bool: return not screen.zooming)
+		await _save_strip("act_zoom_%d_to_%d_frame_strip" % [act + 1, act + 2], frames)
+		await _settle(20)
+	screen.queue_free()
+
+
+# --- Draft -------------------------------------------------------------------------
+
+func _shot_draft() -> void:
+	var draft: DraftScreen = load("res://ui/draft/draft_screen.tscn").instantiate()
+	draft.draft_seed = 5
+	root.add_child(draft)
+	await _settle(2)
+	var frames: Array[Image] = []
+	var start := Time.get_ticks_msec()
+	for ms: int in [0, 120, 240, 360, 480, 700]:
+		while Time.get_ticks_msec() - start < ms:
+			await process_frame
+		var frame := await _grab()
+		frame.resize(frame.get_width() / 2, frame.get_height() / 2, Image.INTERPOLATE_BILINEAR)
+		frames.append(frame)
+	await _save_strip("draft_flip_in_frame_strip", frames, 3)
+	var bots := draft.picker.bots()
+	draft.cards[bots[1].id].pressed.emit()
+	draft.cards[bots[3].id].pressed.emit()
+	await _settle(40)
+	draft.cards[bots[2].id].mouse_entered.emit()
+	await _settle(20)
+	await _save("draft_with_sprites")
+	draft.queue_free()
+
+
+# --- Post-fight count-up -----------------------------------------------------------
+
+func _shot_readout() -> void:
+	var demo: Control = load("res://ui/post_fight/post_fight_demo.tscn").instantiate()
+	root.add_child(demo)
+	var frames: Array[Image] = []
+	var start := Time.get_ticks_msec()
+	var total: float = demo.readout.tally.total_seconds() * 1000.0
+	for i in 12:
+		var ms := int(total * i / 11.0)
+		while Time.get_ticks_msec() - start < ms:
+			await process_frame
+		var frame := await _grab()
+		frame.resize(frame.get_width() / 2, frame.get_height() / 2, Image.INTERPOLATE_BILINEAR)
+		frames.append(frame)
+	await _save_strip("readout_count_up_frame_strip", frames)
+	await _settle(30)
+	await _save("readout_final")
+	demo.queue_free()
+
+
+# --- Transition --------------------------------------------------------------------
+
+func _shot_transition() -> void:
+	var flow: RunFlow = load("res://ui/run/run_flow.tscn").instantiate()
+	flow.run_seed = 5
+	flow.auto_fights = true
+	root.add_child(flow)
+	await _settle(30)
+	var bots := flow.draft_screen.picker.bots()
+	for i in flow.draft_screen.picker.squad_size():
+		flow.draft_screen.cards[bots[i].id].pressed.emit()
+	await _settle(30)
+	var frames: Array[Image] = []
+	flow.draft_screen.start_button.pressed.emit()
+	var start := Time.get_ticks_msec()
+	for ms: int in [0, 60, 120, 180, 240, 320]:
+		while Time.get_ticks_msec() - start < ms:
+			await process_frame
+		var frame := await _grab()
+		frame.resize(frame.get_width() / 2, frame.get_height() / 2, Image.INTERPOLATE_BILINEAR)
+		frames.append(frame)
+	await _save_strip("transition_draft_to_map_frame_strip", frames, 3)
+	flow.queue_free()
+
+
 # --- Helpers -----------------------------------------------------------------------
 
 func _wait_until(done: Callable) -> void:

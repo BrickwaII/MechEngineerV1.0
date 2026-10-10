@@ -242,8 +242,9 @@ func _draw_regions(border: float) -> void:
 		if lit > 0.0:
 			fill = fill.lightened(hover_lighten * lit)
 		var capturing := fx.is_capturing(region.id)
+		var hostile := capturing or fx.is_held(region.id)
 		for points: PackedVector2Array in polygons[region.id]:
-			_fill(points, Palette.region_fill(Campaign.Standing.IN_RANGE, false) if capturing else fill)
+			_fill(points, Palette.region_fill(Campaign.Standing.IN_RANGE, region.id == selected_id).lightened(hover_lighten * lit) if hostile else fill)
 			if capturing:
 				_draw_capture_fill(region, points, fill)
 			_outline(points, Palette.MAP_BACKGROUND, border)

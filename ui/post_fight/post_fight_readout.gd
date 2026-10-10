@@ -219,6 +219,7 @@ func _reveal(started: Array[int]) -> void:
 			"level_up":
 				_level_up(i)
 			"shift":
+				_slide_in(_step_rows[i])
 				SoundPlayer.fire(&"personality_shift")
 	if ticked:
 		SoundPlayer.fire(&"tally_tick")
@@ -398,14 +399,14 @@ static func skill_row_left(c: SkillChange) -> String:
 	return "%s ×%d" % [c.skill_name if c.has_bot_skill() else c.combat_skill_id.capitalize(), c.uses]
 
 
-## "Lv 1 · 3/5 to Lv 2", "LEVEL UP  1 → 2 · 1/5", "Lv 10 · max", or, for the
+## "Lv 1 · 3/5 to Lv 2", "LEVEL UP  1 > 2 · 1/5", "Lv 10 · max", or, for the
 ## basic attack a bot keeps without holding it as a skill, "basic attack".
 static func skill_row_right(c: SkillChange) -> String:
 	if not c.has_bot_skill():
 		return "basic attack"
 	var progress := "max" if c.is_max_level() else "%d/%d to Lv %d" % [c.banked_after, c.uses_per_level, c.level_after + 1]
 	if c.levels_gained() > 0:
-		return "LEVEL UP  %d → %d · %s" % [c.level_before, c.level_after, progress]
+		return "LEVEL UP  %d > %d · %s" % [c.level_before, c.level_after, progress]
 	return "Lv %d · %s" % [c.level_after, progress]
 
 

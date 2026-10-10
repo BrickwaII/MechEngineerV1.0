@@ -52,3 +52,57 @@ func test_start_does_nothing_until_the_squad_is_full() -> void:
 	_screen.cards[_screen.picker.bots()[0].id].pressed.emit()
 	_screen.start()
 	assert_array(chosen).is_empty()
+
+
+func test_each_card_shows_its_bot_sprite_from_the_manifest() -> void:
+	for bot in _screen.picker.bots():
+		var card := _screen.cards[bot.id] as DraftCard
+		assert_object(card.sprite).is_not_null()
+		assert_str(card.sprite.unit_id).is_equal(DraftCard.ALLY_UNIT)
+		assert_dict(card.sprite.look).is_equal(SpriteManifest.ally_look(DraftCard.ALLY_UNIT, DraftCard.look_seed(bot.id)))
+	# The same bot always gets the same look.
+	assert_int(DraftCard.look_seed("bot_1")).is_equal(DraftCard.look_seed("bot_1"))
+
+
+func test_cards_flip_in_one_after_another() -> void:
+	var screen: DraftScreen = auto_free(SCENE.instantiate())
+	add_child(screen)
+	await await_idle_frame()
+	var cards := screen.picker.bots().map(func(b: Bot) -> DraftCard: return screen.cards[b.id])
+	assert_float(cards[0].face.scale.x).is_less(1.0)
+	await await_millis(int(ScreenFeel.number("draft.flip_ms") + ScreenFeel.number("draft.flip_stagger_ms") * cards.size()) + 200)
+	for card: DraftCard in cards:
+		assert_float(card.face.scale.x).is_equal_approx(1.0, 1e-3)
+	screen.get_parent().remove_child(screen)
+
+
+func test_a_hovered_card_lifts_and_settles_when_left() -> void:
+	var card := _screen.cards[_screen.picker.bots()[0].id] as DraftCard
+	card.mouse_entered.emit()
+	await await_millis(int(ScreenFeel.number("draft.lift_ms")) + 80)
+	assert_float(card.lift()).is_equal_approx(ScreenFeel.number("draft.lift_px"), 0.01)
+	assert_float(card.face.position.y).is_equal_approx(-ScreenFeel.number("draft.lift_px"), 0.01)
+	card.mouse_exited.emit()
+	await await_millis(int(ScreenFeel.number("draft.lift_ms")) + 80)
+	assert_float(card.lift()).is_equal(0.0)
+
+
+func test_picked_bots_fill_the_squad_bar_in_pick_order() -> void:
+	var bots := _screen.picker.bots()
+	assert_int(_screen.slots.size()).is_equal(_screen.picker.squad_size())
+	_screen.cards[bots[2].id].pressed.emit()
+	_screen.cards[bots[0].id].pressed.emit()
+	var expected: Array[String] = [bots[2].id, bots[0].id]
+	while expected.size() < _screen.slots.size():
+		expected.append("")
+	assert_array(_screen.slot_bot_ids()).is_equal(expected)
+	assert_str((_screen.cards[bots[0].id] as DraftCard).badge.text).is_equal("2")
+	# A sprite flies into the slot and lands.
+	await await_millis(int(ScreenFeel.number("draft.snap_ms")) + 300)
+	var landed := _screen.slots[1].get_children().filter(func(c: Node) -> bool: return c is UnitSprite)
+	assert_int(landed.size()).is_equal(1)
+	assert_bool(landed[0].visible).is_true()
+	# Dropping the first pick slides the second into slot 1.
+	_screen.cards[bots[2].id].pressed.emit()
+	assert_str(_screen.slot_bot_ids()[0]).is_equal(bots[0].id)
+	assert_str(_screen.slot_bot_ids()[1]).is_empty()

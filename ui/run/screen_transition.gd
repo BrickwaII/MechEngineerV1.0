@@ -35,7 +35,7 @@ func cover() -> bool:
 	var s := settings if settings else GameSettings.shared()
 	var duration := ScreenFeel.seconds("transition.uncover_ms", s)
 	# Nothing to wipe before the first frame is drawn.
-	if duration <= 0.0 or not is_inside_tree() or Engine.get_frames_drawn() == 0:
+	if duration <= 0.0 or not is_inside_tree() or Engine.get_process_frames() == 0:
 		return false
 	_clear()
 	var view_size := get_viewport().get_visible_rect().size

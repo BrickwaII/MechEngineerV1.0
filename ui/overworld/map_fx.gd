@@ -22,6 +22,8 @@ var _hover := {}
 var _select_age := -1.0
 ## Region id -> seconds since its capture started.
 var _captures := {}
+## Region ids captured but not yet shown.
+var _held := {}
 ## Region id -> the pressure its ring shows.
 var _ring := {}
 ## Region id -> [from, to, elapsed] while the ring slides to a new value.
@@ -55,7 +57,18 @@ func select_pop_px() -> float:
 	return ScreenFeel.number("map.select_pop_px") * (1.0 - _select_age / duration)
 
 
+## Keeps showing a just-captured region as hostile until its capture plays
+## (the map was out of sight or under a message when it changed hands).
+func hold_capture(region_id: String) -> void:
+	_held[region_id] = true
+
+
+func is_held(region_id: String) -> bool:
+	return _held.has(region_id)
+
+
 func start_capture(region_id: String) -> void:
+	_held.erase(region_id)
 	if ScreenFeel.seconds("map.capture_ms", _s()) <= 0.0:
 		return
 	_captures[region_id] = 0.0
@@ -130,6 +143,7 @@ func reset() -> void:
 	_hover.clear()
 	_select_age = -1.0
 	_captures.clear()
+	_held.clear()
 	_ring.clear()
 	_ring_moves.clear()
 

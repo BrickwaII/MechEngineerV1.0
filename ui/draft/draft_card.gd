@@ -154,8 +154,7 @@ func _build() -> void:
 	for skill in bot.skills:
 		skill_names.append(skill.display_name)
 	DraftScreen._label(col, "SKILLS", 10, Palette.TEXT_DIM)
-	var skills_label := DraftScreen._label(col, "\n".join(skill_names), 10, Palette.TEXT)
-	skills_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	DraftScreen._label(col, "\n".join(skill_names), 10, Palette.TEXT)
 
 
 ## Picked cards get the ally border and a raised panel; the rest a plain one.

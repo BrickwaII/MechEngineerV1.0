@@ -1,7 +1,7 @@
 class_name ScreenTheme
 extends RefCounted
 ## P1's PixelTheme for the map, draft, readout and run screens, with one
-## addition: glyphs the pixel font lacks (·, ×, →) fall back to Godot's
+## addition: glyphs the pixel font lacks (· and ×) fall back to Godot's
 ## default font instead of drawing as boxes.
 ##
 ## The pixel font stays crisp only at whole steps of its 10 px, so size()

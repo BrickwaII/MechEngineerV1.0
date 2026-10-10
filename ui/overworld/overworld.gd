@@ -279,6 +279,8 @@ func _note_changes() -> void:
 		_unshown = changes
 	else:
 		_unshown.merge(changes)
+	for id in _unshown.captured:
+		map_view.fx.hold_capture(id)
 
 
 ## Plays the held changes: captured regions sweep to the owned color, the grid

@@ -81,8 +81,8 @@ func test_a_skill_row_shows_uses_and_progress_to_the_next_level() -> void:
 
 
 func test_a_level_up_row_shows_the_new_level_and_progress() -> void:
-	assert_str(Readout.skill_row_right(_change("Brace", 6, 1, 2, 1))).is_equal("LEVEL UP  1 → 2 · 1/5 to Lv 3")
-	assert_str(Readout.skill_row_right(_change("Brace", 6, 9, 10, 1))).is_equal("LEVEL UP  9 → 10 · max")
+	assert_str(Readout.skill_row_right(_change("Brace", 6, 1, 2, 1))).is_equal("LEVEL UP  1 > 2 · 1/5 to Lv 3")
+	assert_str(Readout.skill_row_right(_change("Brace", 6, 9, 10, 1))).is_equal("LEVEL UP  9 > 10 · max")
 
 
 func test_the_basic_attack_is_not_a_skill_to_train() -> void:
@@ -91,3 +91,38 @@ func test_the_basic_attack_is_not_a_skill_to_train() -> void:
 	c.uses = 4
 	assert_str(Readout.skill_row_left(c)).is_equal("Strike ×4")
 	assert_str(Readout.skill_row_right(c)).is_equal("basic attack")
+
+
+func test_the_readout_counts_up_then_shows_the_final_numbers() -> void:
+	var runner := scene_runner(DEMO)
+	await runner.simulate_frames(1)
+	var demo := runner.scene()
+	var readout: Control = demo.readout
+	assert_bool(readout.is_tallying()).is_true()
+	var r: BotFightReport = demo.report.bots[0]
+	var count: int = r.label_counts[ActionTag.HIT_ENEMY]
+	var row: Control = readout.bot_panel(r.bot_id).find_child("Count_%s" % ActionTag.HIT_ENEMY, true, false)
+	# Rows start hidden at zero.
+	assert_str(row.get_child(1).text).is_equal("0")
+	var finished := [false]
+	readout.tally_finished.connect(func() -> void: finished[0] = true)
+	var guard := 0
+	while readout.is_tallying() and guard < 600:
+		await runner.simulate_frames(1, 16)
+		guard += 1
+	assert_bool(finished[0]).is_true()
+	assert_str(row.get_child(1).text).is_equal(str(count))
+	assert_float(row.modulate.a).is_equal(1.0)
+
+
+func test_a_click_skips_to_the_end() -> void:
+	var runner := scene_runner(DEMO)
+	await runner.simulate_frames(1)
+	var readout: Control = runner.scene().readout
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	readout._gui_input(click)
+	assert_bool(readout.is_tallying()).is_false()
+	var texts := "\n".join(_texts(readout))
+	assert_str(texts).contains("LEVEL UP")
