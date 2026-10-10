@@ -9,6 +9,8 @@ extends Control
 ##   click a skill button  select skill
 ##   left-click an enemy   select target (resolves the action)
 ##   Wait button           wait (for the selected skill, else the next one)
+##   Wait ticks box        only with the d-wait-length "exact" variant: wait
+##                         exactly this many ticks (0 waits until affordable)
 ##   Cancel / right-click  cancel
 ##   point at an enemy     preview the selected skill on it (changes nothing)
 ##
@@ -39,6 +41,8 @@ var timeline_bar: TimelineBar
 var unit_panels: Dictionary[String, UnitPanel] = {}
 var skill_buttons: Dictionary[String, Button] = {}
 var wait_button: Button
+## Exact wait length; shown only when the d-wait-length variant is "exact".
+var wait_ticks_box: SpinBox
 var cancel_button: Button
 var prompt_label: Label
 var message_label: Label
@@ -136,7 +140,12 @@ func on_skill_pressed(skill_id: String) -> void:
 
 
 func on_wait_pressed() -> void:
-	send(FightCommand.wait())
+	send(FightCommand.wait("", exact_wait_ticks()))
+
+
+## The exact wait the ticks box asks for, or 0 to wait until affordable.
+func exact_wait_ticks() -> int:
+	return int(wait_ticks_box.value) if wait_ticks_box.visible else 0
 
 
 func on_cancel_pressed() -> void:
@@ -230,8 +239,12 @@ func _refresh_commands() -> void:
 		button.button_pressed = skill_id == handler.selected_skill_id
 		button.tooltip_text = handler.skill_problem(skill_id) if has_it else ""
 	var wait_skill := handler.default_wait_skill() if can_act else ""
-	wait_button.disabled = wait_skill.is_empty()
-	wait_button.text = "WAIT" if wait_skill.is_empty() else "WAIT for %s" % handler.actor().skill(wait_skill).display_name
+	var ticks := exact_wait_ticks()
+	wait_button.disabled = wait_skill.is_empty() and (ticks == 0 or not can_act)
+	if ticks > 0:
+		wait_button.text = "WAIT %d ticks" % ticks
+	else:
+		wait_button.text = "WAIT" if wait_skill.is_empty() else "WAIT for %s" % handler.actor().skill(wait_skill).display_name
 	cancel_button.disabled = not can_act or not handler.is_choosing_target()
 
 
@@ -363,6 +376,16 @@ func _build_layout() -> void:
 	wait_button = _button(buttons, "WAIT")
 	wait_button.name = "WaitButton"
 	wait_button.pressed.connect(on_wait_pressed)
+	wait_ticks_box = SpinBox.new()
+	wait_ticks_box.name = "WaitTicksBox"
+	wait_ticks_box.min_value = 0
+	wait_ticks_box.max_value = maxi(1, WaitRules.max_wait_ticks(fight.tuning))
+	wait_ticks_box.rounded = true
+	wait_ticks_box.prefix = "ticks"
+	wait_ticks_box.tooltip_text = "Exact wait length (d-wait-length variant). 0 waits until the skill is affordable."
+	wait_ticks_box.visible = WaitRules.exact_waits_allowed(fight.tuning)
+	wait_ticks_box.value_changed.connect(func(_v: float) -> void: _refresh_commands())
+	buttons.add_child(wait_ticks_box)
 	cancel_button = _button(buttons, "CANCEL")
 	cancel_button.name = "CancelButton"
 	cancel_button.pressed.connect(on_cancel_pressed)

@@ -1,7 +1,14 @@
 # ui/dev/
 
 Developer screens. Start at `res://ui/dev/dev_menu.tscn`, or run one directly.
-The dev menu also picks a map variant per act and plays a run on them.
+The dev menu also plays a run on the switchboard's choices.
+
+- `switchboard_screen.tscn` (`SwitchboardScreen`, model `Switchboard`): the
+  variant switchboard, one picker per open decision in
+  `data/variants/variants.json`, the per-act map variants and the draft rule
+  included. Choices save at once to `user://variants.json`. F4 in a run opens
+  it over the game; `VariantLabel` lists active non-default choices in the
+  bottom-left corner during play.
 
 
 - `bot_builder.tscn`: create or edit a bot's or enemy's stats and skills and

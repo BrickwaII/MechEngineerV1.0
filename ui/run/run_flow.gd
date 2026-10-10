@@ -12,6 +12,11 @@ extends Control
 ##
 ## Save and load go through RunSave, so a save holds the bots as well as the
 ## map. F3 on the battle screen shows the debug overlay (hidden by default).
+##
+## Variants: F4 opens the variant switchboard (ui/dev/) over the game, and a
+## corner label lists the active non-default choices. A new run reads the
+## draft rule and the act maps from it; each fight reads the fight-side
+## choices when it starts (RunFightService).
 
 const DRAFT_SCENE := preload("res://ui/draft/draft_screen.tscn")
 const OVERWORLD_SCENE := preload("res://ui/overworld/overworld.tscn")
@@ -21,6 +26,9 @@ const SAVE_PATH := "user://run.res"
 const NO_SEED := -1
 const CONTINUE_SIZE := Vector2(220, 48)
 const SCREEN_MARGIN := 24.0
+const LABEL_MARGIN := 6.0
+## Above every screen of the run, so the label and F4 screen always show.
+const VARIANT_LAYER := 50
 
 enum Stage { DRAFT, MAP, FIGHT, POST_FIGHT }
 
@@ -36,6 +44,8 @@ signal stage_changed(stage: Stage)
 ## Dev option: the map variant for each act, by act index ("" for the act's
 ## default). The dev menu sets it; see data/tuning/acts.json for the ids.
 @export var map_variants: PackedStringArray = []
+## The player's variant choices; tests point it elsewhere.
+var variants_path := FightVariants.USER_PATH
 ## Battle screen tuning; null means data/ui/fight_screen.json.
 var fight_screen_tuning: FightScreenTuning
 ## Set on the overworld when it is made, as its own exports: tests use them.
@@ -58,11 +68,49 @@ var debug_overlay: DebugOverlay
 ## The post-fight readout while it shows, or null.
 var readout: Control
 var continue_button: Button
+## The switchboard as it stood when this run began: its draft rule and act
+## maps hold for the whole run.
+var run_board: Switchboard
+## The F4 switchboard while it shows, or null.
+var switchboard_screen: SwitchboardScreen
+var variant_label: VariantLabel
+var _variant_layer: CanvasLayer
 
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	_variant_layer = CanvasLayer.new()
+	_variant_layer.name = "VariantLayer"
+	_variant_layer.layer = VARIANT_LAYER
+	add_child(_variant_layer)
+	variant_label = VariantLabel.new()
+	_variant_layer.add_child(variant_label)
+	variant_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, int(LABEL_MARGIN))
+	variant_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	new_run()
+
+
+func _input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if key != null and key.pressed and not key.echo and key.keycode == KEY_F4:
+		toggle_switchboard()
+		get_viewport().set_input_as_handled()
+
+
+## Shows or hides the variant switchboard over the game.
+func toggle_switchboard() -> void:
+	if switchboard_screen != null:
+		_free(switchboard_screen)
+		switchboard_screen = null
+		return
+	switchboard_screen = SwitchboardScreen.new()
+	switchboard_screen.name = "SwitchboardScreen"
+	switchboard_screen.board = Switchboard.load_board(variants_path)
+	switchboard_screen.closable = true
+	switchboard_screen.changed.connect(func() -> void: variant_label.show_board(switchboard_screen.board))
+	switchboard_screen.closed.connect(toggle_switchboard)
+	_variant_layer.add_child(switchboard_screen)
+	_variant_layer.move_child(variant_label, -1)
 
 
 ## Drops the run in progress and opens the draft for a new one.
@@ -71,8 +119,11 @@ func new_run() -> void:
 	squad = null
 	ledger = null
 	current_seed = run_seed if run_seed != NO_SEED else randi()
+	run_board = Switchboard.load_board(variants_path)
+	variant_label.show_board(run_board)
 	draft_screen = DRAFT_SCENE.instantiate()
 	draft_screen.draft_seed = current_seed
+	draft_screen.bot_tuning = run_bot_tuning()
 	draft_screen.squad_chosen.connect(_on_squad_chosen)
 	add_child(draft_screen)
 	draft_screen.start_button.text = "DEPLOY SQUAD"
@@ -139,6 +190,24 @@ func load_run(path := save_path) -> bool:
 	return true
 
 
+## Bot tuning for this run's draft: data/bot_data/ with the switchboard's
+## draft rule.
+func run_bot_tuning() -> BotTuning:
+	var tuning := BotTuning.load_default()
+	var rule := run_board.draft_rule() if run_board != null else ""
+	if rule in BotTuning.DRAFT_RULES:
+		tuning.draft_rule = rule
+	return tuning
+
+
+## The map variant per act this run plays: map_variants when set (the dev
+## menu, tests), else the switchboard's act maps.
+func run_map_variants() -> PackedStringArray:
+	if not map_variants.is_empty() or run_board == null:
+		return map_variants
+	return run_board.act_map_variants()
+
+
 ## The start this run's seed gives, one of `options`.
 func seeded_start(options: Array) -> String:
 	return options[posmod(current_seed, options.size())].id
@@ -152,7 +221,7 @@ func _open_overworld() -> void:
 	overworld = OVERWORLD_SCENE.instantiate()
 	if not region_file.is_empty():
 		overworld.region_file = region_file
-	overworld.act_variants = map_variants
+	overworld.act_variants = run_map_variants()
 	_hand_services_to(overworld)
 	overworld.save_action = func() -> void: save_run()
 	overworld.load_action = func() -> void: load_run()
@@ -173,6 +242,8 @@ func _hand_services_to(screen: Control) -> void:
 		scene_service.screen_opened.connect(_on_screen_opened)
 		inner = scene_service
 	fight_service = RunFightService.new(inner, squad, ledger)
+	var path := variants_path
+	fight_service.variants_source = func() -> FightVariants: return FightVariants.load_active(path)
 	fight_service.fight_reported.connect(_on_fight_reported)
 	fight_service.finished.connect(_on_fight_finished)
 	screen.squad_provider = BotSquadProvider.new(squad)

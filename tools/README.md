@@ -32,6 +32,23 @@ godot --headless --path . -s res://tools/batch_sim.gd -- \
 Options: `--runs N`, `--seed N` (fight i uses seed + i), `--log PATH` or `--log none`.
 Defaults live in `data/scenarios/_dev_tools.json`.
 
+## Variant comparison
+
+Plays the same seeded fights under every option of one switchboard decision
+(`data/variants/variants.json`) and prints win rate, fight length, energy use
+and personality drift side by side; for `hp-carryover`, each run plays several
+fights in a row and the table adds runs won and end hp.
+
+```sh
+godot --headless --path . -s res://tools/compare_variants.gd -- --decision d-wait --runs 200
+```
+
+Decisions: `d-wait`, `d-wait-length`, `d-elasticity`, `d-personality-map`,
+`hp-carryover`, `draft-rule`. Options: `--runs N`, `--seed N`, `--level N`,
+`--policy NAME` (the squad's; default `patient`, which waits so the wait
+options show), `--enemy-policy NAME` (default `intent`), `--chain N`. Run i
+drafts a fresh squad from seed + i. Defaults live in `data/scenarios/_dev_tools.json`.
+
 ## Fight stats log
 
 Every simulated fight appends one JSON line to `user://fight_stats.jsonl`
@@ -49,6 +66,7 @@ dealt, energy spent and hp left.
 | `simulated_fight.gd` | Plays a fight like HeadlessFightRunner, counting per-unit damage |
 | `batch_simulator.gd`, `batch_report.gd` | Many seeded fights and their totals |
 | `fight_stats_log.gd` | The JSON-lines log |
+| `variant_comparison.gd`, `compare_variants.gd` | Every option of one decision on the same seeded fights |
 | `bot_library.gd`, `bot_json.gd` | Saved bots (one BotSquadStorage file each) and inline bots |
 
 The scenario format is in `data/scenarios/README.md`. The screens that use

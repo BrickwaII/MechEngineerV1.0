@@ -60,3 +60,43 @@ func test_a_stub_fight_has_no_report() -> void:
 	assert_int(finished[0]).is_equal(1)
 	assert_int(reported[0]).is_equal(0)
 	assert_object(service.last_report).is_null()
+
+
+func _service_with(decision: String, option: String) -> RunFightService:
+	var service := RunFightService.new(AutoFightService.new(), _squad, _ledger)
+	service.variants_source = func() -> FightVariants:
+		var v := FightVariants.defaults()
+		v.choose(decision, option)
+		return v
+	return service
+
+
+func test_carry_keeps_the_hp_each_bot_ended_with() -> void:
+	var service := _service_with(FightVariants.HP_CARRYOVER, FightVariants.HP_CARRY)
+	service.start_fight(_request())
+	await get_tree().process_frame
+	var end_hp := HpCarryover.end_hp_by_id(service.inner.last_fight)
+	assert_dict(end_hp).is_not_empty()
+	for bot in _squad.bots:
+		if end_hp.has(bot.id):
+			assert_int(bot.hp).is_equal(maxi(1, end_hp[bot.id]))
+		else:
+			assert_int(bot.hp).is_equal(bot.get_max_hp())
+
+
+func test_the_fight_plays_with_the_variants_of_its_start() -> void:
+	var service := _service_with(FightVariants.ELASTICITY, FightVariants.ELASTICITY_ENERGY)
+	service.start_fight(_request())
+	await get_tree().process_frame
+	assert_str(service.inner.last_fight.tuning.variants.option(FightVariants.ELASTICITY)).is_equal(FightVariants.ELASTICITY_ENERGY)
+
+
+func test_drift_off_leaves_personalities_alone() -> void:
+	var before := {}
+	for bot in _squad.bots:
+		before[bot.id] = PersonalityDrift.values_of(bot.personality)
+	var service := _service_with(FightVariants.PERSONALITY_MAP, FightVariants.PERSONALITY_OFF)
+	service.start_fight(_request())
+	await get_tree().process_frame
+	for bot in _squad.bots:
+		assert_array(PersonalityDrift.values_of(bot.personality)).is_equal(before[bot.id])

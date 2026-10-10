@@ -8,6 +8,15 @@
 		{"label": "wait", "pole": "methodical"},
 		{"label": "first_affordable", "pole": "reactive"}
 	],
+	"_drift_rule_sets_comment": "Other drift mappings the d-personality-map switch (data/variants/variants.json) can pick instead of drift_rules. by_target: only what a bot aims its skills at moves it. Rules are in the drift_rules format.",
+	"drift_rule_sets": {
+		"by_target": [
+			{"label": "hit_enemy", "pole": "aggressive"},
+			{"label": "self_target", "pole": "defensive"},
+			{"label": "self_target", "pole": "solitary"},
+			{"label": "ally_target", "pole": "supportive"}
+		]
+	},
 	"drift": {
 		"per_push": 0.02,
 		"max_per_scale_per_fight": 0.1

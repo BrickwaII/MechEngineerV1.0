@@ -16,6 +16,7 @@ var recharge_floor_milli_per_tick: int
 ## Energy each unit starts a fight with, in percent of its pool.
 var starting_energy_percent: int
 ## Extra recharge while waiting, in percent of normal recharge. 0 is a plain wait.
+## Used by the d-wait "banked" option; see WaitRules.
 ## TODO(decision: d-wait): the form of the wait bonus is open. Default until
 ## decided: waiting banks extra charge toward the unit's next action.
 var wait_recharge_bonus_percent: int
@@ -40,6 +41,9 @@ var power_percent_per_level: int
 ## The most of one hit a guard may block, in percent.
 var max_guard_percent: int
 var skills: Dictionary[String, CombatSkill] = {}
+## The fight-side switches of the variant switchboard. from_dict() gives the
+## data file's defaults; the game sets the player's choices before a fight.
+var variants: FightVariants
 
 
 static func load_default() -> CombatTuning:
@@ -56,6 +60,7 @@ static func load_file(path: String) -> CombatTuning:
 
 static func from_dict(d: Dictionary) -> CombatTuning:
 	var t := CombatTuning.new()
+	t.variants = FightVariants.defaults()
 	t.action_threshold = int(d.timeline.action_threshold)
 	t.min_charge_per_tick = int(d.timeline.min_charge_per_tick)
 	t.recharge_milli_per_battery_per_tick = int(d.energy.recharge_milli_per_battery_per_tick)
@@ -124,6 +129,16 @@ func validate() -> Array[String]:
 		elif s.is_damage() != s.targets_opponents():
 			problems.append("skill %s: damage skills target opponents, others their own side" % id)
 	return problems
+
+
+## A copy of this tuning that plays with `p_variants`. Shares the skills.
+func with_variants(p_variants: FightVariants) -> CombatTuning:
+	var t: CombatTuning = CombatTuning.new()
+	for prop in get_property_list():
+		if prop.usage & PROPERTY_USAGE_SCRIPT_VARIABLE:
+			t.set(prop.name, get(prop.name))
+	t.variants = p_variants
+	return t
 
 
 ## True for a skill that can always be used: free, and hits one opponent.

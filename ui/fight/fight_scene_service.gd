@@ -36,6 +36,11 @@ func _init(p_host: Node, p_tuning: FightScreenTuning = null) -> void:
 	tuning = p_tuning
 
 
+## Plays the next fights with `variants` (the switchboard's fight choices).
+func use_variants(variants: FightVariants) -> void:
+	combat_tuning = (combat_tuning if combat_tuning != null else CombatTuning.load_default()).with_variants(variants)
+
+
 func start_fight(request: FightRequest) -> void:
 	if screen != null:
 		push_error("FightSceneService: a fight is already running")

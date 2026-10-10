@@ -88,7 +88,10 @@ func check_action(action: FightAction) -> String:
 	if skill == null:
 		return "%s has no skill %s" % [pending_actor.id, action.skill_id]
 	if action.kind == FightAction.Kind.WAIT:
-		if skill.energy_cost_milli() > pending_actor.max_energy_milli:
+		var length_problem := WaitRules.check_wait_ticks(action.wait_ticks, tuning)
+		if not length_problem.is_empty():
+			return length_problem
+		if action.wait_ticks == 0 and skill.energy_cost_milli() > pending_actor.max_energy_milli:
 			return "%s can never afford %s" % [pending_actor.id, action.skill_id]
 		return ""
 	if not pending_actor.can_afford(skill):
@@ -202,17 +205,19 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 	var targets: Array[Combatant] = [target]
 	if skill.hits_all():
 		targets = opponents_of(actor)
+	var bonus := WaitRules.damage_bonus_percent(actor.is_waiting(), tuning)
 	actor.finish_action(tuning.action_threshold)
 	for t in targets:
-		_hit(actor, t, skill, energy_before)
+		_hit(actor, t, skill, energy_before, bonus)
 
 
-func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before: int) -> void:
+func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before: int, bonus_percent := 0) -> void:
 	var hp_before := target.hp
 	var guarded := target.guard_percent
-	var dmg := DamageRules.damage_to(actor, target, skill, tuning)
+	var dmg := DamageRules.damage_to(actor, target, skill, tuning, bonus_percent)
 	target.hp = maxi(0, target.hp - dmg)
 	target.guard_percent = 0
+	ElasticityRules.after_hit(target, dmg, tuning)
 	_log("%s uses %s on %s: %d damage%s, hp %d -> %d, energy %d -> %d" % [
 		actor.display_name, skill.display_name, target.display_name, dmg,
 		" (%d%% blocked)" % guarded if guarded > 0 else "", hp_before, target.hp, energy_before, actor.energy()])
@@ -222,10 +227,15 @@ func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before
 
 func _resolve_wait(actor: Combatant, action: FightAction) -> void:
 	var skill := actor.skill(action.skill_id)
-	actor.begin_wait(skill.energy_cost_milli())
+	actor.begin_wait(skill.energy_cost_milli(), action.wait_ticks)
+	actor.energy_milli = mini(actor.max_energy_milli, actor.energy_milli + WaitRules.start_bonus_milli(tuning))
 	action_tags.append("%s:wait" % actor.id)
-	_log("%s waits for %s (energy %d of %d)" % [
-		actor.display_name, skill.display_name, actor.energy(), skill.energy_cost])
+	if action.wait_ticks > 0:
+		_log("%s waits %d ticks (energy %d, %s costs %d)" % [
+			actor.display_name, action.wait_ticks, actor.energy(), skill.display_name, skill.energy_cost])
+	else:
+		_log("%s waits for %s (energy %d of %d)" % [
+			actor.display_name, skill.display_name, actor.energy(), skill.energy_cost])
 
 
 func _check_end() -> void:
