@@ -24,7 +24,9 @@ var squad_entries: Array = []
 ## Empty means: draw from the enemy table.
 var enemy_entries: Array = []
 var player_policy := "simple"
-var enemy_policy := "simple"
+## Enemies play by intent unless told otherwise, as on the battle screen and in
+## AutoFightService, so batch results match play.
+var enemy_policy := "intent"
 
 
 static func from_dict(d: Dictionary) -> FightScenario:
@@ -36,7 +38,7 @@ static func from_dict(d: Dictionary) -> FightScenario:
 	s.squad_entries = (d.get("squad", []) as Array).duplicate(true)
 	s.enemy_entries = (d.get("enemies", []) as Array).duplicate(true)
 	s.player_policy = str(d.get("player_policy", "simple"))
-	s.enemy_policy = str(d.get("enemy_policy", "simple"))
+	s.enemy_policy = str(d.get("enemy_policy", "intent"))
 	return s
 
 

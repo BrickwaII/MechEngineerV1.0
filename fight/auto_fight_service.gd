@@ -1,7 +1,9 @@
 class_name AutoFightService
 extends FightService
-## A FightService that resolves each fight with the headless runner, with
-## SimpleFightPolicy on both sides. Drop-in for StubFightService.
+## A FightService that resolves each fight with the headless runner:
+## SimpleFightPolicy plays the squad and IntentFightPolicy the enemies, as on
+## the battle screen, so auto-fights and batch results match play.
+## Drop-in for StubFightService.
 ##
 ## The seed comes from the request unless `fixed_seed` is set, so the same
 ## territory and level always play out the same way. Like every FightService,
@@ -29,7 +31,7 @@ func start_fight(request: FightRequest) -> void:
 ## The result start_fight() will report, computed straight away.
 func resolve(request: FightRequest) -> FightResult:
 	last_fight = HeadlessFightRunner.run(
-		request, seed_for(request), SimpleFightPolicy.new(), SimpleFightPolicy.new(), tuning, enemy_table)
+		request, seed_for(request), SimpleFightPolicy.new(), IntentFightPolicy.new(), tuning, enemy_table)
 	return last_fight.result()
 
 

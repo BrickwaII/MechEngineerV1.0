@@ -7,5 +7,5 @@
 		{"draft_seed": 2024}
 	],
 	"player_policy": "simple",
-	"enemy_policy": "simple"
+	"enemy_policy": "intent"
 }
