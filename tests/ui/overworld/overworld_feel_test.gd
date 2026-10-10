@@ -105,12 +105,14 @@ func test_a_new_run_shows_no_changes() -> void:
 
 func test_the_territory_panel_names_the_faction_when_the_data_has_one() -> void:
 	var screen := _screen()
+	# The placeholder map is in no act: no faction, no row.
 	screen.map_view.select(TARGET)
 	await _runner.simulate_frames(1)
 	assert_object(screen._panel.find_child("Faction", true, false)).is_null()
-	var lookup := FactionLookup.new()
-	lookup.read({"factions": {"rust": {"name": "Rustborn", "color": "#c86b3c"}}, "by_act": {"0": "rust"}})
-	screen.factions = lookup
+	var table := FactionTable.from_dict({"factions": {"rust": {"name": "Rustborn", "color": "#c86b3c"}},
+		"regions": {"act1": {"rust": [TARGET]}}})
+	screen.factions = FactionLookup.new(table)
+	screen.factions.rule_source = func() -> String: return FightVariants.FACTIONS_BY_ACT
 	screen.map_view.select("")
 	screen.map_view.select(TARGET)
 	await _runner.simulate_frames(1)

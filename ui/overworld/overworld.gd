@@ -9,8 +9,8 @@ extends Control
 ## or under a message, then shown at once as a capture sweep, number popups
 ## and bars that slide with a trailing ghost (MapChanges); the act zoom plays
 ## a whoosh, an act title card and a music crossfade (ActMusic); the
-## territory panel names the enemy faction when the data has one
-## (FactionLookup).
+## territory panel names the enemy faction holding a hostile region, with
+## its icon (FactionLookup over P4's FactionTable).
 
 const Palette := preload("res://ui/overworld/palette.gd")
 const MapView := preload("res://ui/overworld/map_view.gd")
@@ -721,7 +721,7 @@ func _panel_intro() -> void:
 ## The enemy faction holding a hostile region, with its icon or a diamond in
 ## its color; nothing when the data names none.
 func _panel_faction(region: MapRegion) -> void:
-	var faction := factions.faction_for(campaign.map.id, campaign.state.act, region.id)
+	var faction := factions.faction_for(region.id)
 	if faction.is_empty():
 		return
 	var rows := _rows(6)
@@ -729,7 +729,7 @@ func _panel_faction(region: MapRegion) -> void:
 	rows.add_child(_text("HELD BY", 11, Palette.TEXT_DIM))
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 10)
-	var color: Color = faction["color"] if faction["color"] != null else Palette.DEFENSE
+	var color: Color = faction["color"]
 	if faction["icon"] != null:
 		var icon := TextureRect.new()
 		icon.texture = faction["icon"]
