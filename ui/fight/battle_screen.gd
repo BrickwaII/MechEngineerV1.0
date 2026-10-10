@@ -123,7 +123,9 @@ func on_unit_clicked(unit_id: String, button_index: MouseButton) -> void:
 	var unit := fight.combatant(unit_id)
 	if unit == null:
 		return
-	if unit.side == Combatant.Side.PLAYER:
+	# A bot is a target while an ally skill (Patch Up, Shield Ally) waits for one.
+	if unit.side == Combatant.Side.PLAYER and not (
+			handler.is_choosing_target() and handler.target_problem(unit_id).is_empty()):
 		send(FightCommand.select_bot(unit_id))
 	else:
 		send(FightCommand.select_target(unit_id))
@@ -193,8 +195,9 @@ func refresh() -> void:
 	elif handler.selected_bot_id != actor.id:
 		prompt_label.text = "%s is not ready. %s acts now." % [handler.selected_bot().display_name, actor.display_name]
 	elif handler.is_choosing_target():
-		prompt_label.text = "%s: %s. Click an enemy, or Cancel." % [
-			actor.display_name, fight.tuning.skill(handler.selected_skill_id).display_name]
+		var chosen := actor.skill(handler.selected_skill_id)
+		prompt_label.text = "%s: %s. Click %s, or Cancel." % [
+			actor.display_name, chosen.display_name, "an enemy" if chosen.targets_opponents() else "a bot"]
 	else:
 		prompt_label.text = "%s is ready. Choose a skill, or Wait." % actor.display_name
 
@@ -213,15 +216,22 @@ func _highlight_for(c: Combatant) -> UnitPanel.Highlight:
 
 func _refresh_commands() -> void:
 	var can_act := handler.is_player_turn() and handler.selected_bot_id == handler.actor().id
+	# Buttons show the skills of the bot in view: the one acting, else the one
+	# selected. Each bot's own name and level for a skill is on its button.
+	var shown := handler.actor() if can_act else handler.selected_bot()
 	for skill_id in skill_buttons:
 		var button := skill_buttons[skill_id]
-		var has_it := can_act and handler.actor().has_skill(skill_id)
+		var own := shown.skill(skill_id) if shown != null and shown.side == Combatant.Side.PLAYER else null
+		button.visible = own != null
+		if own != null:
+			button.text = skill_button_text(own)
+		var has_it := can_act and own != null
 		button.disabled = not has_it or not handler.skill_problem(skill_id).is_empty()
 		button.button_pressed = skill_id == handler.selected_skill_id
 		button.tooltip_text = handler.skill_problem(skill_id) if has_it else ""
 	var wait_skill := handler.default_wait_skill() if can_act else ""
 	wait_button.disabled = wait_skill.is_empty()
-	wait_button.text = "WAIT" if wait_skill.is_empty() else "WAIT for %s" % fight.tuning.skill(wait_skill).display_name
+	wait_button.text = "WAIT" if wait_skill.is_empty() else "WAIT for %s" % handler.actor().skill(wait_skill).display_name
 	cancel_button.disabled = not can_act or not handler.is_choosing_target()
 
 
@@ -246,6 +256,8 @@ func _panel_preview(unit_id: String) -> String:
 	var effect := shown_preview.effect_on(unit_id)
 	if effect != null:
 		lines.append(FightTelegraph.effect_text(effect))
+	if shown_preview.guard_changes.has(unit_id):
+		lines.append(FightTelegraph.guard_text(shown_preview.guard_changes[unit_id]))
 	var change := shown_preview.change_for(unit_id)
 	if effect != null and effect.would_go_down():
 		pass
@@ -262,7 +274,7 @@ func _refresh_preview_box(action: FightAction) -> void:
 		preview_label.add_theme_color_override("font_color", Palette.PREVIEW)
 	elif handler.is_player_turn() and handler.is_choosing_target():
 		preview_label.text = "PREVIEW\n%s: point at a target to see what it does." % (
-			fight.tuning.skill(handler.selected_skill_id).display_name)
+			handler.actor().skill(handler.selected_skill_id).display_name)
 		preview_label.add_theme_color_override("font_color", Palette.TEXT_DIM)
 	else:
 		preview_label.text = "PREVIEW\nChoose a skill, then point at a target."
@@ -343,8 +355,7 @@ func _build_layout() -> void:
 	buttons.add_theme_constant_override("separation", 8)
 	commands.add_child(buttons)
 	for skill_id in _all_player_skills():
-		var skill := fight.tuning.skill(skill_id)
-		var button := _button(buttons, "%s  [%d]" % [skill.display_name.to_upper(), skill.energy_cost])
+		var button := _button(buttons, skill_button_text(fight.tuning.skill(skill_id)))
 		button.name = "Skill_%s" % skill_id
 		button.toggle_mode = true
 		button.pressed.connect(on_skill_pressed.bind(skill_id))
@@ -372,11 +383,16 @@ func _build_layout() -> void:
 	preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
-## Skill ids any bot in the fight has, in the tuning's menu order.
+## "PATCH UP  [3]", or "PATCH UP Lv2  [3]" above level 1.
+static func skill_button_text(skill: CombatSkill) -> String:
+	var level := " Lv%d" % skill.level if skill.level > 1 else ""
+	return "%s%s  [%d]" % [skill.display_name.to_upper(), level, skill.energy_cost]
+
+
+## Skill ids any bot in the fight has, in roster then menu order. Each bot
+## sees only its own on its turn.
 func _all_player_skills() -> Array[String]:
 	var ids: Array[String] = []
-	for id in fight.tuning.player_skills:
-		ids.append(id)
 	for c in fight.living(Combatant.Side.PLAYER):
 		for id in c.skill_ids:
 			if not id in ids:

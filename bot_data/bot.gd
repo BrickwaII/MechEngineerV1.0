@@ -42,10 +42,15 @@ func get_max_hp() -> int:
 	return stats.hp
 
 
-## What the rest of the game sees of this bot. A fresh copy every call, so
-## changing it never changes the bot.
+## What the rest of the game sees of this bot, its skills included in order.
+## A fresh copy every call, so changing it never changes the bot.
 func to_summary() -> SquadMemberSummary:
-	return SquadMemberSummary.new(id, display_name, hp, stats.hp, personality.get_tag(), stats.duplicate())
+	var skill_entries: Array[Dictionary] = []
+	for skill in skills:
+		if skill != null:
+			skill_entries.append(SquadMemberSummary.make_skill(skill.display_name, skill.effect_id, skill.level))
+	return SquadMemberSummary.new(
+		id, display_name, hp, stats.hp, personality.get_tag(), stats.duplicate(), skill_entries)
 
 
 func validation_errors() -> PackedStringArray:

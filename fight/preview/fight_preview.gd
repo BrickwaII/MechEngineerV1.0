@@ -59,6 +59,8 @@ func preview_choice(fight: Fight, action: FightAction) -> ChoicePreview:
 		if after.hp != c.hp:
 			out.effects.append(UnitEffect.new(
 				c.id, c.display_name, c.hp, PreviewValue.of(c.hp - after.hp), PreviewValue.of(after.hp)))
+		if after.guard_percent != c.guard_percent:
+			out.guard_changes[c.id] = after.guard_percent
 	var after_plan := planner.plan_all(copy)
 	var reason := "if %s uses %s" % [fight.pending_actor.display_name, action]
 	for id: String in before:

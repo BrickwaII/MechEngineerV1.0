@@ -84,8 +84,8 @@ func check_action(action: FightAction) -> String:
 		return "no unit is waiting for a decision"
 	if action == null:
 		return "no action"
-	var skill := tuning.skill(action.skill_id)
-	if skill == null or not pending_actor.has_skill(action.skill_id):
+	var skill := pending_actor.skill(action.skill_id)
+	if skill == null:
 		return "%s has no skill %s" % [pending_actor.id, action.skill_id]
 	if action.kind == FightAction.Kind.WAIT:
 		if skill.energy_cost_milli() > pending_actor.max_energy_milli:
@@ -96,11 +96,16 @@ func check_action(action: FightAction) -> String:
 	var target := combatant(action.target_id)
 	if target == null or not target.is_alive():
 		return "no living target %s" % action.target_id
-	if skill.is_heal():
-		if target.side != pending_actor.side:
-			return "%s may not heal an opponent" % pending_actor.id
-	elif target.side == pending_actor.side:
-		return "%s may not target an ally" % pending_actor.id
+	match skill.target:
+		CombatSkill.TARGET_SELF:
+			if target != pending_actor:
+				return "%s may only use %s on itself" % [pending_actor.id, action.skill_id]
+		CombatSkill.TARGET_ALLY:
+			if target.side != pending_actor.side:
+				return "%s may not use %s on an opponent" % [pending_actor.id, action.skill_id]
+		_:
+			if target.side == pending_actor.side:
+				return "%s may not target an ally" % pending_actor.id
 	return ""
 
 
@@ -174,32 +179,49 @@ func log_text() -> String:
 
 
 func _resolve_skill(actor: Combatant, action: FightAction) -> void:
-	var skill := tuning.skill(action.skill_id)
+	var skill := actor.skill(action.skill_id)
 	var target := combatant(action.target_id)
 	var energy_before := actor.energy()
 	actor.spend(skill)
-	var hp_before := target.hp
+	action_tags.append("%s:%s" % [actor.id, skill.id])
 	if skill.is_heal():
+		var hp_before := target.hp
 		target.hp += DamageRules.heal(actor.stats, target.hp, target.max_hp, skill)
 		actor.finish_action(tuning.action_threshold)
-		action_tags.append("%s:%s" % [actor.id, skill.id])
 		_log("%s uses %s on %s: %d healed, hp %d -> %d, energy %d -> %d" % [
 			actor.display_name, skill.display_name, target.display_name, target.hp - hp_before, hp_before,
 			target.hp, energy_before, actor.energy()])
 		return
-	var dmg := DamageRules.damage(actor.stats, target.stats, skill, tuning)
-	target.hp = maxi(0, target.hp - dmg)
+	if skill.is_guard():
+		target.guard_percent = maxi(target.guard_percent, skill.power_percent)
+		actor.finish_action(tuning.action_threshold)
+		_log("%s uses %s on %s: next hit %d%% blocked, energy %d -> %d" % [
+			actor.display_name, skill.display_name, target.display_name, target.guard_percent,
+			energy_before, actor.energy()])
+		return
+	var targets: Array[Combatant] = [target]
+	if skill.hits_all():
+		targets = opponents_of(actor)
 	actor.finish_action(tuning.action_threshold)
-	action_tags.append("%s:%s" % [actor.id, skill.id])
-	_log("%s uses %s on %s: %d damage, hp %d -> %d, energy %d -> %d" % [
-		actor.display_name, skill.display_name, target.display_name, dmg, hp_before, target.hp,
-		energy_before, actor.energy()])
+	for t in targets:
+		_hit(actor, t, skill, energy_before)
+
+
+func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before: int) -> void:
+	var hp_before := target.hp
+	var guarded := target.guard_percent
+	var dmg := DamageRules.damage_to(actor, target, skill, tuning)
+	target.hp = maxi(0, target.hp - dmg)
+	target.guard_percent = 0
+	_log("%s uses %s on %s: %d damage%s, hp %d -> %d, energy %d -> %d" % [
+		actor.display_name, skill.display_name, target.display_name, dmg,
+		" (%d%% blocked)" % guarded if guarded > 0 else "", hp_before, target.hp, energy_before, actor.energy()])
 	if not target.is_alive():
 		_log("%s is down" % target.display_name)
 
 
 func _resolve_wait(actor: Combatant, action: FightAction) -> void:
-	var skill := tuning.skill(action.skill_id)
+	var skill := actor.skill(action.skill_id)
 	actor.begin_wait(skill.energy_cost_milli())
 	action_tags.append("%s:wait" % actor.id)
 	_log("%s waits for %s (energy %d of %d)" % [
@@ -241,7 +263,7 @@ func _build_roster(rng: RandomNumberGenerator) -> void:
 			continue
 		combatants.append(Combatant.new(
 			member.id, member.display_name, Combatant.Side.PLAYER, order, member.stats, hp,
-			tuning.player_skills, tuning))
+			SquadSkills.ids_for(member, tuning), tuning, SquadSkills.overrides_for(member, tuning)))
 		order += 1
 	var counts := {}
 	for enemy_id in enemy_table.pick(request.defense_level, rng):

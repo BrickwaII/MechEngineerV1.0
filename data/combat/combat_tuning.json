@@ -1,5 +1,5 @@
 {
-	"_comment": "Combat tuning. Every number here is a first guess, not balance. Energy values are in whole points unless the key ends in _milli (thousandths of a point). A skill with \"effect\": \"heal\" restores (attack x power_percent / 100) hp to a living ally, capped at what it lost; every other skill deals damage.",
+	"_comment": "Combat tuning. Every number here is a first guess, not balance. Energy values are in whole points unless the key ends in _milli (thousandths of a point). A skill with \"effect\": \"heal\" restores (attack x power_percent / 100) hp to a living ally, capped at what it lost; \"guard\" blocks power_percent of the target's next hit; every other skill deals damage.",
 	"timeline": {
 		"action_threshold": 100,
 		"min_charge_per_tick": 1
@@ -24,11 +24,34 @@
 		"cost_per_defense_level": 2.0,
 		"cost_per_energy_spent": 0.1
 	},
+	"_player_skills_comment": "Skills of a squad member whose summary lists no skills (old saves, tools, tests). Drafted bots fight with their own skills through bot_skill_effects instead.",
 	"player_skills": ["strike", "heavy_strike", "overload"],
+	"_basic_attack_comment": "Every squad member keeps this skill, so it always has something to do: it is added when none of the bot's own skills is a free single-target attack.",
+	"basic_attack": "strike",
+	"_bot_skill_effects_comment": "Bot skill effect_id (data/bot_data/skills.json) -> the combat skill it fights with. The bot's name and level for the skill carry over; cost, power, effect and target come from skills below.",
+	"bot_skill_effects": {
+		"damage_single": "strike",
+		"damage_single_heavy": "heavy_strike",
+		"damage_all": "arc_sweep",
+		"guard_self": "brace",
+		"heal_single": "patch_up",
+		"guard_ally": "shield"
+	},
+	"skill_levels": {
+		"power_percent_per_level": 10
+	},
+	"guard": {
+		"max_percent": 80
+	},
+	"_skills_comment": "effect: damage (default), heal or guard. target: opponent (default for damage), all_opponents, ally (default for heal and guard; the user included) or self. For a guard, power_percent is the share of the target's next hit it blocks.",
 	"skills": {
 		"strike": {"name": "Strike", "energy_cost": 0, "power_percent": 100},
 		"heavy_strike": {"name": "Heavy Strike", "energy_cost": 4, "power_percent": 150},
 		"overload": {"name": "Overload", "energy_cost": 9, "power_percent": 220},
-		"repair": {"name": "Repair", "energy_cost": 2, "power_percent": 100, "effect": "heal"}
+		"repair": {"name": "Repair", "energy_cost": 2, "power_percent": 100, "effect": "heal"},
+		"arc_sweep": {"name": "Arc Sweep", "energy_cost": 6, "power_percent": 60, "target": "all_opponents"},
+		"brace": {"name": "Brace", "energy_cost": 2, "power_percent": 50, "effect": "guard", "target": "self"},
+		"patch_up": {"name": "Patch Up", "energy_cost": 3, "power_percent": 100, "effect": "heal"},
+		"shield": {"name": "Shield Ally", "energy_cost": 3, "power_percent": 40, "effect": "guard"}
 	}
 }

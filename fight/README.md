@@ -7,7 +7,15 @@ Combat core (M2), pure logic with no scenes:
   ready, `submit()` resolves its action. `upcoming(n)` previews the order.
 - `Timeline`: gauge-based turn order. `Combatant`: per-unit hp, energy, gauge.
 - `DamageRules`: deterministic damage and healing. `CombatTuning`,
-  `EnemyTable`: read data/combat/. A skill with `"effect": "heal"` (Repair)
-  restores attack x power% / 100 hp to a living ally, capped at what it lost.
+  `EnemyTable`: read data/combat/. A skill with `"effect": "heal"` (Repair,
+  Patch Up) restores attack x power% / 100 hp to a living ally, capped at what
+  it lost; `"effect": "guard"` (Brace, Shield Ally) blocks power% of the
+  target's next hit; `"target": "all_opponents"` (Arc Sweep) hits every enemy.
+- `SquadSkills`: a squad member fights with its own skills. Each bot skill's
+  effect_id picks a combat skill (`bot_skill_effects` in combat_tuning.json);
+  the bot's name and level carry over, and each level above 1 adds
+  `power_percent_per_level`. Every bot keeps the basic attack (Strike).
+  Enemies keep their enemy-table skills. Read a unit's skills with
+  `Combatant.skill(id)`, not `CombatTuning.skill(id)`.
 - `HeadlessFightRunner`: plays a fight from a seed and policies, with a text log.
 - `AutoFightService`: a contracts FightService built on the runner.

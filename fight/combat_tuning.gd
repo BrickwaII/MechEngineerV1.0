@@ -28,8 +28,17 @@ var max_actions: int
 var grid_base_cost: float
 var grid_cost_per_defense_level: float
 var grid_cost_per_energy_spent: float
-## Skill ids every squad member has, in menu order.
+## Skill ids a squad member whose summary lists no skills has, in menu order.
 var player_skills: Array[String] = []
+## The skill every squad member keeps so it is never stuck: added when none of
+## its own skills is a free single-target attack. "" adds none.
+var basic_attack: String
+## Bot skill effect_id (data/bot_data/skills.json) -> combat skill id.
+var bot_skill_effects: Dictionary[String, String] = {}
+## Power added per skill level above 1, in percent of the skill's power.
+var power_percent_per_level: int
+## The most of one hit a guard may block, in percent.
+var max_guard_percent: int
 var skills: Dictionary[String, CombatSkill] = {}
 
 
@@ -61,10 +70,19 @@ static func from_dict(d: Dictionary) -> CombatTuning:
 	t.grid_cost_per_energy_spent = float(d.grid.cost_per_energy_spent)
 	for id: String in d.player_skills:
 		t.player_skills.append(id)
+	# The bot-skill sections are optional; leaving one out turns its rule off.
+	t.basic_attack = String(d.get("basic_attack", ""))
+	var effects: Dictionary = d.get("bot_skill_effects", {})
+	for effect_id: String in effects:
+		if not effect_id.begins_with("_"):
+			t.bot_skill_effects[effect_id] = String(effects[effect_id])
+	t.power_percent_per_level = int(d.get("skill_levels", {}).get("power_percent_per_level", 0))
+	t.max_guard_percent = int(d.get("guard", {}).get("max_percent", 100))
 	for id: String in d.skills:
 		var s: Dictionary = d.skills[id]
 		t.skills[id] = CombatSkill.new(
-			id, s.name, int(s.energy_cost), int(s.power_percent), String(s.get("effect", CombatSkill.EFFECT_DAMAGE)))
+			id, s.name, int(s.energy_cost), int(s.power_percent), String(s.get("effect", CombatSkill.EFFECT_DAMAGE)),
+			String(s.get("target", "")))
 	return t
 
 
@@ -84,10 +102,38 @@ func validate() -> Array[String]:
 	for id in player_skills:
 		if not skills.has(id):
 			problems.append("player skill %s is not defined" % id)
+	if basic_attack.is_empty():
+		pass
+	elif not skills.has(basic_attack):
+		problems.append("basic attack %s is not defined" % basic_attack)
+	elif not is_basic_attack(skills[basic_attack]):
+		problems.append("basic attack %s must be a free single-target damage skill" % basic_attack)
+	for effect_id in bot_skill_effects:
+		if not skills.has(bot_skill_effects[effect_id]):
+			problems.append("bot effect %s maps to undefined skill %s" % [effect_id, bot_skill_effects[effect_id]])
+	if power_percent_per_level < 0:
+		problems.append("power_percent_per_level may not be negative")
+	if max_guard_percent < 0 or max_guard_percent > 100:
+		problems.append("guard max_percent must be 0 to 100")
 	for id in skills:
-		if not skills[id].effect in [CombatSkill.EFFECT_DAMAGE, CombatSkill.EFFECT_HEAL]:
-			problems.append("skill %s has unknown effect %s" % [id, skills[id].effect])
+		var s: CombatSkill = skills[id]
+		if not s.effect in CombatSkill.EFFECTS:
+			problems.append("skill %s has unknown effect %s" % [id, s.effect])
+		if not s.target in CombatSkill.TARGETS:
+			problems.append("skill %s has unknown target %s" % [id, s.target])
+		elif s.is_damage() != s.targets_opponents():
+			problems.append("skill %s: damage skills target opponents, others their own side" % id)
 	return problems
+
+
+## True for a skill that can always be used: free, and hits one opponent.
+static func is_basic_attack(s: CombatSkill) -> bool:
+	return s.is_damage() and s.target == CombatSkill.TARGET_OPPONENT and s.energy_cost == 0
+
+
+## The skill `effect_id`'s bot skill fights with, or "" when none is defined.
+func combat_skill_for_effect(effect_id: String) -> String:
+	return bot_skill_effects.get(effect_id, "")
 
 
 func skill(id: String) -> CombatSkill:

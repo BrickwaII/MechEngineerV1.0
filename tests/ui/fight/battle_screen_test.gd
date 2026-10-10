@@ -137,3 +137,49 @@ func _upcoming_ids(length: int) -> Array[String]:
 	for entry in _screen.fight.upcoming(length):
 		ids.append(entry.combatant_id)
 	return ids
+
+
+## Plays bot turns by mouse until `bot_id` must act.
+func _until_turn_of(bot_id: String) -> void:
+	var guard := 0
+	while _screen.handler.actor() != null and _screen.handler.actor().id != bot_id and guard < 50:
+		if _screen.handler.is_player_turn():
+			Helpers.play_turn_by_mouse(_screen)
+		await _enemies_done()
+		guard += 1
+
+
+func test_a_support_bot_sees_only_its_own_skills_by_their_names() -> void:
+	await _until_turn_of("stub_spark")
+	var spark := _screen.handler.actor()
+	assert_str(spark.id).is_equal("stub_spark")
+	var shown: Array[String] = []
+	for skill_id in _screen.skill_buttons:
+		if _screen.skill_buttons[skill_id].visible:
+			shown.append(skill_id)
+	assert_array(shown).contains_exactly_in_any_order(spark.skill_ids)
+	assert_str(_screen.skill_buttons["patch_up"].text).contains("PATCH UP")
+	assert_str(_screen.skill_buttons["shield"].text).contains("SHIELD ALLY")
+	# Overcharge Shot belongs to Bolt, not Spark.
+	assert_bool(_screen.skill_buttons["heavy_strike"].visible).is_false()
+
+
+func test_patch_up_heals_the_bot_clicked() -> void:
+	await _until_turn_of("stub_spark")
+	var hurt := _screen.fight.combatant("stub_bolt")
+	hurt.hp = 10
+	_screen.skill_buttons["patch_up"].pressed.emit()
+	assert_str(_screen.prompt_label.text).contains("Click a bot")
+	Helpers.click(_screen.unit_panels["stub_bolt"])
+	assert_int(hurt.hp).is_greater(10)
+	assert_str(_screen.fight.action_tags[-1]).is_equal("stub_spark:patch_up")
+
+
+func test_shield_ally_marks_the_bots_panel() -> void:
+	await _until_turn_of("stub_spark")
+	_screen.skill_buttons["shield"].pressed.emit()
+	_screen.on_unit_hovered("stub_anvil", true)
+	assert_str(_screen.preview_label.text).contains("blocks 40% of its next hit")
+	Helpers.click(_screen.unit_panels["stub_anvil"])
+	assert_int(_screen.fight.combatant("stub_anvil").guard_percent).is_equal(40)
+	assert_str(_screen.unit_panels["stub_anvil"].status_label.text).contains("GUARD 40%")

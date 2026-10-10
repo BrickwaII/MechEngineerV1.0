@@ -86,7 +86,7 @@ func describe_intent(fight: Fight, intent: UnitIntent) -> String:
 		return ""
 	var amount := preview.rules.value_for(intent.skill_id(), intent.amount).text()
 	var target := unit_name(fight, intent.target_id())
-	var skill := skill_name(fight, intent.skill_id())
+	var skill := skill_name(fight, intent.skill_id(), intent.unit_id)
 	match intent.kind:
 		UnitIntent.Kind.HEAL:
 			return "%s -> %s (+%s)" % [skill, target, amount]
@@ -124,15 +124,17 @@ func describe_choice(fight: Fight, action: FightAction, choice: ChoicePreview) -
 	var lines := PackedStringArray()
 	var actor := fight.pending_actor
 	lines.append("%s: %s -> %s" % [
-		actor.display_name if actor != null else "?", skill_name(fight, action.skill_id),
+		actor.display_name if actor != null else "?", skill_name(fight, action.skill_id, actor.id if actor != null else ""),
 		unit_name(fight, action.target_id)])
 	if not choice.is_allowed():
 		lines.append("not allowed: %s" % choice.problem)
 		return "\n".join(lines)
-	if choice.effects.is_empty():
+	if choice.effects.is_empty() and choice.guard_changes.is_empty():
 		lines.append("no hp changes")
 	for e in choice.effects:
 		lines.append("%s %s" % [e.display_name, effect_text(e)])
+	for unit_id: String in choice.guard_changes:
+		lines.append("%s %s" % [unit_name(fight, unit_id), guard_text(choice.guard_changes[unit_id])])
 	var downs := PackedStringArray()
 	for e in choice.effects:
 		if e.would_go_down():
@@ -152,6 +154,11 @@ func describe_choice(fight: Fight, action: FightAction, choice: ChoicePreview) -
 	return "\n".join(lines)
 
 
+## A guard in words: "blocks 50% of its next hit", or "guard used up".
+static func guard_text(percent: int) -> String:
+	return "blocks %d%% of its next hit" % percent if percent > 0 else "guard used up"
+
+
 ## Ids of the units `choice` would surely down.
 static func downs_ids(choice: ChoicePreview) -> Array[String]:
 	var out: Array[String] = []
@@ -166,8 +173,13 @@ static func unit_name(fight: Fight, unit_id: String) -> String:
 	return c.display_name if c != null else unit_id
 
 
-static func skill_name(fight: Fight, skill_id: String) -> String:
-	var s := fight.tuning.skill(skill_id)
+## The name `skill_id` goes by for `unit_id` (a bot's own name for its skill),
+## else the tuning's name, else the id.
+static func skill_name(fight: Fight, skill_id: String, unit_id := "") -> String:
+	var c := fight.combatant(unit_id)
+	var s := c.skill(skill_id) if c != null else null
+	if s == null:
+		s = fight.tuning.skill(skill_id)
 	return s.display_name if s != null else skill_id
 
 

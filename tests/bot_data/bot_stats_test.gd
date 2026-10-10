@@ -91,3 +91,18 @@ func test_stats_round_trip_through_a_file() -> void:
 	var loaded := ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE_DEEP) as Bot
 	for stat in Bot.STAT_NAMES:
 		assert_int(loaded.stats.get(stat)).is_equal([30, 8, 3, 7, 2, 10][Bot.STAT_NAMES.find(stat)])
+
+
+func test_to_summary_carries_the_skills_in_order_with_levels() -> void:
+	var skills: Array[Skill] = [Skill.new("Patch Up", "heal_single", 3, 2), Skill.new("Brace", "guard_self", 2)]
+	var summary := Bot.new("b1", "Bolt", UnitStats.new(30, 8, 3, 7, 2, 10), null, skills).to_summary()
+	assert_int(summary.skills.size()).is_equal(2)
+	assert_dict(summary.skills[0]).is_equal(SquadMemberSummary.make_skill("Patch Up", "heal_single", 2))
+	assert_dict(summary.skills[1]).is_equal(SquadMemberSummary.make_skill("Brace", "guard_self", 1))
+
+
+func test_changing_a_summary_skill_does_not_change_the_bot() -> void:
+	var skills: Array[Skill] = [Skill.new("Strike", "damage_single")]
+	var bot := Bot.new("b1", "Bolt", UnitStats.new(30, 8, 3, 7, 2, 10), null, skills)
+	bot.to_summary().skills[0][SquadMemberSummary.SKILL_LEVEL] = 9
+	assert_int(bot.skills[0].level).is_equal(1)

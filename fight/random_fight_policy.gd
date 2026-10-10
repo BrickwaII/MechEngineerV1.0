@@ -2,15 +2,15 @@ class_name RandomFightPolicy
 extends FightPolicy
 ## Picks uniformly, with the given rng, among every legal action: each affordable
 ## damage skill on each living opponent, plus waiting for each skill it cannot
-## afford yet. Heal skills are left out.
+## afford yet. Heal and guard skills are left out.
 ## For tests and simulation; replays exactly from the rng's seed.
 
 
 func choose(fight: Fight, actor: Combatant, rng: RandomNumberGenerator) -> FightAction:
 	var options: Array[FightAction] = []
-	for id in actor.skill_ids:
-		var skill := fight.tuning.skill(id)
-		if skill == null or skill.is_heal():
+	for skill in actor.skills():
+		var id := skill.id
+		if not skill.is_damage():
 			continue
 		if actor.can_afford(skill):
 			for target in fight.opponents_of(actor):
