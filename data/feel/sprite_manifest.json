@@ -160,6 +160,66 @@
 			"glow": [
 				"#ffd0a0"
 			]
+		},
+		"crimson": {
+			"primary": [
+				"#6e1f2a",
+				"#a8303f",
+				"#de5466"
+			],
+			"secondary": [
+				"#3a3f48",
+				"#5c6370",
+				"#9099a8"
+			],
+			"glow": [
+				"#ffd36b"
+			]
+		},
+		"cobalt": {
+			"primary": [
+				"#1f3a7a",
+				"#2f58b0",
+				"#5a86e0"
+			],
+			"secondary": [
+				"#4a4a52",
+				"#6e6e7a",
+				"#a0a0ae"
+			],
+			"glow": [
+				"#7dffef"
+			]
+		},
+		"sand": {
+			"primary": [
+				"#7a6638",
+				"#ad9150",
+				"#dcc07a"
+			],
+			"secondary": [
+				"#3c4a3e",
+				"#5a6e5c",
+				"#8aa08c"
+			],
+			"glow": [
+				"#a8f0ff"
+			]
+		},
+		"mint": {
+			"primary": [
+				"#2a6a52",
+				"#3e9a78",
+				"#6ad0a6"
+			],
+			"secondary": [
+				"#4a3a5a",
+				"#6e5684",
+				"#9c84b4"
+			],
+			"glow": [
+				"#fff1a8"
+			]
 		}
 	},
 	"units": {
@@ -184,6 +244,16 @@
 						"beginner": "res://assets/sprites/units/ally_frame/legs_treads_beginner.png",
 						"medium": "res://assets/sprites/units/ally_frame/legs_treads_medium.png",
 						"advanced": "res://assets/sprites/units/ally_frame/legs_treads_advanced.png"
+					},
+					"hover": {
+						"beginner": "res://assets/fight/units/ally_frame/legs_hover_beginner.png",
+						"medium": "res://assets/fight/units/ally_frame/legs_hover_medium.png",
+						"advanced": "res://assets/fight/units/ally_frame/legs_hover_advanced.png"
+					},
+					"spider": {
+						"beginner": "res://assets/fight/units/ally_frame/legs_spider_beginner.png",
+						"medium": "res://assets/fight/units/ally_frame/legs_spider_medium.png",
+						"advanced": "res://assets/fight/units/ally_frame/legs_spider_advanced.png"
 					}
 				},
 				"body": {
@@ -196,6 +266,16 @@
 						"beginner": "res://assets/sprites/units/ally_frame/body_round_beginner.png",
 						"medium": "res://assets/sprites/units/ally_frame/body_round_medium.png",
 						"advanced": "res://assets/sprites/units/ally_frame/body_round_advanced.png"
+					},
+					"angular": {
+						"beginner": "res://assets/fight/units/ally_frame/body_angular_beginner.png",
+						"medium": "res://assets/fight/units/ally_frame/body_angular_medium.png",
+						"advanced": "res://assets/fight/units/ally_frame/body_angular_advanced.png"
+					},
+					"barrel": {
+						"beginner": "res://assets/fight/units/ally_frame/body_barrel_beginner.png",
+						"medium": "res://assets/fight/units/ally_frame/body_barrel_medium.png",
+						"advanced": "res://assets/fight/units/ally_frame/body_barrel_advanced.png"
 					}
 				},
 				"head": {
@@ -208,6 +288,16 @@
 						"beginner": "res://assets/sprites/units/ally_frame/head_dome_beginner.png",
 						"medium": "res://assets/sprites/units/ally_frame/head_dome_medium.png",
 						"advanced": "res://assets/sprites/units/ally_frame/head_dome_advanced.png"
+					},
+					"antenna": {
+						"beginner": "res://assets/fight/units/ally_frame/head_antenna_beginner.png",
+						"medium": "res://assets/fight/units/ally_frame/head_antenna_medium.png",
+						"advanced": "res://assets/fight/units/ally_frame/head_antenna_advanced.png"
+					},
+					"cyclops": {
+						"beginner": "res://assets/fight/units/ally_frame/head_cyclops_beginner.png",
+						"medium": "res://assets/fight/units/ally_frame/head_cyclops_medium.png",
+						"advanced": "res://assets/fight/units/ally_frame/head_cyclops_advanced.png"
 					}
 				},
 				"arm": {
@@ -220,6 +310,16 @@
 						"beginner": "res://assets/sprites/units/ally_frame/arm_claw_beginner.png",
 						"medium": "res://assets/sprites/units/ally_frame/arm_claw_medium.png",
 						"advanced": "res://assets/sprites/units/ally_frame/arm_claw_advanced.png"
+					},
+					"cannon": {
+						"beginner": "res://assets/fight/units/ally_frame/arm_cannon_beginner.png",
+						"medium": "res://assets/fight/units/ally_frame/arm_cannon_medium.png",
+						"advanced": "res://assets/fight/units/ally_frame/arm_cannon_advanced.png"
+					},
+					"drill": {
+						"beginner": "res://assets/fight/units/ally_frame/arm_drill_beginner.png",
+						"medium": "res://assets/fight/units/ally_frame/arm_drill_medium.png",
+						"advanced": "res://assets/fight/units/ally_frame/arm_drill_advanced.png"
 					}
 				}
 			},
@@ -229,7 +329,11 @@
 				"violet",
 				"steel",
 				"lime",
-				"rose"
+				"rose",
+				"crimson",
+				"cobalt",
+				"sand",
+				"mint"
 			]
 		},
 		"enemy_drone": {

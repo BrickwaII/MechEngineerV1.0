@@ -1,0 +1,109 @@
+{
+	"_comment": "Battle presentation (M7 P2): how units, skills, statuses and the fight's end look and sound. Timings of the attack itself come from data/feel/feel.json (attack_windup + attack_strike + attack_recover) so every screen keeps one rhythm; this file holds what is particular to the battle. Every number here is a first guess, not balance. Read by ui/fight/battle_art.gd and ui/fight/skill_fx.gd.",
+
+	"ally_unit": "ally_frame",
+	"_enemy_sprites_comment": "Enemy table id -> sprite manifest unit, a last resort for enemies the enemy table gives no sprite (its sprite and tier come first, data/combat/enemy_tables.json), whose id is no manifest unit and that no unit lists in enemy_ids. An enemy with none of these draws fallback_enemy.",
+	"enemy_sprites": {},
+	"fallback_enemy": {
+		"sheets": {
+			"beginner": "res://assets/fight/units/enemy_fallback/fallback_beginner.png",
+			"medium": "res://assets/fight/units/enemy_fallback/fallback_medium.png",
+			"advanced": "res://assets/fight/units/enemy_fallback/fallback_advanced.png"
+		},
+		"_palettes_comment": "Picked per enemy type from its id, so two unknown enemy types never look the same by accident. Same format as ally_palettes in data/feel/sprite_manifest.json.",
+		"palettes": {
+			"rust": {"primary": ["#7a2a2a", "#b0413a", "#e0645a"], "secondary": ["#3b3a40", "#5d5a63", "#8c8892"], "glow": ["#ffe08a"]},
+			"ochre": {"primary": ["#7a5418", "#b07a26", "#e0a640"], "secondary": ["#3a3630", "#5e574c", "#8f8676"], "glow": ["#ff9a8f"]},
+			"plum": {"primary": ["#5a2450", "#8a3a7c", "#b85aa8"], "secondary": ["#34343f", "#55556a", "#8484a0"], "glow": ["#ffb3a0"]},
+			"slate": {"primary": ["#3a4250", "#5a6578", "#8794a8"], "secondary": ["#6a2a2a", "#9a3e3a", "#c8605a"], "glow": ["#ff6b5e"]}
+		}
+	},
+	"_enemy_tier_comment": "Enemy tier by the fight's defense level (index 0 to 5), for enemies whose enemy table entry names no tier.",
+	"enemy_tier_by_defense_level": ["beginner", "beginner", "medium", "medium", "advanced", "advanced"],
+
+	"_tier_look_comment": "What a tier adds around the sprite: the base plate under the unit and a glow in the bot's glow color behind it. glow_alpha 0 is no glow; glow_pulse is how far the alpha breathes, glow_pulse_ms one breath.",
+	"tier_look": {
+		"beginner": {"plate": "res://assets/fight/tiers/plate_beginner.png", "glow_alpha": 0.0, "glow_pulse": 0.0, "glow_scale": 1.0},
+		"medium": {"plate": "res://assets/fight/tiers/plate_medium.png", "glow_alpha": 0.22, "glow_pulse": 0.0, "glow_scale": 1.1},
+		"advanced": {"plate": "res://assets/fight/tiers/plate_advanced.png", "glow_alpha": 0.42, "glow_pulse": 0.14, "glow_scale": 1.25}
+	},
+	"glow_texture": "res://assets/fight/tiers/glow.png",
+	"glow_pulse_ms": 1600,
+
+	"_motion_comment": "Pixels a unit travels toward its target on a lunge, and recoils on a shot or when hit (before display_scale). reduced motion sets them to 0.",
+	"lunge_px": 18,
+	"recoil_px": 5,
+	"hit_knockback_px": 6,
+	"_big_hit_comment": "A hit is big when it takes at least this share of the target's max hp, or downs it: big hits get the heavy hit pause and the small screen shake. Every other landed hit gets the light pause and no shake.",
+	"big_hit_share": 0.25,
+	"_energy_popup_comment": "An energy gain popup shows on the unit whose turn comes up when it gained at least this many points since its last turn.",
+	"energy_popup_min_gain": 1,
+	"_low_energy_comment": "A unit shows the low energy status when it cannot afford its cheapest skill that costs energy.",
+	"_downed_alpha_comment": "Opacity of a downed unit's card.",
+	"downed_alpha": 0.55,
+	"_arrow_comment": "Intent arrows: alpha of an arrow in the background, and of the one in focus (the next enemy to act, or the enemy under the pointer).",
+	"arrow_alpha_dim": 0.28,
+	"arrow_alpha_focus": 0.95,
+	"arrow_width_px": 2,
+	"_preview_comment": "The choice preview drawn on the bars: the predicted hp loss blinks between these alphas, one blink every preview_blink_ms.",
+	"preview_alpha_low": 0.35,
+	"preview_alpha_high": 0.9,
+	"preview_blink_ms": 700,
+
+	"outcome": {
+		"_comment": "The victory or defeat moment before the post-fight readout: the banner pops in (feel tween ui_pop), holds, then the screen hands off. A click skips the hold. The skip animation setting skips it all.",
+		"hold_ms": 1400,
+		"dim_alpha": 0.55,
+		"victory_sound": "battle_victory",
+		"defeat_sound": "battle_defeat",
+		"victory_color": "accent_hover",
+		"defeat_color": "danger"
+	},
+
+	"effects": {
+		"_comment": "Effect sheets: one row of frames each, drawn white and tinted by the skill's color.",
+		"slash": {"sheet": "res://assets/fight/effects/slash.png", "frame_size": [32, 32], "frames": 5, "fps": 18},
+		"impact_ring": {"sheet": "res://assets/fight/effects/impact_ring.png", "frame_size": [32, 32], "frames": 5, "fps": 16},
+		"bolt": {"sheet": "res://assets/fight/effects/bolt.png", "frame_size": [16, 16], "frames": 2, "fps": 16, "loop": true},
+		"orb": {"sheet": "res://assets/fight/effects/orb.png", "frame_size": [16, 16], "frames": 2, "fps": 12, "loop": true},
+		"arc_wave": {"sheet": "res://assets/fight/effects/arc_wave.png", "frame_size": [32, 32], "frames": 5, "fps": 18},
+		"shield_dome": {"sheet": "res://assets/fight/effects/shield_dome.png", "frame_size": [32, 32], "frames": 4, "fps": 12},
+		"wrench": {"sheet": "res://assets/fight/effects/wrench.png", "frame_size": [16, 16], "frames": 4, "fps": 12},
+		"gear": {"sheet": "res://assets/fight/effects/gear.png", "frame_size": [16, 16], "frames": 4, "fps": 12},
+		"blast": {"sheet": "res://assets/fight/effects/blast.png", "frame_size": [32, 32], "frames": 6, "fps": 16},
+		"charge": {"sheet": "res://assets/fight/effects/charge.png", "frame_size": [16, 16], "frames": 4, "fps": 16},
+		"cross": {"sheet": "res://assets/fight/effects/cross.png", "frame_size": [16, 16], "frames": 4, "fps": 10}
+	},
+
+	"_skills_comment": "One look and sound per skill. motion: lunge (runs at the target), shoot (recoils, fires projectile), sweep (lunges, then the effect lands on every target), slam (a heavy lunge), blast (charges, then fires a big projectile), cast (heal pose; the effect lands on the target), guard (guard pose; the effect lands on the target). charge_effect plays on the user during the wind-up; projectile flies from user to target during the strike; impact_effect plays on each target. color/accent name data/feel/palette.json colors. sound plays at the strike, impact_sound (a data/feel/audio.json id, or \"\") on each landing.",
+	"skills": {
+		"strike": {"name": "Strike", "motion": "lunge", "charge_effect": "", "projectile": "", "impact_effect": "slash", "color": "text_bright", "accent": "sprite_spark", "sound": "skill_strike", "impact_sound": "hit_light"},
+		"overcharge_shot": {"name": "Overcharge Shot", "motion": "shoot", "charge_effect": "charge", "projectile": "bolt", "impact_effect": "impact_ring", "color": "energy", "accent": "energy_ghost", "sound": "skill_overcharge_shot", "impact_sound": "hit_light"},
+		"heavy_strike": {"name": "Heavy Strike", "motion": "slam", "charge_effect": "", "projectile": "", "impact_effect": "impact_ring", "color": "warning", "accent": "danger", "sound": "skill_heavy_strike", "impact_sound": "hit_heavy"},
+		"arc_sweep": {"name": "Arc Sweep", "motion": "sweep", "charge_effect": "charge", "projectile": "", "impact_effect": "arc_wave", "color": "selected", "accent": "energy", "sound": "skill_arc_sweep", "impact_sound": "hit_light"},
+		"brace": {"name": "Brace", "motion": "guard", "charge_effect": "", "projectile": "", "impact_effect": "shield_dome", "color": "selected", "accent": "text_bright", "sound": "skill_brace", "impact_sound": ""},
+		"patch_up": {"name": "Patch Up", "motion": "cast", "charge_effect": "", "projectile": "", "impact_effect": "wrench", "color": "hp", "accent": "popup_heal", "sound": "skill_patch_up", "impact_sound": ""},
+		"shield_ally": {"name": "Shield Ally", "motion": "cast", "charge_effect": "charge", "projectile": "orb", "impact_effect": "shield_dome", "color": "focus", "accent": "accent_hover", "sound": "skill_shield_ally", "impact_sound": ""},
+		"overload": {"name": "Overload", "motion": "blast", "charge_effect": "charge", "projectile": "orb", "impact_effect": "blast", "color": "danger", "accent": "warning", "sound": "skill_overload", "impact_sound": "hit_heavy"},
+		"repair": {"name": "Repair", "motion": "cast", "charge_effect": "", "projectile": "", "impact_effect": "gear", "color": "warning", "accent": "popup_heal", "sound": "skill_repair", "impact_sound": ""}
+	},
+	"_skill_for_comment": "Which look a unit's skill uses: its own name first (a bot's Overcharge Shot fights as heavy_strike but looks like itself), then its combat skill id, then its effect. Names match case-insensitively with spaces as underscores.",
+	"skill_for": {
+		"by_id": {"strike": "strike", "heavy_strike": "heavy_strike", "arc_sweep": "arc_sweep", "brace": "brace", "patch_up": "patch_up", "shield": "shield_ally", "overload": "overload", "repair": "repair"},
+		"by_effect": {"damage": "strike", "heal": "repair", "guard": "brace"}
+	},
+
+	"_level_steps_comment": "How a skill's look and sound grow with its level: entry 1 is level 1, up to the max skill level (10, data/post_fight/post_fight.json); a higher level uses the last entry. scale and brightness grow the effects; particles is the burst size on each landing; extra adds projectiles (shot skills), sparks (heals) or rings (guards); impact is the hit pause on a landed hit (light or heavy; big hits are always heavy); layers are extra sounds (data/feel/audio.json) played with the skill's own. The timing never changes: a maxed skill hits harder, not longer.",
+	"level_steps": [
+		{"scale": 1.0, "brightness": 1.0, "particles": 4, "extra": 0, "impact": "light", "layers": []},
+		{"scale": 1.06, "brightness": 1.05, "particles": 5, "extra": 0, "impact": "light", "layers": []},
+		{"scale": 1.12, "brightness": 1.1, "particles": 6, "extra": 1, "impact": "light", "layers": []},
+		{"scale": 1.18, "brightness": 1.15, "particles": 8, "extra": 1, "impact": "light", "layers": ["skill_layer_impact"]},
+		{"scale": 1.24, "brightness": 1.2, "particles": 10, "extra": 1, "impact": "light", "layers": ["skill_layer_impact"]},
+		{"scale": 1.3, "brightness": 1.25, "particles": 12, "extra": 2, "impact": "heavy", "layers": ["skill_layer_impact"]},
+		{"scale": 1.36, "brightness": 1.3, "particles": 14, "extra": 2, "impact": "heavy", "layers": ["skill_layer_impact", "skill_layer_shimmer"]},
+		{"scale": 1.42, "brightness": 1.35, "particles": 16, "extra": 2, "impact": "heavy", "layers": ["skill_layer_impact", "skill_layer_shimmer"]},
+		{"scale": 1.48, "brightness": 1.4, "particles": 18, "extra": 3, "impact": "heavy", "layers": ["skill_layer_impact", "skill_layer_shimmer"]},
+		{"scale": 1.6, "brightness": 1.5, "particles": 22, "extra": 3, "impact": "heavy", "layers": ["skill_layer_impact", "skill_layer_shimmer", "skill_layer_bass"]}
+	]
+}

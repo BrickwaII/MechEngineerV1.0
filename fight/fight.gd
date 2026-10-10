@@ -27,6 +27,12 @@ var action_tags: Array[String] = []
 ## fight/post_fight/. See ActionTag.
 var decision_tags: Array[ActionTag] = []
 var log_lines: PackedStringArray = []
+## The FightEvents of the latest action, in order. See FightEvent.
+var last_events: Array[FightEvent] = []
+
+## Raised for every FightEvent as an action resolves, for the presentation.
+## Listening changes nothing in the fight.
+signal event_raised(event: FightEvent)
 
 var _over := false
 ## Why the request cannot be fought, or "" when it can.
@@ -121,6 +127,7 @@ func submit(action: FightAction) -> String:
 	var actor := pending_actor
 	pending_actor = null
 	action_count += 1
+	last_events = []
 	var tag := ActionTag.begin(self, actor, action)
 	if action.kind == FightAction.Kind.WAIT:
 		_resolve_wait(actor, action)
@@ -187,10 +194,19 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 	var energy_before := actor.energy()
 	actor.spend(skill)
 	action_tags.append("%s:%s" % [actor.id, skill.id])
+	var used := _event(FightEvent.Kind.SKILL, actor, target, skill)
+	used.amount = skill.energy_cost
+	used.energy_before = energy_before
+	used.energy_after = actor.energy()
+	_raise(used)
 	if skill.is_heal():
 		var hp_before := target.hp
 		target.hp += DamageRules.heal(actor.stats, target.hp, target.max_hp, skill)
 		actor.finish_action(tuning.action_threshold)
+		var healed := _event(FightEvent.Kind.HEAL, actor, target, skill)
+		healed.amount = target.hp - hp_before
+		healed.hp_before = hp_before
+		_raise(healed)
 		_log("%s uses %s on %s: %d healed, hp %d -> %d, energy %d -> %d" % [
 			actor.display_name, skill.display_name, target.display_name, target.hp - hp_before, hp_before,
 			target.hp, energy_before, actor.energy()])
@@ -198,6 +214,9 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 	if skill.is_guard():
 		target.guard_percent = maxi(target.guard_percent, skill.power_percent)
 		actor.finish_action(tuning.action_threshold)
+		var guarded := _event(FightEvent.Kind.GUARD, actor, target, skill)
+		guarded.amount = target.guard_percent
+		_raise(guarded)
 		_log("%s uses %s on %s: next hit %d%% blocked, energy %d -> %d" % [
 			actor.display_name, skill.display_name, target.display_name, target.guard_percent,
 			energy_before, actor.energy()])
@@ -221,15 +240,27 @@ func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before
 	_log("%s uses %s on %s: %d damage%s, hp %d -> %d, energy %d -> %d" % [
 		actor.display_name, skill.display_name, target.display_name, dmg,
 		" (%d%% blocked)" % guarded if guarded > 0 else "", hp_before, target.hp, energy_before, actor.energy()])
+	var hit := _event(FightEvent.Kind.HIT, actor, target, skill)
+	hit.amount = hp_before - target.hp
+	hit.blocked_percent = guarded
+	hit.hp_before = hp_before
+	_raise(hit)
 	if not target.is_alive():
 		_log("%s is down" % target.display_name)
+		_raise(_event(FightEvent.Kind.DOWN, actor, target, skill))
 
 
 func _resolve_wait(actor: Combatant, action: FightAction) -> void:
 	var skill := actor.skill(action.skill_id)
+	var energy_before := actor.energy()
 	actor.begin_wait(skill.energy_cost_milli(), action.wait_ticks)
 	actor.energy_milli = mini(actor.max_energy_milli, actor.energy_milli + WaitRules.start_bonus_milli(tuning))
 	action_tags.append("%s:wait" % actor.id)
+	var waited := _event(FightEvent.Kind.WAIT, actor, null, skill)
+	waited.amount = action.wait_ticks
+	waited.energy_before = energy_before
+	waited.energy_after = actor.energy()
+	_raise(waited)
 	if action.wait_ticks > 0:
 		_log("%s waits %d ticks (energy %d, %s costs %d)" % [
 			actor.display_name, action.wait_ticks, actor.energy(), skill.display_name, skill.energy_cost])
@@ -259,6 +290,24 @@ func _finish(p_outcome: FightResult.Outcome, text: String) -> void:
 	pending_actor = null
 	_log("%s after %d actions, energy spent by squad %d" % [
 		text, action_count, energy_spent_milli(Combatant.Side.PLAYER) / Combatant.MILLI])
+
+
+## A new event for the current action; hp fields read the target as it is now.
+func _event(kind: FightEvent.Kind, actor: Combatant, target: Combatant, skill: CombatSkill) -> FightEvent:
+	var e := FightEvent.new(kind, action_count, actor.id, target.id if target != null else "", skill.id if skill != null else "")
+	e.skill_level = skill.level if skill != null else 1
+	if target != null:
+		e.hp_before = target.hp
+		e.hp_after = target.hp
+		e.max_hp = target.max_hp
+	return e
+
+
+func _raise(event: FightEvent) -> void:
+	if event.target_id != "":
+		event.hp_after = combatant(event.target_id).hp
+	last_events.append(event)
+	event_raised.emit(event)
 
 
 func _log(text: String) -> void:

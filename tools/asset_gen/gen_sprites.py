@@ -379,6 +379,8 @@ def gen_ally():
     written = []
     for part, variants in unit["parts"].items():
         for variant, tiers in variants.items():
+            if variant not in PART_DRAW[part]:
+                continue  # drawn by gen_battle.py (assets/fight/)
             for tier_name, res in tiers.items():
                 t = TIER_LEVEL[tier_name]
 

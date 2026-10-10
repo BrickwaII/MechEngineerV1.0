@@ -95,7 +95,7 @@ func test_a_revision_marks_the_panel_for_one_turn() -> void:
 	assert_bool(medic.change_label.visible).is_true()
 	assert_str(medic.change_label.text).starts_with("changed: Warden Mech 1 hp 40 -> ")
 	assert_str(medic.intent_label.text).starts_with("Intent: Repair -> Warden Mech 1 (+")
-	assert_that(medic._style.border_color).is_equal(medic.Palette.CHANGED)
+	assert_that(medic._style.border_color).is_equal(FeelData.color("changed"))
 	# The mark goes once the next bot action resolves, unless that revises it again.
 	await _enemies_done()
 	_screen.skill_buttons["strike"].pressed.emit()

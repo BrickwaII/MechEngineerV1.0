@@ -168,9 +168,9 @@
 			"applies": "live",
 			"default": "generation",
 			"options": [
-				{"id": "generation", "name": "Tier from generation (current)"},
-				{"id": "skill_levels", "name": "Tier from skill levels", "built": false},
-				{"id": "augments", "name": "Tier from augments", "built": false}
+				{"id": "generation", "name": "Tier from generation (current)", "description": "A bot's personality generation picks its tier: medium from medium_at, advanced from advanced_at. Read by the battle screen (ui/fight/battle_tier_rule.gd).", "params": {"medium_at": 2, "advanced_at": 3}},
+				{"id": "skill_levels", "name": "Tier from skill levels", "description": "The levels a bot has gained across its skills (each skill's level above 1, summed) pick its tier: medium from medium_at, advanced from advanced_at.", "params": {"medium_at": 3, "advanced_at": 8}},
+				{"id": "augments", "name": "Tier from augments", "description": "The augments a bot has fitted pick its tier: medium from medium_at, advanced from advanced_at.", "params": {"medium_at": 1, "advanced_at": 2}}
 			]
 		}
 	]

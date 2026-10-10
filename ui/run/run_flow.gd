@@ -269,6 +269,7 @@ func _hand_services_to(screen: Control) -> void:
 		inner = AutoFightService.new()
 	else:
 		var scene_service := FightSceneService.new(self, fight_screen_tuning)
+		scene_service.bot_source = func(id: String) -> Bot: return squad.get_bot(id) if squad != null else null
 		scene_service.screen_opened.connect(_on_screen_opened)
 		inner = scene_service
 	fight_service = RunFightService.new(inner, squad, ledger)
