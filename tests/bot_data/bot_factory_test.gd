@@ -112,3 +112,100 @@ func test_a_squad_rejects_duplicate_bot_ids() -> void:
 	var squad := _factory.build_squad(5)
 	squad.bots[1].id = squad.bots[0].id
 	assert_bool(squad.is_valid()).is_false()
+
+
+func _has_damage_skill(bot: Bot, tuning: BotTuning) -> bool:
+	return bot.skills.any(func(s: Skill) -> bool: return tuning.is_damage_skill(s))
+
+
+func test_the_draft_rule_comes_from_data() -> void:
+	assert_str(_tuning.draft_rule).is_equal(BotTuning.DRAFT_RULE_RANDOM)
+	assert_array(_tuning.damage_effect_ids).contains(["damage_single", "damage_single_heavy", "damage_all"])
+	assert_bool(_tuning.is_valid()).is_true()
+
+
+func test_damage_guarantee_gives_every_drafted_bot_a_damage_skill() -> void:
+	_tuning.draft_rule = BotTuning.DRAFT_RULE_DAMAGE_GUARANTEE
+	for seed_value in range(1, 41):
+		for bot in _factory.build_draft(seed_value):
+			assert_bool(_has_damage_skill(bot, _tuning)).is_true()
+			assert_int(bot.skills.size()).is_equal(_tuning.starting_skill_count)
+			assert_array(_tuning.validation_errors_for(bot)).is_empty()
+
+
+func test_the_random_rule_can_draft_a_bot_with_no_damage_skill() -> void:
+	_tuning.draft_rule = BotTuning.DRAFT_RULE_RANDOM
+	var found := false
+	for seed_value in range(1, 41):
+		for bot in _factory.build_draft(seed_value):
+			found = found or not _has_damage_skill(bot, _tuning)
+	assert_bool(found).is_true()
+
+
+func test_damage_guarantee_changes_only_skills_of_bots_that_drew_no_damage() -> void:
+	_tuning.draft_rule = BotTuning.DRAFT_RULE_RANDOM
+	var random_draft := _factory.build_draft(11)
+	_tuning.draft_rule = BotTuning.DRAFT_RULE_DAMAGE_GUARANTEE
+	var guaranteed := _factory.build_draft(11)
+	for i in random_draft.size():
+		var a := random_draft[i]
+		var b := guaranteed[i]
+		# Stats, names and personality are the same: the rule draws no randomness.
+		assert_str(b.display_name).is_equal(a.display_name)
+		assert_object(b.stats).is_equal(a.stats)
+		assert_float(b.personality.aggressive_defensive).is_equal(a.personality.aggressive_defensive)
+		var names_a := a.skills.map(func(s: Skill) -> String: return s.display_name)
+		var names_b := b.skills.map(func(s: Skill) -> String: return s.display_name)
+		if _has_damage_skill(a, _tuning):
+			assert_array(names_b).is_equal(names_a)
+		else:
+			# The first skill drawn stays; the last becomes a damage skill.
+			assert_str(names_b[0]).is_equal(names_a[0])
+			assert_bool(_tuning.is_damage_skill(b.skills[-1])).is_true()
+
+
+func test_an_unknown_draft_rule_is_rejected() -> void:
+	_tuning.draft_rule = "best_of_three"
+	assert_bool(_tuning.is_valid()).is_false()
+
+
+func test_damage_guarantee_needs_a_damage_skill_in_the_catalog() -> void:
+	_tuning.draft_rule = BotTuning.DRAFT_RULE_DAMAGE_GUARANTEE
+	_tuning.damage_effect_ids = ["no_such_effect"]
+	assert_bool(_tuning.is_valid()).is_false()
+
+
+func _has_non_strike_damage(bot: Bot) -> bool:
+	return bot.skills.any(
+		func(s: Skill) -> bool: return _tuning.is_damage_skill(s) and s.effect_id != _tuning.basic_attack_effect_id)
+
+
+func test_non_strike_damage_gives_every_bot_a_damage_skill_other_than_strike() -> void:
+	_tuning.draft_rule = BotTuning.DRAFT_RULE_NON_STRIKE_DAMAGE
+	assert_str(_tuning.basic_attack_effect_id).is_equal("damage_single")
+	for seed_value in range(1, 41):
+		for bot in _factory.build_draft(seed_value):
+			assert_bool(_has_non_strike_damage(bot)).is_true()
+			assert_int(bot.skills.size()).is_equal(_tuning.starting_skill_count)
+			assert_array(_tuning.validation_errors_for(bot)).is_empty()
+
+
+func test_non_strike_damage_swaps_out_a_drawn_strike_first() -> void:
+	_tuning.draft_rule = BotTuning.DRAFT_RULE_RANDOM
+	var checked := 0
+	for seed_value in range(1, 41):
+		var random_draft := _factory.build_draft(seed_value)
+		_tuning.draft_rule = BotTuning.DRAFT_RULE_NON_STRIKE_DAMAGE
+		var guaranteed := _factory.build_draft(seed_value)
+		_tuning.draft_rule = BotTuning.DRAFT_RULE_RANDOM
+		for i in random_draft.size():
+			var a := random_draft[i]
+			var strike := a.skills.map(func(s: Skill) -> String: return s.effect_id).find(_tuning.basic_attack_effect_id)
+			if strike < 0 or _has_non_strike_damage(a):
+				continue
+			# The other skill stays; Strike's slot gets the guaranteed skill.
+			var other := 1 - strike
+			assert_str(guaranteed[i].skills[other].display_name).is_equal(a.skills[other].display_name)
+			assert_bool(_has_non_strike_damage(guaranteed[i])).is_true()
+			checked += 1
+	assert_int(checked).is_greater(0)

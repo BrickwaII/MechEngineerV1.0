@@ -7,9 +7,9 @@ extends GdUnitTestSuite
 const SCENE := preload("res://ui/run/run_flow.tscn")
 const Helpers := preload("res://tests/ui/fight/fight_ui_helpers.gd")
 const SAVE_PATH := "user://run_flow_test.res"
-## Bots fight with their own drafted skills, so a seed must draft a squad
-## that wins its first fight: 11 drafted three low-attack support bots.
-const RUN_SEED := 12
+## Bots fight with their own drafted skills, so the seed must draft a squad
+## that wins its first fight. 13 does under both draft rules.
+const RUN_SEED := 13
 
 var _runner: GdUnitSceneRunner
 var _flow: RunFlow
@@ -357,7 +357,8 @@ func test_a_fight_in_the_run_levels_up_the_bot_skills_it_used() -> void:
 			if not change.has_bot_skill():
 				continue
 			var skill := _skill_named(bot, change.skill_name)
-			assert_int(change.level_after).is_equal(levels["%s/%s" % [bot.id, skill.display_name]] + 1)
+			# One use short of a level was banked, so any use raises it at least once.
+			assert_int(change.level_after).is_greater(levels["%s/%s" % [bot.id, skill.display_name]])
 			assert_int(skill.level).is_equal(change.level_after)
 			level_ups += 1
 	assert_int(level_ups).is_greater(0)
