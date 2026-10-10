@@ -52,7 +52,7 @@ func _build_bot(rng: RandomNumberGenerator, bot_id: String, bot_name: String) ->
 				personality.reactive_methodical = value
 
 	var skills: Array[Skill] = []
-	for template in _shuffled(_tuning.skills, rng).slice(0, _tuning.starting_skill_count):
+	for template in _starting_skills(_shuffled(_tuning.skills, rng)):
 		var skill: Skill = template.duplicate()
 		skill.level = _tuning.starting_skill_level
 		skills.append(skill)
@@ -62,6 +62,22 @@ func _build_bot(rng: RandomNumberGenerator, bot_id: String, bot_name: String) ->
 		slots.append(AugmentSlot.new())
 
 	return Bot.new(bot_id, bot_name, stats, personality, skills, slots)
+
+
+## The catalog skills a bot starts with, from the catalog in `shuffled` order,
+## by the tuning's draft rule. Draws nothing from the rng, so the rule never
+## changes any other part of a draft.
+func _starting_skills(shuffled: Array) -> Array:
+	var picked := shuffled.slice(0, _tuning.starting_skill_count)
+	if _tuning.draft_rule != BotTuning.DRAFT_RULE_DAMAGE_GUARANTEE or picked.is_empty():
+		return picked
+	if picked.any(func(s: Skill) -> bool: return _tuning.is_damage_skill(s)):
+		return picked
+	for template: Skill in shuffled.slice(picked.size()):
+		if _tuning.is_damage_skill(template):
+			picked[-1] = template
+			break
+	return picked
 
 
 ## A seeded Fisher-Yates shuffle of a copy of `items`.
