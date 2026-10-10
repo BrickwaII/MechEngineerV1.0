@@ -27,9 +27,10 @@ func test_one_panel_per_unit_with_live_hp_and_energy() -> void:
 	assert_int(_screen.unit_panels.size()).is_equal(_screen.fight.combatants.size())
 	for c in _screen.fight.combatants:
 		var panel = _screen.unit_panels[c.id]
-		assert_int(panel.hp_bar.value).is_equal(c.hp)
-		assert_int(panel.hp_bar.max_value).is_equal(c.max_hp)
-		assert_int(panel.energy_bar.value).is_equal(c.energy())
+		assert_int(int(panel.hp_bar.value)).is_equal(c.hp)
+		assert_int(int(panel.hp_bar.max_value)).is_equal(c.max_hp)
+		assert_int(int(panel.energy_bar.value)).is_equal(c.energy())
+		assert_str(panel.hp_bar.text()).is_equal("HP %d/%d" % [c.hp, c.max_hp])
 
 
 func test_panels_update_after_an_action() -> void:
@@ -38,7 +39,7 @@ func test_panels_update_after_an_action() -> void:
 	_screen.skill_buttons["strike"].pressed.emit()
 	Helpers.click(_screen.unit_panels[target.id])
 	assert_int(target.hp).is_less(hp_before)
-	assert_int(_screen.unit_panels[target.id].hp_bar.value).is_equal(target.hp)
+	assert_int(int(_screen.unit_panels[target.id].hp_bar.value)).is_equal(target.hp)
 
 
 func test_the_timeline_matches_upcoming_and_refreshes_after_each_action() -> void:
@@ -183,7 +184,7 @@ func test_shield_ally_marks_the_bots_panel() -> void:
 	assert_str(_screen.preview_label.text).contains("blocks 40% of its next hit")
 	Helpers.click(_screen.unit_panels["stub_anvil"])
 	assert_int(_screen.fight.combatant("stub_anvil").guard_percent).is_equal(40)
-	assert_str(_screen.unit_panels["stub_anvil"].status_label.text).contains("GUARD 40%")
+	assert_str(_screen.unit_panels["stub_anvil"].status_text()).contains("GUARD 40%")
 
 
 func test_the_wait_ticks_box_is_hidden_by_default() -> void:

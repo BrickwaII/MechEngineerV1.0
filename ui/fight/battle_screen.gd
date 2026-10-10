@@ -243,6 +243,8 @@ func refresh() -> void:
 	log_label.text = "\n".join(lines.slice(maxi(0, lines.size() - LOG_LINES_SHOWN)))
 	if fight.is_over():
 		prompt_label.text = "VICTORY" if fight.outcome == FightResult.Outcome.VICTORY else "DEFEAT"
+	elif actor == null:
+		pass
 	elif handler.is_enemy_turn():
 		prompt_label.text = "%s is acting..." % actor.display_name
 	elif handler.selected_bot_id != actor.id:
@@ -551,7 +553,7 @@ func _build_layout() -> void:
 	presenter.panels = unit_panels
 	presenter.settings = settings
 	presenter.set_anchors_preset(Control.PRESET_FULL_RECT)
-	presenter.idle.connect(refresh)
+	presenter.idle.connect(refresh, CONNECT_DEFERRED)
 	add_child(presenter)
 	shake = ScreenShake.new(root, settings)
 	shake.name = "Shake"
