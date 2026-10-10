@@ -82,6 +82,16 @@ func test_data_holds_no_code() -> void:
 	assert_array(_rules.find_violations(files)).has_size(1)
 
 
+func test_code_layers_may_read_data_but_contracts_may_not() -> void:
+	var files := {
+		"res://bot_data/tuning.gd": "const P := \"res://data/bot_data/tuning.json\"\n",
+		"res://campaign/map.gd": "const P := \"res://data/regions/act1.json\"\n",
+		"res://contracts/x.gd": "const P := \"res://data/bot_data/tuning.json\"\n",
+	}
+	assert_array(_rules.find_violations(files)).contains_exactly(
+		["res://contracts/x.gd: contracts/ may not import data/"])
+
+
 func test_comments_and_strings_do_not_count_as_class_use() -> void:
 	var files := {
 		"res://campaign/run_state.gd": "class_name RunState\n",
