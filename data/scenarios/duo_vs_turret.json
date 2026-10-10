@@ -1,0 +1,24 @@
+{
+	"name": "Duo vs turret",
+	"kind": "defend",
+	"territory_id": "scenario",
+	"defense_level": 2,
+	"squad": [
+		{"bot": {
+			"id": "tank", "name": "Anvil",
+			"stats": {"hp": 45, "attack": 6, "defense": 8, "speed": 4, "elasticity": 2, "battery_capacity": 10},
+			"skills": [{"name": "Strike", "level": 1}, {"name": "Brace", "level": 2}]
+		}},
+		{"bot": {
+			"id": "striker", "name": "Spark",
+			"stats": {"hp": 26, "attack": 9, "defense": 3, "speed": 9, "elasticity": 4, "battery_capacity": 14},
+			"skills": [{"name": "Strike", "level": 1}, {"name": "Overcharge Shot", "level": 1}]
+		}}
+	],
+	"enemies": [
+		"sentry_turret",
+		{"enemy": "scrap_drone", "count": 2}
+	],
+	"player_policy": "random",
+	"enemy_policy": "simple"
+}

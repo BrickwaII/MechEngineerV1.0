@@ -1,0 +1,11 @@
+{
+	"name": "Level 2, drafted squad",
+	"kind": "attack",
+	"territory_id": "scenario",
+	"defense_level": 2,
+	"squad": [
+		{"draft_seed": 2024}
+	],
+	"player_policy": "simple",
+	"enemy_policy": "simple"
+}
