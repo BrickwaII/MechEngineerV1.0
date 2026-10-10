@@ -96,6 +96,10 @@ func _process(delta: float) -> void:
 ## Moves the fill and trail forward by `delta` seconds.
 func advance(delta: float) -> void:
 	if not is_animating():
+		# Within float tolerance counts as arrived: land exactly, so an eased
+		# trail never stops a hair short of the target.
+		fill_ratio = target_ratio
+		trail_ratio = target_ratio
 		return
 	if _fill_t >= 0.0:
 		_fill_t += delta
