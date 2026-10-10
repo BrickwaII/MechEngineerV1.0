@@ -18,6 +18,9 @@ enum Action { NONE, ATTACK, REINFORCE, WAIT }
 ## Why pressure builds on a held region.
 enum Cause { UPRISING, ATTACK }
 
+## The territory id the stub boss fight is fought over.
+const BOSS_ID := "boss"
+
 var map: RegionMap
 var tuning: MapTuning
 var state: RunState
@@ -106,7 +109,7 @@ func pressure_rate(region_id: String) -> float:
 	var rate := tuning.pressure_rate_base + tuning.pressure_rate_per_base * region.pressure_base
 	if is_border(region_id):
 		rate *= tuning.border_multiplier
-	return rate * state.pressure_rate_factor.get(region_id, 1.0)
+	return rate * tuning.pressure_scale * state.pressure_rate_factor.get(region_id, 1.0)
 
 
 ## The hostile neighbor pressing on a held region: the best defended one, the
@@ -298,6 +301,23 @@ func defend() -> bool:
 		return false
 	apply_defense_result(region_id, result)
 	return true
+
+
+## The boss fight at the last act's payload, through the FightService like any
+## other fight. Returns the result, or null if the payload is not due or a
+## fight is already out. Await it. The run ends either way; the caller says how.
+## TODO(decision: boss-fight): a stub. It is an attack on territory BOSS_ID at
+## the tuning's boss.defense_level until the boss fight is designed.
+func boss_fight() -> FightResult:
+	if not is_payload_due() or fighting or is_lost():
+		return null
+	var request := FightRequest.new(
+		FightRequest.Kind.ATTACK, BOSS_ID, tuning.boss_defense_level, squad_provider.get_squad())
+	var result := await _run_fight(request)
+	if result != null:
+		_log("The boss is beaten." if result.is_victory() else "The boss holds.")
+		changed.emit()
+	return result
 
 
 ## Grid percent a finished fight takes from the grid.

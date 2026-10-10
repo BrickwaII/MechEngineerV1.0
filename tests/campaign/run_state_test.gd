@@ -82,12 +82,12 @@ func test_a_version_1_save_loads_as_act_1_with_the_default_start() -> void:
 
 func test_the_act_and_start_traits_round_trip() -> void:
 	var state := RunState.new()
-	state.region_set_id = "puget_sound"
+	state.region_set_id = "north_america"
 	state.act = 1
-	state.start_id = "beacon_substation"
-	state.owned = PackedStringArray(["seattle"])
-	state.pressure["seattle"] = 1.0 / 3.0
+	state.start_id = "issaquah_substation"
+	state.owned = PackedStringArray(["washington"])
+	state.pressure["washington"] = 1.0 / 3.0
 	state.income_bonus[MapRegion.POWER] = 3
-	state.pressure_rate_factor["seattle"] = 0.5
+	state.pressure_rate_factor["washington"] = 0.5
 	assert_int(state.save_file(SAVE_PATH)).is_equal(OK)
 	assert_dict(RunState.load_file(SAVE_PATH).to_dict()).is_equal(state.to_dict())

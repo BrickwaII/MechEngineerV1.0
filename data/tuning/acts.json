@@ -2,16 +2,23 @@
 	"acts": [
 		{
 			"id": "act1",
-			"name": "Seattle",
-			"region_file": "res://data/regions/seattle.json",
-			"tuning_file": "res://data/tuning/overworld.json"
+			"name": "Greater Seattle",
+			"region_file": "res://data/regions/greater_seattle.json",
+			"tuning_file": "res://data/tuning/act1.json"
 		},
 		{
 			"id": "act2",
-			"name": "Puget Sound",
-			"region_file": "res://data/regions/puget_sound.json",
-			"tuning_file": "res://data/tuning/overworld.json",
-			"zoom_focus": "seattle"
+			"name": "North America",
+			"region_file": "res://data/regions/north_america.json",
+			"tuning_file": "res://data/tuning/act2.json",
+			"zoom_focus": "washington"
+		},
+		{
+			"id": "act3",
+			"name": "The World",
+			"region_file": "res://data/regions/world.json",
+			"tuning_file": "res://data/tuning/act3.json",
+			"zoom_focus": "united_states"
 		}
 	],
 	"zoom": {

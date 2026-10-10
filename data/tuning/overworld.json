@@ -15,6 +15,7 @@
 		"reinforce_relief": 45.0,
 		"after_capture": 15.0,
 		"after_defense_victory": 30.0,
+		"scale": 1.0,
 		"uprising_defense_level": 2,
 		"cause_warning_at": 40.0,
 		"imminent_at": 75.0,
@@ -55,5 +56,19 @@
 		{"label": "Heavy", "opposition": "Heavy mechs in fortified positions."},
 		{"label": "Fortified", "opposition": "A full military garrison with armor."}
 	],
-	"event_log_length": 5
+	"event_log_length": 5,
+	"boss": {
+		"defense_level": 5
+	},
+	"view": {
+		"node_style": "full",
+		"globe": {
+			"size": 0.94,
+			"degrees_per_pixel": 0.3,
+			"max_tilt": 70.0,
+			"drag_threshold_px": 6.0,
+			"edge_degrees": 2.0,
+			"node_min_facing": 0.5
+		}
+	}
 }

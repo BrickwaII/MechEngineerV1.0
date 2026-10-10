@@ -1,10 +1,11 @@
 extends GdUnitTestSuite
-## Starting locations, headless, on the shipped Seattle map. Each start holds
-## different ground and brings different traits, and those change early play.
+## Starting locations, headless, on the shipped greater Seattle map. Each
+## start holds different ground and brings different traits, and those change
+## early play.
 
-const SEATTLE := "res://data/regions/seattle.json"
+const SEATTLE := "res://data/regions/greater_seattle.json"
 const PLACEHOLDER := "res://data/regions/act1_placeholder.json"
-const TUNING := "res://data/tuning/overworld.json"
+const TUNING := "res://data/tuning/act1.json"
 
 var _map: RegionMap
 var _tuning: MapTuning
@@ -28,18 +29,18 @@ func _points_to_first_forced_defense(c: Campaign) -> int:
 	return c.state.time_points
 
 
-func test_seattle_has_three_starts_with_the_stated_traits() -> void:
+func test_greater_seattle_has_three_starts_with_the_stated_traits() -> void:
 	var options := _map.start_options()
 	assert_int(options.size()).is_equal(3)
 	var north := _map.get_start("north_end")
-	assert_array(Array(north.regions)).contains_exactly(["northgate", "lake_city"])
+	assert_array(Array(north.regions)).contains_exactly(["shoreline", "edmonds"])
 	assert_float(north.pressure_rate_factor).is_equal(1.0)
-	var steel := _map.get_start("duwamish_steelworks")
-	assert_array(Array(steel.regions)).contains_exactly(["west_seattle"])
+	var steel := _map.get_start("bremerton_yard")
+	assert_array(Array(steel.regions)).contains_exactly(["bremerton"])
 	assert_int(steel.income_bonus[MapRegion.POWER]).is_equal(3)
 	assert_float(steel.material).is_equal(10.0)
-	var beacon := _map.get_start("beacon_substation")
-	assert_array(Array(beacon.regions)).contains_exactly(["beacon_hill"])
+	var beacon := _map.get_start("issaquah_substation")
+	assert_array(Array(beacon.regions)).contains_exactly(["issaquah"])
 	assert_float(beacon.pressure_rate_factor).is_equal(0.5)
 	assert_object(_map.get_start("")).is_same(north)
 	assert_object(_map.get_start("nowhere")).is_null()
@@ -58,54 +59,54 @@ func test_a_map_without_starts_offers_its_starts_owned_regions() -> void:
 
 
 func test_each_start_begins_holding_its_own_regions() -> void:
-	assert_array(Array(_campaign("north_end").state.owned)).contains_exactly(["northgate", "lake_city"])
-	assert_array(Array(_campaign("duwamish_steelworks").state.owned)).contains_exactly(["west_seattle"])
-	assert_array(Array(_campaign("beacon_substation").state.owned)).contains_exactly(["beacon_hill"])
-	assert_str(_campaign("beacon_substation").state.start_id).is_equal("beacon_substation")
+	assert_array(Array(_campaign("north_end").state.owned)).contains_exactly(["shoreline", "edmonds"])
+	assert_array(Array(_campaign("bremerton_yard").state.owned)).contains_exactly(["bremerton"])
+	assert_array(Array(_campaign("issaquah_substation").state.owned)).contains_exactly(["issaquah"])
+	assert_str(_campaign("issaquah_substation").state.start_id).is_equal("issaquah_substation")
 
 
 func test_two_starts_change_early_play() -> void:
 	var north := _campaign("north_end")
-	var beacon := _campaign("beacon_substation")
+	var beacon := _campaign("issaquah_substation")
 	# North End holds two territories and earns more energy from day one.
-	assert_int(north.income_per_day()[MapRegion.ENERGY]).is_equal(4)
+	assert_int(north.income_per_day()[MapRegion.ENERGY]).is_equal(3)
 	assert_int(beacon.income_per_day()[MapRegion.ENERGY]).is_equal(0)
-	assert_int(beacon.income_per_day()[MapRegion.POWER]).is_equal(4)
-	# Beacon Hill's locals slow pressure: its first forced defense comes later.
+	assert_int(beacon.income_per_day()[MapRegion.POWER]).is_equal(2)
+	# Issaquah's locals slow pressure: its first forced defense comes later.
 	# North End: (0.6 + 0.6 x 1) x 1.5 = 1.8 a point, full at point 56.
-	# Beacon Hill: (0.6 + 0.6 x 2) x 1.5 x 0.5 = 1.35 a point, full at point 75.
-	assert_float(north.pressure_rate("northgate")).is_equal_approx(1.8, 1e-9)
-	assert_float(beacon.pressure_rate("beacon_hill")).is_equal_approx(1.35, 1e-9)
+	# Issaquah: (0.6 + 0.6 x 1) x 1.5 x 0.5 = 0.9 a point, full at point 112.
+	assert_float(north.pressure_rate("shoreline")).is_equal_approx(1.8, 1e-9)
+	assert_float(beacon.pressure_rate("issaquah")).is_equal_approx(0.9, 1e-9)
 	assert_int(_points_to_first_forced_defense(north)).is_equal(56)
-	assert_int(_points_to_first_forced_defense(beacon)).is_equal(75)
+	assert_int(_points_to_first_forced_defense(beacon)).is_equal(112)
 
 
 func test_extra_grid_power_recovers_the_grid_faster() -> void:
 	var north := _campaign("north_end")
-	var steel := _campaign("duwamish_steelworks")
+	var steel := _campaign("bremerton_yard")
 	north.state.grid = 50.0
 	steel.state.grid = 50.0
 	for i in 4:
 		north.wait()
 		steel.wait()
-	# Grid power a point is power income / regen divisor 4: North End 1, the
-	# Steelworks 0 + 3 bonus.
-	assert_float(north.state.grid).is_equal_approx(51.0, 1e-9)
-	assert_float(steel.state.grid).is_equal_approx(53.0, 1e-9)
+	# Grid power a point is power income / regen divisor 4: North End 0, the
+	# Naval Yard 2 + 3 bonus.
+	assert_float(north.state.grid).is_equal_approx(50.0, 1e-9)
+	assert_float(steel.state.grid).is_equal_approx(55.0, 1e-9)
 	assert_float(steel.state.material).is_greater(north.state.material)
 
 
 func test_the_start_pressure_factor_survives_a_save() -> void:
-	var beacon := _campaign("beacon_substation")
+	var beacon := _campaign("issaquah_substation")
 	var resumed := Campaign.new(_map, _tuning, StubSquadProvider.new(), StubFightService.new(),
 		beacon.state.duplicate_state())
-	assert_float(resumed.pressure_rate("beacon_hill")).is_equal(beacon.pressure_rate("beacon_hill"))
+	assert_float(resumed.pressure_rate("issaquah")).is_equal(beacon.pressure_rate("issaquah"))
 	assert_int(resumed.income_per_day()[MapRegion.POWER]).is_equal(beacon.income_per_day()[MapRegion.POWER])
 
 
 func test_a_start_naming_an_unknown_region_is_rejected() -> void:
 	var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(SEATTLE))
-	d["starts"][0]["regions"] = ["northgate", "atlantis"]
+	d["starts"][0]["regions"] = ["shoreline", "atlantis"]
 	assert_array(RegionMap.from_dict(d).errors).contains(["start 'north_end' lists unknown region 'atlantis'"])
 
 

@@ -273,6 +273,37 @@ func test_odds_compare_squad_level_with_defense() -> void:
 	assert_str(c.odds_label("military_depot")).is_equal("Outmatched")
 
 
+func test_the_pressure_scale_multiplies_every_rate() -> void:
+	var c := _campaign()
+	c.tuning = MapTuning.load_file(TUNING)
+	c.tuning.pressure_scale = 0.5
+	assert_float(c.pressure_rate("aurora_data_center")).is_equal_approx(0.9, 1e-9)
+	assert_float(c.pressure_rate("substation_9")).is_equal_approx(1.35, 1e-9)
+
+
+func test_the_boss_fight_waits_for_the_payload() -> void:
+	var c := _campaign()
+	assert_object(await c.boss_fight()).is_null()
+
+
+func test_the_boss_fight_goes_through_the_fight_service() -> void:
+	var service := AlwaysWins.new()
+	var c := Campaign.new(RegionMap.load_file(ACT1), _tuning, StubSquadProvider.new(), service)
+	c.state.time_points = _tuning.total_points
+	var logged: Array[String] = []
+	c.event_logged.connect(func(text: String) -> void: logged.append(text))
+	var result := await c.boss_fight()
+	assert_bool(result.is_victory()).is_true()
+	assert_int(service.requests.size()).is_equal(1)
+	assert_str(service.requests[0].territory_id).is_equal(Campaign.BOSS_ID)
+	assert_int(service.requests[0].defense_level).is_equal(_tuning.boss_defense_level)
+	assert_array(logged).contains(["The boss is beaten."])
+	# The stub service loses at level 5.
+	var stub := _campaign()
+	stub.state.time_points = _tuning.total_points
+	assert_bool((await stub.boss_fight()).is_victory()).is_false()
+
+
 func test_the_countdown_ends_at_the_payload() -> void:
 	var c := _campaign()
 	c.state.time_points = 398

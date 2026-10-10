@@ -1,0 +1,6 @@
+{
+	"base": "res://data/tuning/overworld.json",
+	"time": {"total_points": 560},
+	"pressure": {"scale": 0.8},
+	"view": {"node_style": "compact"}
+}

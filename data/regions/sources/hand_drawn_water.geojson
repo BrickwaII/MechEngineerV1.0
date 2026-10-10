@@ -1,0 +1,15 @@
+{
+	"type": "FeatureCollection",
+	"features": [
+		{
+			"type": "Feature",
+			"properties": {"name": "Lake Sammamish", "note": "Hand-drawn approximate shoreline; not in Natural Earth 1:10m lakes."},
+			"geometry": {"type": "Polygon", "coordinates": [[
+				[-122.105, 47.648], [-122.093, 47.646], [-122.082, 47.628], [-122.071, 47.606],
+				[-122.059, 47.583], [-122.050, 47.563], [-122.056, 47.556], [-122.068, 47.566],
+				[-122.081, 47.586], [-122.094, 47.608], [-122.104, 47.628], [-122.108, 47.642],
+				[-122.105, 47.648]
+			]]}
+		}
+	]
+}

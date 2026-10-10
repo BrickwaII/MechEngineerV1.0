@@ -8,9 +8,12 @@ extends RefCounted
 ## income bonus carry over. Nothing here has a default: a missing key is an
 ## error, so the file stays the one source.
 ##
-## TODO(decision: act1-scope): act 1 defaults to the city of Seattle, by
-## neighborhood; Washington state is the other option. Act 2 is a placeholder
-## greater Puget Sound map until the act 2 scope (the United States) is drawn.
+## The shipped acts: greater Seattle by city (a metro area), North America by
+## state and province (the metro sits in Washington), then the world by region
+## on a globe (North America sits in the United States). Each act's tuning file
+## sets its countdown and pressure scale.
+## TODO(decision: act-tuning): the per-act countdowns and pressure scales in
+## data/tuning/act*.json are first guesses, not playtested.
 ## TODO(decision: zoom-carryover): what carries across the zoom (all stock, a
 ## grid top-up, bonus regions for ground held, the start's income bonus) is a
 ## placeholder rule set; the numbers are in acts.json.

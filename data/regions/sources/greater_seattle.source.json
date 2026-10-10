@@ -1,0 +1,537 @@
+{
+	"id": "greater_seattle",
+	"name": "Greater Seattle",
+	"output": "data/regions/greater_seattle.json",
+	"credit": "Coastline: Natural Earth 1:10m land and North America lakes (public domain). City cores: US Census Bureau TIGER/Line 2019 places (public domain), via github.com/generalpiston/geojson-us-city-boundaries. Mercer Island and Lake Sammamish are hand-drawn approximations (sources/hand_drawn_*.geojson). Built by tools/region_prep/prepare_regions.py.",
+	"output_projection": "flat",
+	"projection": {
+		"type": "local",
+		"lat0": 47.6
+	},
+	"frame": {
+		"lonlat_box": [
+			-122.86,
+			47.36,
+			-121.87,
+			47.83
+		],
+		"aspect": 1.4193548387096775
+	},
+	"raster": [
+		1320,
+		930
+	],
+	"inputs": {
+		"land": {
+			"files": [
+				"ne_10m_land.geojson"
+			],
+			"urls": [
+				"https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_land.geojson"
+			]
+		},
+		"lakes": {
+			"files": [
+				"ne_10m_lakes_north_america.geojson"
+			],
+			"urls": [
+				"https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_lakes_north_america.geojson"
+			]
+		},
+		"places": {
+			"files": [
+				"wa_seattle.json",
+				"wa_shoreline.json",
+				"wa_edmonds.json",
+				"wa_bothell.json",
+				"wa_kirkland.json",
+				"wa_redmond.json",
+				"wa_bellevue.json",
+				"wa_mercer-island.json",
+				"wa_sammamish.json",
+				"wa_issaquah.json",
+				"wa_renton.json",
+				"wa_tukwila.json",
+				"wa_burien.json",
+				"wa_white-center.json",
+				"wa_kent.json",
+				"wa_bainbridge-island.json",
+				"wa_poulsbo.json",
+				"wa_silverdale.json",
+				"wa_bremerton.json",
+				"wa_port-orchard.json",
+				"wa_vashon.json"
+			],
+			"urls": [
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/seattle.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/shoreline.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/edmonds.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/bothell.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/kirkland.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/redmond.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/bellevue.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/mercer-island.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/sammamish.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/issaquah.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/renton.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/tukwila.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/burien.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/white-center.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/kent.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/bainbridge-island.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/poulsbo.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/silverdale.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/bremerton.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/port-orchard.json",
+				"https://raw.githubusercontent.com/generalpiston/geojson-us-city-boundaries/master/cities/wa/vashon.json"
+			]
+		},
+		"hand_drawn": {
+			"files": [
+				"hand_drawn_land.geojson"
+			]
+		},
+		"hand_drawn_water": {
+			"files": [
+				"hand_drawn_water.geojson"
+			]
+		}
+	},
+	"land": {
+		"inputs": [
+			"land"
+		],
+		"minus": [
+			"lakes"
+		],
+		"plus": [
+			"hand_drawn"
+		],
+		"minus_last": [
+			"hand_drawn_water"
+		]
+	},
+	"members": {
+		"input": "places",
+		"key": "NAME"
+	},
+	"grow_km": 9.0,
+	"simplify_px": 2.0,
+	"min_part_px": 400,
+	"min_land_px": 300,
+	"min_shared_px": 4,
+	"regions": [
+		{
+			"id": "seattle",
+			"name": "Seattle",
+			"kind": "Downtown towers, port and stadiums",
+			"members": [
+				"Seattle"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 4,
+				"material": 3
+			},
+			"defense": 5,
+			"pressure_base": 3,
+			"starts_owned": false,
+			"label_at": [
+				0.52,
+				0.38
+			]
+		},
+		{
+			"id": "shoreline",
+			"name": "Shoreline",
+			"kind": "Transmitter hill and commuter suburbs",
+			"members": [
+				"Shoreline"
+			],
+			"provides": {
+				"power": 0,
+				"energy": 2,
+				"material": 0
+			},
+			"defense": 1,
+			"pressure_base": 1,
+			"starts_owned": true,
+			"label_at": [
+				0.575,
+				0.19
+			]
+		},
+		{
+			"id": "edmonds",
+			"name": "Edmonds",
+			"kind": "Ferry terminal and waterfront",
+			"members": [
+				"Edmonds"
+			],
+			"provides": {
+				"power": 0,
+				"energy": 1,
+				"material": 2
+			},
+			"defense": 1,
+			"pressure_base": 1,
+			"starts_owned": true,
+			"label_at": [
+				0.47,
+				0.095
+			]
+		},
+		{
+			"id": "bothell",
+			"name": "Bothell",
+			"kind": "Biotech campuses",
+			"members": [
+				"Bothell"
+			],
+			"provides": {
+				"power": 0,
+				"energy": 3,
+				"material": 0
+			},
+			"defense": 2,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "kirkland",
+			"name": "Kirkland",
+			"kind": "Lakeside software offices",
+			"members": [
+				"Kirkland"
+			],
+			"provides": {
+				"power": 0,
+				"energy": 3,
+				"material": 1
+			},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "redmond",
+			"name": "Redmond",
+			"kind": "Software headquarters",
+			"members": [
+				"Redmond"
+			],
+			"provides": {
+				"power": 0,
+				"energy": 4,
+				"material": 0
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "bellevue",
+			"name": "Bellevue",
+			"kind": "Office towers and malls",
+			"members": [
+				"Bellevue"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 3,
+				"material": 1
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "mercer_island",
+			"name": "Mercer Island",
+			"kind": "Island suburb on the I-90 bridges",
+			"members": [
+				"Mercer Island"
+			],
+			"provides": {
+				"power": 0,
+				"energy": 1,
+				"material": 1
+			},
+			"defense": 2,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "sammamish",
+			"name": "Sammamish",
+			"kind": "Plateau subdivisions",
+			"members": [
+				"Sammamish"
+			],
+			"provides": {
+				"power": 0,
+				"energy": 1,
+				"material": 1
+			},
+			"defense": 1,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "issaquah",
+			"name": "Issaquah",
+			"kind": "Foothill substation and warehouses",
+			"members": [
+				"Issaquah"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 0,
+				"material": 2
+			},
+			"defense": 2,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "renton",
+			"name": "Renton",
+			"kind": "Jet assembly plant",
+			"members": [
+				"Renton"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 1,
+				"material": 3
+			},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "tukwila",
+			"name": "Tukwila",
+			"kind": "Rail yards on the Duwamish",
+			"members": [
+				"Tukwila"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 0,
+				"material": 3
+			},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "burien",
+			"name": "Burien",
+			"kind": "Airport approach, White Center and the seaside town",
+			"members": [
+				"Burien",
+				"White Center"
+			],
+			"provides": {
+				"power": 0,
+				"energy": 2,
+				"material": 1
+			},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "kent",
+			"name": "Kent",
+			"kind": "Valley warehouses and freight depots",
+			"members": [
+				"Kent"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 0,
+				"material": 3
+			},
+			"defense": 2,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "bainbridge_island",
+			"name": "Bainbridge Island",
+			"kind": "Ferry island and wooded estates",
+			"members": [
+				"Bainbridge Island"
+			],
+			"provides": {
+				"power": 0,
+				"energy": 1,
+				"material": 0
+			},
+			"defense": 1,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "poulsbo",
+			"name": "Poulsbo",
+			"kind": "Fjord town and ferry roads",
+			"members": [
+				"Poulsbo"
+			],
+			"provides": {
+				"power": 0,
+				"energy": 1,
+				"material": 1
+			},
+			"defense": 1,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "silverdale",
+			"name": "Silverdale",
+			"kind": "Submarine base and malls",
+			"members": [
+				"Silverdale"
+			],
+			"provides": {
+				"power": 1,
+				"energy": 1,
+				"material": 1
+			},
+			"defense": 4,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "bremerton",
+			"name": "Bremerton",
+			"kind": "Naval shipyard",
+			"members": [
+				"Bremerton"
+			],
+			"provides": {
+				"power": 2,
+				"energy": 0,
+				"material": 3
+			},
+			"defense": 4,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "port_orchard",
+			"name": "Port Orchard",
+			"kind": "Harbor town and ferry docks",
+			"members": [
+				"Port Orchard"
+			],
+			"provides": {
+				"power": 0,
+				"energy": 1,
+				"material": 2
+			},
+			"defense": 1,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "vashon",
+			"name": "Vashon",
+			"kind": "Rural island and orchards",
+			"members": [
+				"Vashon"
+			],
+			"provides": {
+				"power": 0,
+				"energy": 0,
+				"material": 1
+			},
+			"defense": 1,
+			"pressure_base": 1,
+			"starts_owned": false
+		}
+	],
+	"crossings": [
+		[
+			"seattle",
+			"bellevue",
+			"SR-520 bridge"
+		],
+		[
+			"seattle",
+			"mercer_island",
+			"I-90 bridge"
+		],
+		[
+			"mercer_island",
+			"bellevue",
+			"I-90 East Channel bridge"
+		],
+		[
+			"seattle",
+			"bainbridge_island",
+			"Bainbridge Island ferry"
+		],
+		[
+			"seattle",
+			"bremerton",
+			"Bremerton ferry"
+		],
+		[
+			"seattle",
+			"vashon",
+			"Fauntleroy ferry"
+		],
+		[
+			"vashon",
+			"port_orchard",
+			"Southworth ferry"
+		],
+		[
+			"bainbridge_island",
+			"poulsbo",
+			"Agate Pass bridge"
+		],
+		[
+			"edmonds",
+			"poulsbo",
+			"Kingston ferry"
+		]
+	],
+	"starts": [
+		{
+			"id": "north_end",
+			"name": "North End Uplink",
+			"description": "Two quiet suburbs on the north edge of the metro. More ground to hold from day one.",
+			"regions": [
+				"shoreline",
+				"edmonds"
+			]
+		},
+		{
+			"id": "bremerton_yard",
+			"name": "Bremerton Naval Yard",
+			"description": "A shipyard across the Sound with its own substation. One ferry to the city.",
+			"regions": [
+				"bremerton"
+			],
+			"income_bonus": {
+				"power": 3
+			},
+			"material": 10
+		},
+		{
+			"id": "issaquah_substation",
+			"name": "Issaquah Substation",
+			"description": "A foothill substation the valley depends on. Locals shield it from unrest.",
+			"regions": [
+				"issaquah"
+			],
+			"pressure_rate_factor": 0.5
+		}
+	]
+}

@@ -1,9 +1,12 @@
 extends GdUnitTestSuite
-## The overworld screen on the shipped acts, headless: Seattle as act 1, the
-## choice of start, and the zoom out to Puget Sound after the act 1 payload.
+## The overworld screen on the shipped acts, headless: greater Seattle as act
+## 1, the choice of start, the zoom out to North America after the act 1
+## payload, the zoom out to the globe after act 2, saves in every act, and the
+## stub boss fight that ends the run.
 
 const SCENE := "res://ui/overworld/overworld.tscn"
 const SAVE_PATH := "user://overworld_acts_test.save"
+const GlobeView := preload("res://ui/overworld/globe_view.gd")
 
 var _runner: GdUnitSceneRunner
 
@@ -21,24 +24,33 @@ func _screen() -> Node:
 	return _runner.scene()
 
 
-## Spends the rest of act 1's countdown and returns once the payload shows.
+## Spends the rest of the act's countdown and returns once the payload shows.
 func _reach_payload(screen: Node) -> void:
 	screen.campaign.state.time_points = screen.campaign.tuning.total_points - 1
 	screen._on_wait()
 	await _runner.simulate_frames(1)
 
 
-func test_the_scene_opens_on_seattle_with_the_start_choice() -> void:
+## Plays the zoom out from the payload modal to its end.
+func _zoom_out(screen: Node) -> void:
+	await _reach_payload(screen)
+	_button(screen._modal_buttons, "ZOOM OUT").pressed.emit()
+	await _runner.simulate_frames(2)
+	await _runner.simulate_frames(80, 50)
+
+
+func test_the_scene_opens_on_greater_seattle_with_the_start_choice() -> void:
 	var screen := _screen()
-	assert_str(screen.campaign.map.id).is_equal("seattle")
+	assert_str(screen.campaign.map.id).is_equal("greater_seattle")
 	assert_int(screen.campaign.state.act).is_equal(0)
 	assert_bool(screen._modal.visible).is_true()
 	assert_str(screen._modal_title.text).is_equal("Choose a starting location")
 	var texts := _texts(screen._modal_options)
-	assert_array(texts).contains(["North End Uplink", "Duwamish Steelworks", "Beacon Hill Substation",
+	assert_array(texts).contains(["North End Uplink", "Bremerton Naval Yard", "Issaquah Substation",
 		"+3 grid power / day for the whole run", "Pressure builds 50% slower on its territories",
-		"Holds 2 territories: Northgate, Lake City"])
+		"Holds 2 territories: Shoreline, Edmonds"])
 	assert_int(_buttons(screen._modal_options, "START HERE").size()).is_equal(3)
+	assert_bool(screen.map_view is GlobeView).is_false()
 
 
 func test_choosing_a_start_begins_the_run_there() -> void:
@@ -46,9 +58,18 @@ func test_choosing_a_start_begins_the_run_there() -> void:
 	_buttons(screen._modal_options, "START HERE")[1].pressed.emit()
 	await _runner.simulate_frames(1)
 	assert_bool(screen._modal.visible).is_false()
-	assert_array(Array(screen.campaign.state.owned)).contains_exactly(["west_seattle"])
-	assert_str(screen.campaign.state.start_id).is_equal("duwamish_steelworks")
-	assert_str(screen._day_line.text).starts_with("ACT 1 · SEATTLE · DAY 1")
+	assert_array(Array(screen.campaign.state.owned)).contains_exactly(["bremerton"])
+	assert_str(screen.campaign.state.start_id).is_equal("bremerton_yard")
+	assert_str(screen._day_line.text).starts_with("ACT 1 · GREATER SEATTLE · DAY 1")
+
+
+func test_with_a_start_picker_there_is_no_choice() -> void:
+	var screen := _screen()
+	screen.start_picker = func(options: Array) -> String: return options[2].id
+	screen.new_run()
+	await _runner.simulate_frames(1)
+	assert_bool(screen._modal.visible).is_false()
+	assert_str(screen.campaign.state.start_id).is_equal("issaquah_substation")
 
 
 func test_the_act1_payload_offers_the_zoom() -> void:
@@ -61,28 +82,82 @@ func test_the_act1_payload_offers_the_zoom() -> void:
 	assert_object(_button(screen._modal_buttons, "ZOOM OUT")).is_not_null()
 
 
-func test_zooming_out_loads_puget_sound_and_plays_the_transition() -> void:
+func test_zooming_out_loads_north_america_and_plays_the_transition() -> void:
 	var screen := _screen()
-	screen.choose_start("duwamish_steelworks")
+	screen.choose_start("bremerton_yard")
 	screen.campaign.state.energy = 42.0
 	await _reach_payload(screen)
 	_button(screen._modal_buttons, "ZOOM OUT").pressed.emit()
 	await _runner.simulate_frames(2)
-	assert_str(screen.campaign.map.id).is_equal("puget_sound")
+	assert_str(screen.campaign.map.id).is_equal("north_america")
 	assert_int(screen.campaign.state.act).is_equal(1)
-	assert_array(Array(screen.campaign.state.owned)).contains_exactly(["seattle"])
+	assert_array(Array(screen.campaign.state.owned)).contains_exactly(["washington"])
 	assert_float(screen.campaign.state.energy).is_greater_equal(42.0)
-	assert_int(screen.campaign.income_per_day()[MapRegion.POWER]).is_equal(3 + 3)
+	assert_int(screen.campaign.income_per_day()[MapRegion.POWER]).is_equal(1 + 3)
 	assert_bool(screen.zooming).is_true()
-	assert_float(screen.map_view.zoom).is_greater(1.0)
+	# The zoom starts with greater Seattle filling the view, in Washington.
+	assert_float(screen.map_view.zoom).is_greater(20.0)
+	assert_str(screen.campaign.map.region_at(screen.map_view.zoom_center)).is_equal("washington")
 	assert_object(screen.map_view.inset_map).is_not_null()
-	assert_str(screen.map_view.inset_map.id).is_equal("seattle")
+	assert_str(screen.map_view.inset_map.id).is_equal("greater_seattle")
 	assert_bool(screen._modal.visible).is_false()
 	await _runner.simulate_frames(80, 50)
 	assert_bool(screen.zooming).is_false()
 	assert_float(screen.map_view.zoom).is_equal(1.0)
 	assert_object(screen.map_view.inset_map).is_null()
-	assert_str(screen._day_line.text).starts_with("ACT 2 · PUGET SOUND · DAY 1")
+	assert_str(screen._day_line.text).starts_with("ACT 2 · NORTH AMERICA · DAY 1 / 140")
+
+
+func test_the_zoom_keeps_the_old_map_in_place_as_it_shrinks() -> void:
+	var screen := _screen()
+	screen.choose_start("north_end")
+	await _reach_payload(screen)
+	screen.zoom_out()
+	var view: Control = screen.map_view
+	# At the start the old map fills the view.
+	screen._set_zoom_progress(0.0)
+	var start_center: Vector2 = view.zoom_center
+	var start_width: float = 1.0 / view.zoom
+	assert_vector(view._point(view.inset_rect.get_center())).is_equal_approx(view.size / 2.0, Vector2(1, 1))
+	# The zoom turns about one map point, which stays put on screen.
+	var k: Vector2 = (Vector2(0.5, 0.5) - start_center) / (start_width - 1.0)
+	var fixed: Vector2 = start_center + k * start_width
+	var fixed_on_screen: Vector2 = view._point(fixed)
+	var widths := []
+	for t in [0.0, 0.3, 0.7, 1.0]:
+		screen._set_zoom_progress(t)
+		widths.append(1.0 / view.zoom)
+		assert_vector(view._point(fixed)).is_equal_approx(fixed_on_screen, Vector2(0.01, 0.01))
+	assert_float(widths[0]).is_less(widths[1])
+	assert_float(widths[1]).is_less(widths[2])
+	assert_float(widths[3]).is_equal_approx(1.0, 1e-9)
+	assert_vector(view.zoom_center).is_equal_approx(Vector2(0.5, 0.5), Vector2(1e-6, 1e-6))
+
+
+func test_act2_zooms_out_to_the_globe() -> void:
+	var screen := _screen()
+	screen.choose_start("north_end")
+	await _zoom_out(screen)
+	assert_str(screen.campaign.map.id).is_equal("north_america")
+	assert_bool(screen.map_view is GlobeView).is_false()
+	screen.campaign.state.material = 17.0
+	await _reach_payload(screen)
+	assert_str(_button(screen._modal_buttons, "ZOOM OUT").text).is_equal("ZOOM OUT")
+	_button(screen._modal_buttons, "ZOOM OUT").pressed.emit()
+	await _runner.simulate_frames(2)
+	assert_str(screen.campaign.map.id).is_equal("world")
+	assert_int(screen.campaign.state.act).is_equal(2)
+	assert_array(Array(screen.campaign.state.owned)).contains_exactly(["united_states"])
+	assert_float(screen.campaign.state.material).is_greater_equal(17.0)
+	assert_bool(screen.map_view is GlobeView).is_true()
+	assert_object(screen.map_view.campaign).is_same(screen.campaign)
+	assert_str(screen.map_view.inset_map.id).is_equal("north_america")
+	assert_bool(screen.zooming).is_true()
+	await _runner.simulate_frames(80, 50)
+	assert_bool(screen.zooming).is_false()
+	assert_str(screen._day_line.text).starts_with("ACT 3 · THE WORLD · DAY 1 / 120")
+	# The globe faces North America.
+	assert_str(screen.map_view.region_at(screen.map_view.size / 2.0)).is_equal("united_states")
 
 
 func test_an_act2_run_saves_and_loads_into_act2() -> void:
@@ -94,19 +169,48 @@ func test_an_act2_run_saves_and_loads_into_act2() -> void:
 	var saved: Dictionary = screen.campaign.state.to_dict()
 	assert_int(screen.save_run(SAVE_PATH)).is_equal(OK)
 	screen.start_new_run()
-	assert_str(screen.campaign.map.id).is_equal("seattle")
+	assert_str(screen.campaign.map.id).is_equal("greater_seattle")
 	assert_bool(screen.load_run(SAVE_PATH)).is_true()
-	assert_str(screen.campaign.map.id).is_equal("puget_sound")
+	assert_str(screen.campaign.map.id).is_equal("north_america")
 	assert_dict(screen.campaign.state.to_dict()).is_equal(saved)
 
 
-func test_the_last_act_payload_ends_the_run() -> void:
+func test_an_act3_run_saves_and_loads_onto_the_globe() -> void:
+	var screen := _screen()
+	screen.choose_start("north_end")
+	await _reach_payload(screen)
+	assert_str(screen.advance_act()).is_empty()
+	await _reach_payload(screen)
+	assert_str(screen.advance_act()).is_empty()
+	await screen.campaign.attack("canada")
+	var saved: Dictionary = screen.campaign.state.to_dict()
+	assert_int(screen.save_run(SAVE_PATH)).is_equal(OK)
+	screen.start_new_run()
+	await _runner.simulate_frames(1)
+	assert_bool(screen.map_view is GlobeView).is_false()
+	assert_bool(screen.load_run(SAVE_PATH)).is_true()
+	await _runner.simulate_frames(1)
+	assert_str(screen.campaign.map.id).is_equal("world")
+	assert_int(screen.campaign.state.act).is_equal(2)
+	assert_dict(screen.campaign.state.to_dict()).is_equal(saved)
+	assert_bool(screen.map_view is GlobeView).is_true()
+
+
+func test_the_last_act_payload_brings_the_boss_and_ends_the_run() -> void:
 	var screen := _screen()
 	screen.choose_start("north_end")
 	await _reach_payload(screen)
 	screen.advance_act()
 	await _reach_payload(screen)
+	screen.advance_act()
+	await _reach_payload(screen)
+	assert_str(screen._modal_eyebrow.text).is_equal("ACT 3 · FINAL PAYLOAD")
+	assert_str(screen._modal_title.text).is_equal("The boss arrives")
+	_button(screen._modal_buttons, "FIGHT THE BOSS").pressed.emit()
+	await _runner.simulate_frames(3)
+	# StubFightService loses at the boss's level 5.
 	assert_str(screen._modal_eyebrow.text).is_equal("RUN OVER")
+	assert_str(screen._modal_title.text).is_equal("The boss holds")
 	assert_object(_button(screen._modal_buttons, "NEW RUN")).is_not_null()
 
 

@@ -107,7 +107,7 @@ func test_the_drafted_bots_reach_the_map_through_real_contracts() -> void:
 
 func test_the_seeded_start_follows_the_seed() -> void:
 	await _open()
-	var options: Array = RegionMap.load_file("res://data/regions/seattle.json").start_options()
+	var options: Array = RegionMap.load_file("res://data/regions/greater_seattle.json").start_options()
 	var picked := {}
 	for seed_value in range(options.size()):
 		_flow.current_seed = seed_value
