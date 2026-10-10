@@ -18,7 +18,7 @@ const INTENT_ICONS := {
 	"wait": preload("res://assets/fight/icons/intent_charge.png"),
 	"guard": preload("res://assets/fight/icons/intent_guard.png"),
 }
-const CARD_WIDTH := 300
+const CARD_WIDTH := 320
 
 signal clicked(unit_id: String, button_index: MouseButton)
 signal hovered(unit_id: String, inside: bool)
@@ -91,9 +91,6 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 	name_label.add_theme_color_override("font_color", FeelData.color("text_bright"))
 	name_label.clip_text = true
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tag_label = _label(name_row, "", "SmallLabel")
-	tag_label.name = "TagLabel"
-	tag_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hp_bar = PreviewBar.new()
 	hp_bar.name = "HpBar"
 	hp_bar.kind = "hp"
@@ -106,6 +103,7 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 	col.add_child(energy_bar)
 	var status_line := HBoxContainer.new()
 	status_line.add_theme_constant_override("separation", 6)
+	status_line.custom_minimum_size = Vector2(0, 24)
 	status_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(status_line)
 	status_row = StatusRow.new()
@@ -115,6 +113,14 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 	status_label.name = "StatusLabel"
 	status_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	status_label.add_theme_color_override("font_color", FeelData.color("active"))
+	# The personality tag closes the status line, so long names keep their room.
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	status_line.add_child(spacer)
+	tag_label = _label(status_line, "", "SmallLabel")
+	tag_label.name = "TagLabel"
+	tag_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	if is_enemy:
 		var intent_row := HBoxContainer.new()
 		intent_row.add_theme_constant_override("separation", 4)

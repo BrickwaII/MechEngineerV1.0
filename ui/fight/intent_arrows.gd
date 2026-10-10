@@ -40,7 +40,9 @@ func _draw() -> void:
 		var to_view: Control = views.get(a.to)
 		if from_view == null or to_view == null or not from_view.is_visible_in_tree() or not to_view.is_visible_in_tree():
 			continue
-		var start: Vector2 = to_local * from_view.center_global()
+		# From the enemy's front edge to the target's center.
+		var from_rect := from_view.get_global_rect()
+		var start: Vector2 = to_local * Vector2(from_rect.position.x + 8.0, from_rect.get_center().y)
 		var end: Vector2 = to_local * to_view.center_global()
 		var focused: bool = a.from == focus_id
 		var color := kind_color(a.kind, a.changed)
@@ -70,7 +72,7 @@ func _draw_arrow(start: Vector2, end: Vector2, color: Color, width: float, kind:
 	var points := PackedVector2Array()
 	var steps := 24
 	# Start and stop short of the unit centers.
-	for i in range(3, steps - 2):
+	for i in range(0, steps - 2):
 		var t := float(i) / steps
 		var p := start.lerp(control, t).lerp(control.lerp(end, t), t)
 		points.append(p.round())

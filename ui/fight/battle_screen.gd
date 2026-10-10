@@ -479,11 +479,15 @@ func _build_layout() -> void:
 	enemies.add_theme_constant_override("v_separation", 8)
 	enemies.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	enemy_col.add_child(enemies)
+	var used_palettes := []
 	for c in fight.combatants:
 		var panel := UnitPanel.new()
 		(enemies if c.side == Combatant.Side.ENEMY else bots).add_child(panel)
 		var bot: Bot = bot_source.call(c.id) if bot_source.is_valid() and c.side == Combatant.Side.PLAYER else null
-		panel.setup(c, BattleArt.look_for(c, fight.request.defense_level, tier_rule, bot))
+		var look := BattleArt.look_for(c, fight.request.defense_level, tier_rule, bot)
+		if c.side == Combatant.Side.PLAYER:
+			look = BattleArt.with_distinct_palette(look, used_palettes)
+		panel.setup(c, look)
 		panel.view.settings = settings
 		panel.clicked.connect(on_unit_clicked)
 		panel.hovered.connect(on_unit_hovered)

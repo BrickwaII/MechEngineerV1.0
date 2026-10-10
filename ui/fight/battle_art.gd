@@ -144,6 +144,29 @@ static func look_for(unit: Combatant, defense_level: int, tier_rule: BattleTierR
 	}
 
 
+## `look` with a palette no unit in `used` (palette names) has yet, so a
+## squad never shows two bots in one color while the ally has palettes left.
+## Adds the palette it picked to `used`.
+static func with_distinct_palette(look: Dictionary, used: Array) -> Dictionary:
+	var name := str(look.get("look", {}).get("palette", ""))
+	var palettes: Array = SpriteManifest.unit(str(look.get("unit_id", ""))).get("palettes", [])
+	if name.is_empty() or palettes.is_empty():
+		return look
+	var start := palettes.find(name)
+	for i in palettes.size():
+		var candidate: String = palettes[(start + i) % palettes.size()]
+		if not candidate in used:
+			name = candidate
+			break
+	used.append(name)
+	var out := look.duplicate(true)
+	out["look"]["palette"] = name
+	var colors := SpriteManifest.palette_colors(name)
+	out["palette"] = colors
+	out["glow"] = colors[colors.size() - 1]
+	return out
+
+
 ## The look of the tier: plate texture path, glow alpha, pulse and scale.
 static func tier_look(tier: String) -> Dictionary:
 	return data().get("tier_look", {}).get(tier, {})
