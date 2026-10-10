@@ -1,0 +1,148 @@
+{
+	"id": "puget_sound",
+	"name": "Puget Sound",
+	"regions": [
+		{
+			"id": "whidbey",
+			"name": "Whidbey Island",
+			"kind": "Naval air station",
+			"polygon": [[0.18, 0.02], [0.3, 0.02], [0.33, 0.14], [0.28, 0.28], [0.2, 0.26], [0.22, 0.12]],
+			"label_at": [0.26, 0.14],
+			"adjacent": ["everett", "kitsap"],
+			"provides": {"power": 2, "energy": 1, "material": 0},
+			"defense": 4,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "everett",
+			"name": "Everett",
+			"kind": "Aerospace plant",
+			"polygon": [[0.36, 0.02], [0.62, 0.02], [0.62, 0.24], [0.52, 0.28], [0.4, 0.27], [0.36, 0.14]],
+			"adjacent": ["whidbey", "stevens_pass", "seattle", "eastside"],
+			"provides": {"power": 1, "energy": 1, "material": 5},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "stevens_pass",
+			"name": "Stevens Pass",
+			"kind": "Mountain relay",
+			"polygon": [[0.62, 0.02], [0.98, 0.02], [0.98, 0.28], [0.78, 0.3], [0.62, 0.24]],
+			"adjacent": ["everett", "eastside", "snoqualmie"],
+			"provides": {"power": 0, "energy": 3, "material": 0},
+			"defense": 1,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "kitsap",
+			"name": "Kitsap",
+			"kind": "Naval shipyard",
+			"polygon": [[0.03, 0.3], [0.24, 0.3], [0.3, 0.4], [0.28, 0.62], [0.16, 0.7], [0.04, 0.62]],
+			"adjacent": ["whidbey", "seattle", "tacoma", "olympia"],
+			"provides": {"power": 1, "energy": 0, "material": 5},
+			"defense": 4,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "seattle",
+			"name": "Seattle",
+			"kind": "Your home city",
+			"polygon": [[0.36, 0.3], [0.4, 0.27], [0.52, 0.28], [0.54, 0.42], [0.52, 0.56], [0.4, 0.56], [0.37, 0.44]],
+			"adjacent": ["everett", "kitsap", "eastside", "kent_valley"],
+			"provides": {"power": 3, "energy": 6, "material": 3},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": true
+		},
+		{
+			"id": "eastside",
+			"name": "Eastside",
+			"kind": "Tech campuses",
+			"polygon": [[0.52, 0.28], [0.62, 0.24], [0.78, 0.3], [0.74, 0.52], [0.58, 0.56], [0.52, 0.56], [0.54, 0.42]],
+			"label_at": [0.64, 0.4],
+			"adjacent": ["everett", "stevens_pass", "seattle", "snoqualmie", "kent_valley", "rainier"],
+			"provides": {"power": 1, "energy": 6, "material": 0},
+			"defense": 4,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "snoqualmie",
+			"name": "Snoqualmie",
+			"kind": "Hydroelectric falls",
+			"polygon": [[0.78, 0.3], [0.98, 0.28], [0.98, 0.62], [0.8, 0.64], [0.74, 0.52]],
+			"adjacent": ["stevens_pass", "eastside", "rainier"],
+			"provides": {"power": 6, "energy": 0, "material": 0},
+			"defense": 3,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "kent_valley",
+			"name": "Kent Valley",
+			"kind": "Warehouse valley",
+			"polygon": [[0.4, 0.56], [0.52, 0.56], [0.58, 0.56], [0.66, 0.66], [0.6, 0.74], [0.44, 0.72]],
+			"label_at": [0.53, 0.645],
+			"adjacent": ["seattle", "eastside", "rainier", "tacoma"],
+			"provides": {"power": 0, "energy": 1, "material": 4},
+			"defense": 2,
+			"pressure_base": 2,
+			"starts_owned": false
+		},
+		{
+			"id": "rainier",
+			"name": "Mount Rainier",
+			"kind": "Volcano observatory",
+			"polygon": [[0.58, 0.56], [0.74, 0.52], [0.8, 0.64], [0.98, 0.62], [0.98, 0.98], [0.7, 0.98], [0.66, 0.8], [0.66, 0.66]],
+			"label_at": [0.83, 0.8],
+			"adjacent": ["eastside", "snoqualmie", "kent_valley", "jblm"],
+			"provides": {"power": 2, "energy": 2, "material": 0},
+			"defense": 2,
+			"pressure_base": 1,
+			"starts_owned": false
+		},
+		{
+			"id": "tacoma",
+			"name": "Tacoma",
+			"kind": "Container port",
+			"polygon": [[0.3, 0.66], [0.44, 0.72], [0.6, 0.74], [0.58, 0.84], [0.4, 0.86], [0.3, 0.78]],
+			"label_at": [0.44, 0.78],
+			"adjacent": ["kitsap", "kent_valley", "jblm", "olympia"],
+			"provides": {"power": 1, "energy": 1, "material": 6},
+			"defense": 4,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "jblm",
+			"name": "Joint Base Lewis-McChord",
+			"kind": "Army base",
+			"polygon": [[0.4, 0.86], [0.58, 0.84], [0.66, 0.8], [0.7, 0.98], [0.38, 0.98]],
+			"label_at": [0.54, 0.92],
+			"adjacent": ["tacoma", "rainier", "olympia"],
+			"provides": {"power": 2, "energy": 2, "material": 2},
+			"defense": 5,
+			"pressure_base": 3,
+			"starts_owned": false
+		},
+		{
+			"id": "olympia",
+			"name": "Olympia",
+			"kind": "State capital",
+			"polygon": [[0.04, 0.74], [0.16, 0.72], [0.28, 0.78], [0.38, 0.98], [0.04, 0.98]],
+			"label_at": [0.17, 0.87],
+			"adjacent": ["kitsap", "tacoma", "jblm"],
+			"provides": {"power": 0, "energy": 4, "material": 1},
+			"defense": 3,
+			"pressure_base": 2,
+			"starts_owned": false
+		}
+	],
+	"water": [
+		[[0.3, 0.02], [0.36, 0.02], [0.36, 0.14], [0.4, 0.27], [0.36, 0.3], [0.37, 0.44], [0.4, 0.56], [0.44, 0.72], [0.3, 0.66], [0.3, 0.78], [0.28, 0.78], [0.16, 0.72], [0.16, 0.7], [0.28, 0.62], [0.3, 0.4], [0.24, 0.3], [0.28, 0.28], [0.33, 0.14]]
+	]
+}

@@ -101,3 +101,22 @@ static func _two_regions() -> Dictionary:
 				"defense": 2, "pressure_base": 2, "starts_owned": false},
 		],
 	}
+
+
+func test_seattle_follows_the_real_layout() -> void:
+	var map := RegionMap.load_file("res://data/regions/seattle.json")
+	assert_array(map.errors).is_empty()
+	assert_int(map.regions.size()).is_between(12, 16)
+	# Water crossings are the links: the Ballard Locks, the Fremont and Montlake
+	# bridges, and the West Seattle Bridge, West Seattle's only way out.
+	assert_bool(map.get_region("ballard").is_adjacent_to("magnolia")).is_true()
+	assert_bool(map.get_region("fremont").is_adjacent_to("queen_anne")).is_true()
+	assert_bool(map.get_region("university_district").is_adjacent_to("capitol_hill")).is_true()
+	assert_array(Array(map.get_region("west_seattle").adjacent)).contains_exactly(["sodo"])
+	assert_bool(map.get_region("ballard").is_adjacent_to("downtown")).is_false()
+	# North is up: Ballard lies north of Downtown, which lies north of SoDo.
+	assert_float(map.get_region("ballard").label_at.y).is_less(map.get_region("downtown").label_at.y)
+	assert_float(map.get_region("downtown").label_at.y).is_less(map.get_region("sodo").label_at.y)
+	# West Seattle lies west of Beacon Hill.
+	assert_float(map.get_region("west_seattle").label_at.x).is_less(map.get_region("beacon_hill").label_at.x)
+	assert_int(map.water.size()).is_greater(0)

@@ -41,18 +41,36 @@ func _init(
 	state = p_state if p_state != null else new_run_state(p_map, p_tuning)
 
 
-## The state a fresh run starts from.
-static func new_run_state(p_map: RegionMap, p_tuning: MapTuning) -> RunState:
+## The state a fresh run starts from. `start` is one of the map's
+## start_options(); null takes the first.
+static func new_run_state(p_map: RegionMap, p_tuning: MapTuning, start: StartOption = null) -> RunState:
+	if start == null:
+		start = p_map.get_start("")
 	var s := RunState.new()
 	s.region_set_id = p_map.id
-	s.owned = p_map.starting_ids()
+	s.act = 0
+	s.start_id = start.id
+	s.owned = _in_file_order(p_map, start.regions)
 	for region_id in s.owned:
 		s.pressure[region_id] = p_tuning.start_pressure
-	s.energy = p_tuning.start_energy
-	s.material = p_tuning.start_material
+		if start.pressure_rate_factor != 1.0:
+			s.pressure_rate_factor[region_id] = start.pressure_rate_factor
+	for key in MapRegion.RESOURCE_KEYS:
+		s.income_bonus[key] = start.income_bonus.get(key, 0)
+	s.energy = p_tuning.start_energy + start.energy
+	s.material = p_tuning.start_material + start.material
 	s.time_points = 0
 	s.grid = p_tuning.start_grid
 	return s
+
+
+## These region ids, sorted into the map's file order.
+static func _in_file_order(p_map: RegionMap, region_ids: PackedStringArray) -> PackedStringArray:
+	var out := PackedStringArray()
+	for region_id in p_map.ids():
+		if region_id in region_ids:
+			out.append(region_id)
+	return out
 
 
 # --- Questions about the map -------------------------------------------------
@@ -88,7 +106,7 @@ func pressure_rate(region_id: String) -> float:
 	var rate := tuning.pressure_rate_base + tuning.pressure_rate_per_base * region.pressure_base
 	if is_border(region_id):
 		rate *= tuning.border_multiplier
-	return rate
+	return rate * state.pressure_rate_factor.get(region_id, 1.0)
 
 
 ## The hostile neighbor pressing on a held region: the best defended one, the
@@ -109,11 +127,12 @@ func cause_of(region_id: String) -> Cause:
 	return Cause.ATTACK if attacker_of(region_id) != null else Cause.UPRISING
 
 
-## Per-day totals of what the held regions provide, keyed like MapRegion.provides.
+## Per-day totals of what the held regions provide, plus the starting
+## location's bonus, keyed like MapRegion.provides.
 func income_per_day() -> Dictionary[String, int]:
 	var total: Dictionary[String, int] = {}
 	for key in MapRegion.RESOURCE_KEYS:
-		total[key] = 0
+		total[key] = state.income_bonus.get(key, 0)
 	for region_id in state.owned:
 		var region := map.get_region(region_id)
 		for key in MapRegion.RESOURCE_KEYS:

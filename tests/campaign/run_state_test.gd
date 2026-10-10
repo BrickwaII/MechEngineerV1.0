@@ -65,3 +65,29 @@ func test_a_file_that_is_not_a_save_loads_as_null() -> void:
 	file.store_string("not a save")
 	file.close()
 	assert_object(RunState.load_file(SAVE_PATH)).is_null()
+
+
+func test_a_version_1_save_loads_as_act_1_with_the_default_start() -> void:
+	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	file.store_var({"version": 1, "region_set_id": "act1_placeholder", "owned": ["substation_9"],
+		"pressure": {"substation_9": 12.5}, "energy": 3.0, "material": 4.0, "time_points": 7, "grid": 80.0})
+	file.close()
+	var loaded := RunState.load_file(SAVE_PATH)
+	assert_object(loaded).is_not_null()
+	assert_int(loaded.act).is_equal(0)
+	assert_str(loaded.start_id).is_empty()
+	assert_float(loaded.pressure["substation_9"]).is_equal(12.5)
+	assert_dict(loaded.income_bonus).is_empty()
+
+
+func test_the_act_and_start_traits_round_trip() -> void:
+	var state := RunState.new()
+	state.region_set_id = "puget_sound"
+	state.act = 1
+	state.start_id = "beacon_substation"
+	state.owned = PackedStringArray(["seattle"])
+	state.pressure["seattle"] = 1.0 / 3.0
+	state.income_bonus[MapRegion.POWER] = 3
+	state.pressure_rate_factor["seattle"] = 0.5
+	assert_int(state.save_file(SAVE_PATH)).is_equal(OK)
+	assert_dict(RunState.load_file(SAVE_PATH).to_dict()).is_equal(state.to_dict())

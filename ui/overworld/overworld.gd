@@ -11,10 +11,15 @@ const SAVE_PATH := "user://overworld.save"
 const MAP_SIZE := Vector2(880, 620)
 const PANEL_WIDTH := 400.0
 const TOP_BAR_HEIGHT := 56.0
+const CHOICE_CARD_WIDTH := 290.0
 const RESOURCE_LABELS := {MapRegion.POWER: "Grid power", MapRegion.ENERGY: "Energy", MapRegion.MATERIAL: "Material"}
 
-@export_file("*.json") var region_file := "res://data/regions/act1_placeholder.json"
-@export_file("*.json") var tuning_file := "res://data/tuning/overworld.json"
+## The acts of a run: each act's region and tuning file, and the zoom between.
+@export_file("*.json") var acts_file := "res://data/tuning/acts.json"
+## When set, act 1 is played on this region file instead of the acts file's.
+@export_file("*.json") var region_file := ""
+## When set, act 1 uses this tuning file instead of the acts file's.
+@export_file("*.json") var tuning_file := ""
 
 ## The two contracts the map talks to. Swap these for real implementations;
 ## nothing else on the map changes.
@@ -22,7 +27,10 @@ var squad_provider: SquadProvider = StubSquadProvider.new()
 var fight_service: FightService = StubFightService.new()
 
 var campaign: Campaign
+var plan: ActPlan
 var map_view: MapView
+## True while the act zoom plays.
+var zooming := false
 
 var _events: PackedStringArray = []
 var _hover_wait := false
@@ -40,9 +48,11 @@ var _wait_button: Button
 var _panel: VBoxContainer
 var _log: VBoxContainer
 var _modal: Control
+var _modal_card: Control
 var _modal_eyebrow: Label
 var _modal_title: Label
 var _modal_body: Label
+var _modal_options: HBoxContainer
 var _modal_buttons: HBoxContainer
 var _status: Label
 
@@ -50,23 +60,74 @@ var _status: Label
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build_layout()
+	new_run()
+
+
+## Starts a fresh run on the default start and offers the choice of start.
+func new_run() -> void:
 	var error := start_new_run()
 	if not error.is_empty():
 		_show_message("CANNOT LOAD MAP", "The map data did not load", error)
+		return
+	show_start_choice()
 
 
-## Starts a fresh run from the region and tuning files. Returns "" or the
-## loading problems, one per line.
-func start_new_run() -> String:
-	var map := RegionMap.load_file(region_file)
-	var tuning := MapTuning.load_file(tuning_file)
+## Starts a fresh run in act 1 from the start with this id ("" for the first).
+## Returns "" or the loading problems, one per line.
+func start_new_run(start_id := "") -> String:
+	plan = ActPlan.load_file(acts_file)
+	if not plan.is_valid():
+		return "\n".join(plan.errors)
+	var map := _load_map(0)
+	var tuning := _load_tuning(0)
 	var problems: Array[String] = map.errors + tuning.errors
 	if not problems.is_empty():
 		return "\n".join(problems)
+	var start := map.get_start(start_id)
+	if start == null:
+		return "no start '%s' on map '%s'" % [start_id, map.id]
 	_events.clear()
-	_use_campaign(Campaign.new(map, tuning, squad_provider, fight_service))
-	_event("Day 1. %s is online. Hostile territory surrounds you." %
-		", ".join(Array(map.starting_ids()).map(func(id: String) -> String: return map.get_region(id).name)))
+	_use_campaign(Campaign.new(map, tuning, squad_provider, fight_service,
+		Campaign.new_run_state(map, tuning, start)))
+	_event("Day 1. %s is online. Hostile territory surrounds you." % _region_names(campaign.state.owned))
+	return ""
+
+
+## Shows the starting locations of act 1's map to choose from. A map with
+## only one start has nothing to choose.
+func show_start_choice() -> void:
+	var options := campaign.map.start_options()
+	if options.size() < 2:
+		return
+	var cards := []
+	for start in options:
+		cards.append([start.name, start.description, _start_traits(start), "START HERE", choose_start.bind(start.id)])
+	_show_choice("NEW RUN · ACT 1 · %s" % plan.act_name(0).to_upper(), "Choose a starting location",
+		"Each start holds different ground and brings its own edge.", cards)
+
+
+func choose_start(start_id: String) -> void:
+	var error := start_new_run(start_id)
+	if not error.is_empty():
+		_show_message("CANNOT START", "The run did not start", error)
+
+
+## Moves the run to the next act's map, carrying over what the act plan says.
+## Returns "" or the loading problems. The zoom animation is separate.
+func advance_act() -> String:
+	var next := campaign.state.act + 1
+	if not plan.has_next(campaign.state.act):
+		return "there is no act %d" % (next + 1)
+	var map := _load_map(next)
+	var tuning := _load_tuning(next)
+	var problems: Array[String] = map.errors + tuning.errors
+	if not problems.is_empty():
+		return "\n".join(problems)
+	var state := plan.zoom_state(campaign.state, map, tuning)
+	_events.clear()
+	_use_campaign(Campaign.new(map, tuning, squad_provider, fight_service, state))
+	_event("Act %d: %s. %s is online. The countdown starts again." % [
+		next + 1, plan.act_name(next), _region_names(state.owned)])
 	return ""
 
 
@@ -78,14 +139,31 @@ func save_run(path := SAVE_PATH) -> Error:
 
 func load_run(path := SAVE_PATH) -> bool:
 	var state := RunState.load_file(path)
-	if state == null or state.region_set_id != campaign.map.id:
+	if state == null or state.act < 0 or state.act >= plan.act_count():
+		_event("No saved run for this map.")
+		return false
+	var map := _load_map(state.act)
+	var tuning := _load_tuning(state.act)
+	if not map.is_valid() or not tuning.is_valid() or state.region_set_id != map.id:
 		_event("No saved run for this map.")
 		return false
 	_events.clear()
-	_use_campaign(Campaign.new(campaign.map, campaign.tuning, squad_provider, fight_service, state))
-	_event("Run loaded. Day %d." % campaign.day())
+	_use_campaign(Campaign.new(map, tuning, squad_provider, fight_service, state))
+	_event("Run loaded. Act %d, day %d." % [state.act + 1, campaign.day()])
 	_check_forced()
 	return true
+
+
+func _load_map(act: int) -> RegionMap:
+	return RegionMap.load_file(region_file) if act == 0 and not region_file.is_empty() else plan.load_map(act)
+
+
+func _load_tuning(act: int) -> MapTuning:
+	return MapTuning.load_file(tuning_file) if act == 0 and not tuning_file.is_empty() else plan.load_tuning(act)
+
+
+func _region_names(region_ids: PackedStringArray) -> String:
+	return ", ".join(Array(region_ids).map(func(id: String) -> String: return campaign.map.get_region(id).name))
 
 
 func _use_campaign(c: Campaign) -> void:
@@ -196,7 +274,7 @@ func _build_time_strip() -> Control:
 	header.add_child(_wait_button)
 	header.add_child(_button("SAVE", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, func() -> void: save_run()))
 	header.add_child(_button("LOAD", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, func() -> void: load_run()))
-	header.add_child(_button("NEW RUN", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, func() -> void: start_new_run()))
+	header.add_child(_button("NEW RUN", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, new_run))
 
 	_time_bar = MeterBar.new()
 	_time_bar.custom_minimum_size.y = 18
@@ -245,6 +323,7 @@ func _build_side_panel() -> Control:
 
 func _build_modal() -> void:
 	_modal = ColorRect.new()
+	_modal.name = "Modal"
 	(_modal as ColorRect).color = Color(5 / 255.0, 9 / 255.0, 14 / 255.0, 0.78)
 	_modal.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_modal.visible = false
@@ -255,6 +334,7 @@ func _build_modal() -> void:
 	var card := _box(Color("#14212f"), Vector4(28, 28, 28, 28), Color("#3a526a"))
 	card.custom_minimum_size.x = 480
 	center.add_child(card)
+	_modal_card = card
 	var rows := VBoxContainer.new()
 	rows.add_theme_constant_override("separation", 14)
 	card.add_child(rows)
@@ -266,6 +346,9 @@ func _build_modal() -> void:
 	_modal_body = _text("", 15, Palette.TEXT_BODY)
 	_modal_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	rows.add_child(_modal_body)
+	_modal_options = HBoxContainer.new()
+	_modal_options.add_theme_constant_override("separation", 14)
+	rows.add_child(_modal_options)
 	_modal_buttons = HBoxContainer.new()
 	_modal_buttons.add_theme_constant_override("separation", 10)
 	rows.add_child(_modal_buttons)
@@ -290,8 +373,9 @@ func _refresh() -> void:
 	_grid_rate.text = "+%s%%/DAY" % _number(income[MapRegion.POWER] * t.points_per_day / t.grid_regen_divisor)
 
 	_countdown.text = "PAYLOAD IN %d DAYS" % campaign.days_left()
-	_day_line.text = "DAY %d / %d · %d OF %d TERRITORIES" % [
-		campaign.day(), t.total_points / t.points_per_day, s.owned.size(), campaign.map.regions.size()]
+	_day_line.text = "ACT %d · %s · DAY %d / %d · %d OF %d TERRITORIES" % [
+		s.act + 1, campaign.map.name.to_upper(), campaign.day(), t.total_points / t.points_per_day,
+		s.owned.size(), campaign.map.regions.size()]
 	_clear(_income)
 	for key in [MapRegion.ENERGY, MapRegion.MATERIAL]:
 		var stock: float = s.energy if key == MapRegion.ENERGY else s.material
@@ -310,7 +394,7 @@ func _refresh() -> void:
 	_time_bar.markers = markers
 	_campaign_bar.fill_ratio = float(s.time_points) / t.total_points
 
-	_wait_button.disabled = not campaign.can_act()
+	_wait_button.disabled = not campaign.can_act() or zooming
 	_status.text = "FIGHT IN PROGRESS" if campaign.fighting else ""
 	map_view.queue_redraw()
 	_refresh_panel()
@@ -513,8 +597,12 @@ func _check_forced() -> void:
 		_show_end("Your network is gone", "Every territory has fallen. The run ends here.")
 		return
 	if campaign.is_payload_due():
-		# TODO(decision: boss-fight): the boss fight is a stub; the run stops here.
-		_show_end("The payload arrives", "The countdown reached zero and the boss fight begins with whatever you have prepared. The boss fight is not built yet.")
+		# TODO(decision: boss-fight): the boss fight is a stub. The last act's
+		# payload ends the run; an earlier one zooms out to the next act.
+		if plan.has_next(campaign.state.act):
+			_show_payload_zoom()
+		else:
+			_show_end("The payload arrives", "The countdown reached zero and the boss fight begins with whatever you have prepared. The boss fight is not built yet.")
 		return
 	var region_id := campaign.pending_defense()
 	if region_id.is_empty():
@@ -547,7 +635,59 @@ func _on_defend() -> void:
 
 
 func _show_end(title: String, body: String) -> void:
-	_show_modal("RUN OVER", title, body, [["NEW RUN", func() -> void: start_new_run()]])
+	_show_modal("RUN OVER", title, body, [["NEW RUN", new_run]])
+
+
+func _show_payload_zoom() -> void:
+	var act := campaign.state.act
+	var held := campaign.state.owned.size()
+	var bonus := plan.bonus_region_count(held)
+	var body := "The boss fight is not built yet, so the payload passes. You held %d of %d territories in %s. " % [
+		held, campaign.map.regions.size(), plan.act_name(act)]
+	body += "The network zooms out to %s: you carry %d energy and %d material, the grid recovers %s%%, and you hold %s%s." % [
+		plan.act_name(act + 1), floori(campaign.state.energy * plan.energy_kept),
+		floori(campaign.state.material * plan.material_kept), _number(plan.grid_restore), plan.act_name(act),
+		"" if bonus == 0 else " plus %d neighboring territor%s" % [bonus, "y" if bonus == 1 else "ies"]]
+	_show_modal("ACT %d · PAYLOAD" % (act + 1), "The payload arrives", body, [["ZOOM OUT", zoom_out]])
+
+
+## Moves to the next act and plays the zoom: the old map shrinks into the
+## region it sits in on the new one.
+func zoom_out() -> void:
+	_hide_modal()
+	var old_map := campaign.map
+	var old_owned := campaign.state.owned
+	var error := advance_act()
+	if not error.is_empty():
+		_show_message("CANNOT LOAD MAP", "The next act did not load", error)
+		return
+	var focus := campaign.map.get_region(plan.acts[campaign.state.act]["zoom_focus"])
+	if focus == null:
+		return
+	var rect := Rect2(focus.polygon[0], Vector2.ZERO)
+	for p in focus.polygon:
+		rect = rect.expand(p)
+	map_view.inset_map = old_map
+	map_view.inset_owned = old_owned
+	map_view.inset_rect = rect
+	map_view.inset_alpha = 1.0
+	map_view.zoom_center = rect.get_center()
+	map_view.zoom = minf(1.0 / rect.size.x, 1.0 / rect.size.y)
+	map_view.modulate.a = 0.0
+	zooming = true
+	_refresh()
+	var tween := create_tween()
+	tween.tween_property(map_view, "modulate:a", 1.0, plan.fade_seconds)
+	tween.tween_property(map_view, "zoom", 1.0, plan.zoom_seconds).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property(map_view, "zoom_center", Vector2(0.5, 0.5), plan.zoom_seconds).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property(map_view, "inset_alpha", 0.0, plan.zoom_seconds).set_ease(Tween.EASE_IN)
+	tween.finished.connect(_end_zoom)
+
+
+func _end_zoom() -> void:
+	zooming = false
+	map_view.inset_map = null
+	_refresh()
 
 
 func _show_message(eyebrow: String, title: String, body: String, then := Callable()) -> void:
@@ -570,6 +710,9 @@ func _show_modal(eyebrow: String, title: String, body: String, buttons: Array) -
 	_modal_eyebrow.text = eyebrow
 	_modal_title.text = title
 	_modal_body.text = body
+	_clear(_modal_options)
+	_modal_options.visible = false
+	_modal_card.custom_minimum_size.x = 480
 	_clear(_modal_buttons)
 	for entry: Array in buttons:
 		var button := _big_button(entry[0], Palette.ACCENT, Palette.ACCENT_TEXT, true)
@@ -578,6 +721,53 @@ func _show_modal(eyebrow: String, title: String, body: String, buttons: Array) -
 		button.pressed.connect(entry[1])
 		_modal_buttons.add_child(button)
 	_modal.visible = true
+
+
+## cards: [[name, description, [trait lines], button label, Callable], ...],
+## shown side by side.
+func _show_choice(eyebrow: String, title: String, body: String, cards: Array) -> void:
+	_show_modal(eyebrow, title, body, [])
+	_modal_options.visible = true
+	_modal_card.custom_minimum_size.x = CHOICE_CARD_WIDTH * cards.size() + 14 * (cards.size() - 1) + 56
+	for entry: Array in cards:
+		var card := _box(Palette.PANEL, Vector4(18, 18, 18, 18), Palette.RULE)
+		card.custom_minimum_size.x = CHOICE_CARD_WIDTH
+		var rows := _rows(10)
+		card.add_child(rows)
+		var name_label := _text(entry[0], 20, Palette.TEXT)
+		name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		rows.add_child(name_label)
+		rows.add_child(_note(entry[1], 14))
+		for line: String in entry[2]:
+			var trait_line := _text(line, 13, Palette.ACCENT)
+			trait_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			rows.add_child(trait_line)
+		var spacer := Control.new()
+		spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		rows.add_child(spacer)
+		var button := _big_button(entry[3], Palette.ACCENT, Palette.ACCENT_TEXT, true)
+		button.pressed.connect(entry[4])
+		rows.add_child(button)
+		_modal_options.add_child(card)
+
+
+## What a start brings, one line per trait.
+func _start_traits(start: StartOption) -> PackedStringArray:
+	var lines := PackedStringArray()
+	var names := ", ".join(Array(start.regions).map(func(id: String) -> String: return campaign.map.get_region(id).name))
+	lines.append(("Holds %d territories: " % start.regions.size() if start.regions.size() > 1 else "Holds ") + names)
+	for key in MapRegion.RESOURCE_KEYS:
+		if start.income_bonus.get(key, 0) > 0:
+			lines.append("+%d %s / day for the whole run" % [start.income_bonus[key], RESOURCE_LABELS[key].to_lower()])
+	if start.pressure_rate_factor < 1.0:
+		lines.append("Pressure builds %d%% slower on its territories" % roundi((1.0 - start.pressure_rate_factor) * 100.0))
+	elif start.pressure_rate_factor > 1.0:
+		lines.append("Pressure builds %d%% faster on its territories" % roundi((start.pressure_rate_factor - 1.0) * 100.0))
+	if start.energy > 0.0:
+		lines.append("+%s energy at the start" % _number(start.energy))
+	if start.material > 0.0:
+		lines.append("+%s material at the start" % _number(start.material))
+	return lines
 
 
 func _hide_modal() -> void:

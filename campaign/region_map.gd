@@ -7,6 +7,11 @@ var id: String
 var name: String
 ## Regions in file order.
 var regions: Array[MapRegion] = []
+## Starting locations from the file's optional "starts" list, in file order.
+var starts: Array[StartOption] = []
+## Water drawn under the regions, from the file's optional "water" list of
+## polygons in map space. Scenery only; it changes no rule.
+var water: Array[PackedVector2Array] = []
 ## Problems found while loading. Empty when the map is usable.
 var errors: Array[String] = []
 
@@ -55,6 +60,17 @@ static func from_dict(data: Variant) -> RegionMap:
 			continue
 		map.regions.append(region)
 		map._by_id[region.id] = region
+	map._read_starts(d.get("starts", []))
+	var water: Variant = d.get("water", [])
+	if not water is Array:
+		map.errors.append("'water' must be a list of polygons")
+	else:
+		for shape: Variant in water:
+			var points := MapRegion._points(shape, "a water polygon", map.errors)
+			if points.size() >= 3:
+				map.water.append(points)
+			else:
+				map.errors.append("a water polygon needs at least 3 points")
 	map._check_links()
 	return map
 
@@ -87,6 +103,42 @@ func starting_ids() -> PackedStringArray:
 	return out
 
 
+## The starts a player chooses from: the file's "starts", or one start made
+## from the starts_owned regions when the file lists none.
+func start_options() -> Array[StartOption]:
+	if not starts.is_empty():
+		return starts
+	var only: Array[StartOption] = [StartOption.default_for(self)]
+	return only
+
+
+## The start with this id, or null. "" names the first start option.
+func get_start(start_id: String) -> StartOption:
+	var options := start_options()
+	if start_id.is_empty():
+		return options[0]
+	for start in options:
+		if start.id == start_id:
+			return start
+	return null
+
+
+func _read_starts(list: Variant) -> void:
+	if not list is Array:
+		errors.append("'starts' must be a list")
+		return
+	var seen := {}
+	for entry: Variant in list:
+		var start := StartOption.from_dict(entry, errors)
+		if start == null:
+			continue
+		if seen.has(start.id):
+			errors.append("start id '%s' is used twice" % start.id)
+			continue
+		seen[start.id] = true
+		starts.append(start)
+
+
 func _check_links() -> void:
 	for region in regions:
 		for other_id in region.adjacent:
@@ -98,3 +150,11 @@ func _check_links() -> void:
 				errors.append("region '%s' lists '%s' as adjacent but not the other way round" % [region.id, other_id])
 	if not regions.is_empty() and starting_ids().is_empty():
 		errors.append("no region has starts_owned set")
+	for start in starts:
+		var listed := {}
+		for region_id in start.regions:
+			if not _by_id.has(region_id):
+				errors.append("start '%s' lists unknown region '%s'" % [start.id, region_id])
+			elif listed.has(region_id):
+				errors.append("start '%s' lists '%s' twice" % [start.id, region_id])
+			listed[region_id] = true
