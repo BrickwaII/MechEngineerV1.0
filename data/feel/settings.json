@@ -1,0 +1,16 @@
+{
+	"_comment": "Defaults for the settings screen. Player choices are saved to user://settings.cfg.",
+	"save_path": "user://settings.cfg",
+	"defaults": {
+		"music_volume": 0.7,
+		"effects_volume": 0.8,
+		"interface_volume": 0.8,
+		"shake_enabled": true,
+		"shake_strength": 1.0,
+		"reduced_motion": false,
+		"animation_speed": "1x"
+	},
+	"animation_speed_options": ["1x", "1.5x", "2x", "skip"],
+	"volume_step": 0.05,
+	"open_action": "open_settings"
+}

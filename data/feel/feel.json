@@ -1,0 +1,132 @@
+{
+	"_comment": "Every timing and strength of the feel kit. Feel rules: UI responses 100-250 ms, attacks 300-600 ms, hit pause 60-100 ms, shake only on big hits and small. tests/ui/common/feel_tuning_test.gd checks the ranges.",
+	"tweens": {
+		"ui_fast": {
+			"ms": 100,
+			"trans": "quad",
+			"ease": "out",
+			"kind": "ui"
+		},
+		"ui": {
+			"ms": 160,
+			"trans": "quad",
+			"ease": "out",
+			"kind": "ui"
+		},
+		"ui_slow": {
+			"ms": 250,
+			"trans": "cubic",
+			"ease": "in_out",
+			"kind": "ui"
+		},
+		"ui_pop": {
+			"ms": 180,
+			"trans": "back",
+			"ease": "out",
+			"kind": "ui"
+		},
+		"attack_windup": {
+			"ms": 150,
+			"trans": "quad",
+			"ease": "in",
+			"kind": "attack_part"
+		},
+		"attack_strike": {
+			"ms": 120,
+			"trans": "expo",
+			"ease": "out",
+			"kind": "attack_part"
+		},
+		"attack_recover": {
+			"ms": 180,
+			"trans": "quad",
+			"ease": "in_out",
+			"kind": "attack_part"
+		},
+		"meter_fill": {
+			"ms": 220,
+			"trans": "quad",
+			"ease": "out",
+			"kind": "ui"
+		},
+		"meter_drain": {
+			"ms": 400,
+			"trans": "quad",
+			"ease": "in_out",
+			"kind": "meter"
+		},
+		"popup_rise": {
+			"ms": 650,
+			"trans": "quad",
+			"ease": "out",
+			"kind": "popup"
+		}
+	},
+	"attack": {
+		"_comment": "One attack is windup + strike + recover; their sum must stay inside 300-600 ms.",
+		"parts": [
+			"attack_windup",
+			"attack_strike",
+			"attack_recover"
+		],
+		"min_ms": 300,
+		"max_ms": 600
+	},
+	"hit_pause": {
+		"light_ms": 60,
+		"heavy_ms": 100,
+		"time_scale": 0.0
+	},
+	"shake": {
+		"small": {
+			"amplitude_px": 2,
+			"ms": 120,
+			"frequency_hz": 28
+		},
+		"big": {
+			"amplitude_px": 5,
+			"ms": 220,
+			"frequency_hz": 24
+		}
+	},
+	"popup": {
+		"font_size": 20,
+		"rise_px": 22,
+		"pop_scale": 1.35,
+		"pop_ms": 100,
+		"hold_ms": 300,
+		"fade_ms": 250,
+		"spread_px": 6,
+		"crit_threshold": 0
+	},
+	"ghost_bar": {
+		"hold_ms": 250,
+		"flash_ms": 90,
+		"height_px": 10,
+		"border_px": 1,
+		"low_share": 0.3
+	},
+	"animation_speeds": [
+		1.0,
+		1.5,
+		2.0
+	],
+	"reduced_motion": {
+		"_comment": "With reduced motion on: no shake, popups fade in place, tweens keep their timing but movement presets do not overshoot.",
+		"shake_scale": 0.0,
+		"popup_rise_px": 0,
+		"pop_scale": 1.0
+	},
+	"theme": {
+		"_comment": "The pixel font is drawn 10 px tall; keep sizes multiples of 10 so pixels stay square.",
+		"font_sizes": {
+			"small": 10,
+			"body": 20,
+			"title": 30
+		},
+		"content_margin_px": [
+			12,
+			6
+		]
+	}
+}

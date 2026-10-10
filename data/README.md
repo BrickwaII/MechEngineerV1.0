@@ -12,3 +12,4 @@ Region files and tuning tables. Hand-edited, no code.
 - `tuning/acts.json`: the acts, their map variants and the zoom between them.
 - `tuning/overworld.json`: every overworld number; `tuning/act1.json` to
   `act3.json` lay each act's pacing over it (countdown, action costs, pressure).
+- `feel/`: presentation tables. `palette.json` (every screen's colors), `feel.json` (tween presets, hit pause, shake, popups, ghost bar), `audio.json` (sounds, variation, throttling), `settings.json` (settings defaults), `sprite_manifest.json` (unit sheets and tiers, format in `assets/README.md`).
