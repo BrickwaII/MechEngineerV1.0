@@ -12,12 +12,13 @@ Build Board: https://claude.ai/artifact/T31MSnVskLzhNyQiDxDYNM
 contracts/   Shared interfaces and stubs. Imports nothing. Every folder may import it.
 bot_data/    Layer 1. Pure state: stats, personality, skills, augment slots. No behavior.
 fight/       Layer 2. Combat, energy, intent, preview, post-fight.
-             May import bot_data and contracts, and read data/.
+             May import bot_data and contracts.
 campaign/    Layer 3. Map, time, pressure, run state.
              May import contracts only until the integration step.
 ui/          Screens and input. May import any layer. Nothing outside ui/ imports ui/.
 tools/       Dev tools. May import any layer except ui/.
 data/        Region files, tuning tables. Hand-edited, no code.
+             Every layer except contracts/ may read it.
 tests/       Mirrors the source tree. May import anything.
 addons/      Third-party code (gdUnit4). Not ours; do not edit.
 scripts/     Shell scripts, such as the test runner.

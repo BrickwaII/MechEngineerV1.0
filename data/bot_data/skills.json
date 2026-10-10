@@ -1,0 +1,11 @@
+{
+	"_comment": "Starting skill catalog. effect_id names the effect fight/ will implement; costs are placeholders.",
+	"skills": [
+		{"name": "Strike", "effect_id": "damage_single", "energy_cost": 0},
+		{"name": "Overcharge Shot", "effect_id": "damage_single_heavy", "energy_cost": 4},
+		{"name": "Arc Sweep", "effect_id": "damage_all", "energy_cost": 6},
+		{"name": "Brace", "effect_id": "guard_self", "energy_cost": 2},
+		{"name": "Patch Up", "effect_id": "heal_single", "energy_cost": 3},
+		{"name": "Shield Ally", "effect_id": "guard_ally", "energy_cost": 3}
+	]
+}
