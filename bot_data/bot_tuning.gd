@@ -12,7 +12,12 @@ const DRAFT_RULE_RANDOM := "random"
 ## As random, but a bot whose draw holds no damage skill swaps its last skill
 ## for the first damage skill in its shuffled catalog.
 const DRAFT_RULE_DAMAGE_GUARANTEE := "damage_guarantee"
-const DRAFT_RULES: Array[String] = [DRAFT_RULE_RANDOM, DRAFT_RULE_DAMAGE_GUARANTEE]
+## As damage_guarantee, but the damage skill may not be the basic attack every
+## bot already fights with (basic_attack_effect_id, Strike). A bot without one
+## swaps its Strike, else its last skill, for the first such skill in its
+## shuffled catalog.
+const DRAFT_RULE_NON_STRIKE_DAMAGE := "non_strike_damage"
+const DRAFT_RULES: Array[String] = [DRAFT_RULE_RANDOM, DRAFT_RULE_DAMAGE_GUARANTEE, DRAFT_RULE_NON_STRIKE_DAMAGE]
 
 var draft_size: int
 var squad_size: int
@@ -28,11 +33,13 @@ var names: Array[String] = []
 ## The skill catalog. Factories hand out duplicates, never these.
 var skills: Array[Skill] = []
 ## One of DRAFT_RULES. TODO(decision: draft-rule): which rule the game keeps is
-## open; data/bot_data/tuning.json picks damage_guarantee until it is decided.
+## open; data/bot_data/tuning.json picks random until it is decided.
 ## Data without the key drafts with the random rule.
 var draft_rule := DRAFT_RULE_RANDOM
 ## Skill effect ids that count as damage for the damage_guarantee rule.
 var damage_effect_ids: Array[String] = []
+## Effect id of the basic attack every bot keeps in fights, for non_strike_damage.
+var basic_attack_effect_id := ""
 ## Problems found while reading the files, such as a missing key.
 var load_errors: PackedStringArray = []
 
@@ -69,6 +76,7 @@ static func from_dictionaries(tuning_dict: Dictionary, skills_dict: Dictionary) 
 		var pair := _read_pair(ranges, stat, errors, "stat_ranges.")
 		tuning.stat_ranges[stat] = Vector2i(int(pair[0]), int(pair[1]))
 	tuning.draft_rule = str(tuning_dict.get("draft_rule", DRAFT_RULE_RANDOM))
+	tuning.basic_attack_effect_id = str(tuning_dict.get("basic_attack_effect_id", ""))
 	for effect_id: Variant in tuning_dict.get("damage_effect_ids", []):
 		tuning.damage_effect_ids.append(str(effect_id))
 	for bot_name: Variant in tuning_dict.get("names", []):
@@ -114,11 +122,11 @@ func validation_errors() -> PackedStringArray:
 		errors.append("%d names for a draft of %d" % [names.size(), draft_size])
 	if not draft_rule in DRAFT_RULES:
 		errors.append("draft_rule '%s' is not one of %s" % [draft_rule, ", ".join(DRAFT_RULES)])
-	elif draft_rule == DRAFT_RULE_DAMAGE_GUARANTEE:
+	elif draft_rule != DRAFT_RULE_RANDOM:
 		if starting_skill_count < 1:
-			errors.append("draft_rule damage_guarantee needs starting_skill_count of at least 1")
-		if not skills.any(func(s: Skill) -> bool: return s.effect_id in damage_effect_ids):
-			errors.append("draft_rule damage_guarantee needs a catalog skill whose effect is in damage_effect_ids")
+			errors.append("draft_rule %s needs starting_skill_count of at least 1" % draft_rule)
+		if not skills.any(func(s: Skill) -> bool: return is_guaranteed_skill(s)):
+			errors.append("draft_rule %s has no catalog skill it can guarantee" % draft_rule)
 	var skill_names := {}
 	for skill in skills:
 		errors.append_array(skill.validation_errors())
@@ -130,6 +138,16 @@ func validation_errors() -> PackedStringArray:
 
 func is_damage_skill(skill: Skill) -> bool:
 	return skill.effect_id in damage_effect_ids
+
+
+## True when `skill` satisfies the draft rule's guarantee. Always true for random.
+func is_guaranteed_skill(skill: Skill) -> bool:
+	match draft_rule:
+		DRAFT_RULE_DAMAGE_GUARANTEE:
+			return is_damage_skill(skill)
+		DRAFT_RULE_NON_STRIKE_DAMAGE:
+			return is_damage_skill(skill) and skill.effect_id != basic_attack_effect_id
+	return true
 
 
 func is_valid() -> bool:
