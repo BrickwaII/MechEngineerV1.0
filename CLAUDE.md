@@ -20,6 +20,7 @@ tools/       Dev tools. May import any layer except ui/.
 data/        Region files, tuning tables. Hand-edited, no code.
 tests/       Mirrors the source tree. May import anything.
 addons/      Third-party code (gdUnit4). Not ours; do not edit.
+scripts/     Shell scripts, such as the test runner.
 
 A test fails if an import breaks these rules: tests/architecture/. A file
 imports a layer when it names a res:// or uid:// path in it (preload, load,
