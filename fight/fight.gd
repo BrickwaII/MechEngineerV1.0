@@ -23,6 +23,9 @@ var outcome := FightResult.Outcome.DEFEAT
 var timed_out := false
 ## One tag per decision: "<unit id>:<skill id>" or "<unit id>:wait".
 var action_tags: Array[String] = []
+## One full record per decision, in order, with behaviour labels. Read by
+## fight/post_fight/. See ActionTag.
+var decision_tags: Array[ActionTag] = []
 var log_lines: PackedStringArray = []
 
 var _over := false
@@ -107,10 +110,15 @@ func submit(action: FightAction) -> String:
 	var actor := pending_actor
 	pending_actor = null
 	action_count += 1
+	var tag := ActionTag.begin(self, actor, action)
 	if action.kind == FightAction.Kind.WAIT:
 		_resolve_wait(actor, action)
 	else:
 		_resolve_skill(actor, action)
+	tag.finish(self)
+	decision_tags.append(tag)
+	if not tag.labels.is_empty():
+		log_lines.append("  tags: %s" % ", ".join(tag.labels))
 	_check_end()
 	return ""
 
