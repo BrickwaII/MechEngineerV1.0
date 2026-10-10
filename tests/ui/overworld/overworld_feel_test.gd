@@ -119,6 +119,21 @@ func test_the_territory_panel_names_the_faction_when_the_data_has_one() -> void:
 	assert_array(_texts(row)).contains(["Rustborn"])
 
 
+func test_the_shared_pool_shows_one_meter_and_no_energy_count() -> void:
+	var screen := _screen()
+	assert_str(screen._grid_title.text).is_equal("GRID CAPACITY")
+	assert_object(screen._income_label("energy")).is_not_null()
+	screen.campaign.variants.choose(CampaignVariants.ENERGY_GRID, CampaignVariants.ENERGY_SHARED_POOL)
+	screen._refresh()
+	assert_bool(screen.is_shared_pool()).is_true()
+	assert_str(screen._grid_title.text).is_equal("POWER POOL")
+	assert_object(screen._income_label("energy")).is_null()
+	assert_object(screen._income_label("material")).is_not_null()
+	# A pool change pops as a pool number.
+	screen._pop_number("grid", 6)
+	assert_str((screen._popups.get_child(-1) as NumberPopup).text).is_equal("+6% POOL")
+
+
 func test_act_1_plays_its_music() -> void:
 	assert_str(_screen().music.track).is_equal("act1_metro")
 

@@ -25,6 +25,12 @@ var compare_defense_level: int
 var compare_player_policy: String
 var compare_enemy_policy: String
 var compare_chain_fights: int
+## Campaign comparison (CampaignComparison, CampaignAutoplay): runs per
+## option, the pressure at which the auto-player reinforces, and the most
+## actions it takes in one act before giving up.
+var campaign_compare_runs: int
+var autoplay_reinforce_at: float
+var autoplay_max_actions_per_act: int
 
 
 static func load_default() -> DevToolSettings:
@@ -53,4 +59,7 @@ static func load_file(path: String) -> DevToolSettings:
 	s.compare_player_policy = str(d.compare_player_policy)
 	s.compare_enemy_policy = str(d.compare_enemy_policy)
 	s.compare_chain_fights = int(d.compare_chain_fights)
+	s.campaign_compare_runs = int(d.campaign_compare_runs)
+	s.autoplay_reinforce_at = float(d.autoplay_reinforce_at)
+	s.autoplay_max_actions_per_act = int(d.autoplay_max_actions_per_act)
 	return s

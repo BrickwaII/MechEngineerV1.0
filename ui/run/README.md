@@ -31,3 +31,28 @@ One playable run: the project's main scene (`ui/main/main.tscn`) opens it.
   option: `choose_start = true` brings the choice back.
 
 Screenshots of one run: `screenshots/` (Godot does not import it).
+
+## Presentation (M7 P3)
+
+Timings live in `data/feel/screens.json` and follow the animation speed
+setting; sounds and the three act loops are in `data/feel/audio.json`
+(files under `assets/map/audio/`, made by `tools/asset_gen/gen_map_audio.py`).
+
+- `ScreenTheme`: P1's `PixelTheme`, plus a glyph fallback (`·`, `×`), and
+  `size()` that snaps font sizes to the pixel font's 10/20/30.
+- `ScreenFeel`: reads `screens.json`.
+- `ScreenTransition`: the band wipe over every change of screen. The swap is
+  instant underneath; the bands ignore the mouse.
+- Map (`ui/overworld/`): `MapFx` (hover, selection pop, captures, ring fill
+  and pulse, pending-cost march), `MapChanges` (captures and resource moves
+  held until the map is in view), `MeterBar.animate_to()` (trailing ghost),
+  `ActMusic` (crossfaded act loops), `FactionLookup` (P4's faction, or
+  nothing), the act title card during the zoom, and the shared-pool meter
+  for the energy-grid variant.
+- Draft (`ui/draft/`): `DraftCard` flips in, lifts on hover and shows the
+  bot's manifest sprite; picks snap into the squad bar.
+- Readout (`ui/post_fight/`): `TallySequence` counts each bot up, one after
+  another, with level-ups and personality shifts as the payoff. A click, a
+  key or CONTINUE skips it.
+- Screenshots and frame strips: `demo/capture_screenshots.gd` (needs a
+  display, see the header).

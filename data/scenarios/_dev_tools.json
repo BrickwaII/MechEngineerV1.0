@@ -15,5 +15,9 @@
 	"compare_defense_level": 2,
 	"compare_player_policy": "patient",
 	"compare_enemy_policy": "intent",
-	"compare_chain_fights": 3
+	"compare_chain_fights": 3,
+	"_campaign_compare_comment": "Campaign variant comparison (tools/compare_variants.gd with a campaign decision): runs per option, and the auto-player's policy: reinforce the most pressed held region at autoplay_reinforce_at pressure or above, else attack the weakest region in range when the grid holds its cost, else wait. autoplay_max_actions_per_act stops an act that never ends.",
+	"campaign_compare_runs": 50,
+	"autoplay_reinforce_at": 90.0,
+	"autoplay_max_actions_per_act": 2000
 }

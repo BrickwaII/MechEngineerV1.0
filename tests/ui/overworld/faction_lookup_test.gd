@@ -36,4 +36,20 @@ func test_missing_data_gives_no_faction() -> void:
 	assert_dict(_lookup().faction_for("north_america_33", 1, "oregon")).is_empty()
 	assert_dict(_lookup().faction_for("lake_washington_12", 0, "renton")).is_empty()
 	assert_dict(FactionLookup.new().faction_for("any", 0, "any")).is_empty()
-	assert_dict(FactionLookup.load_file("res://no/such/file.json").faction_for("any", 0, "any")).is_empty()
+	# Until P4's FactionTable lands the default lookup is empty.
+	if not ResourceLoader.exists(FactionLookup.TABLE_PATH):
+		assert_dict(FactionLookup.load_default().faction_for("lake_washington_12", 0, "bellevue")).is_empty()
+
+
+class TableFaction:
+	extends RefCounted
+	var display_name := "Hive"
+	var color := Color("#00ff00")
+
+
+func test_objects_from_the_table_read_like_dictionaries() -> void:
+	var f := FactionLookup.normalize(TableFaction.new())
+	assert_str(f["name"]).is_equal("Hive")
+	assert_object(f["color"]).is_equal(Color("#00ff00"))
+	assert_dict(FactionLookup.normalize(null)).is_empty()
+	assert_dict(FactionLookup.normalize({"color": "#fff"})).is_empty()

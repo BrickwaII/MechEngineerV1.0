@@ -6,11 +6,19 @@ extends RefCounted
 ## Fights go only through the contracts: the squad comes from a SquadProvider
 ## and each fight from a FightService. Any implementation of those two works
 ## here unchanged.
+##
+## Variants (campaign/variants/): the run's next-run choices are kept in
+## state.variants and read into `variants` here; act pacing replaces `tuning`
+## with the act's paced copy, energy-grid and auto-expansion change how time
+## passes. grid-cost-owner is read when each fight starts, from
+## next_fight_variants.
 
 signal changed
 signal event_logged(text: String)
 signal fight_started(request: FightRequest)
 signal fight_finished(request: FightRequest, result: FightResult)
+## A region auto-expansion took without a fight.
+signal expanded(region_id: String)
 
 ## How a region looks from the player's side.
 enum Standing { OWNED, IN_RANGE, OUT_OF_REACH }
@@ -28,6 +36,13 @@ var squad_provider: SquadProvider
 var fight_service: FightService
 ## True while a fight is out with the FightService.
 var fighting := false
+## The run's campaign variants, from state.variants.
+var variants: CampaignVariants
+## Gives the campaign variants a fight starts with (grid-cost-owner). Defaults
+## to the player's choices (CampaignVariants.load_active()).
+var next_fight_variants: Callable = func() -> CampaignVariants: return CampaignVariants.load_active()
+## The variants of the fight in progress, or null between fights.
+var _fight_variants: CampaignVariants
 
 
 func _init(
@@ -38,18 +53,25 @@ func _init(
 	p_state: RunState = null,
 ) -> void:
 	map = p_map
-	tuning = p_tuning
 	squad_provider = p_squad_provider
 	fight_service = p_fight_service
 	state = p_state if p_state != null else new_run_state(p_map, p_tuning)
+	variants = CampaignVariants.for_run(state.variants)
+	tuning = ActPacing.paced(p_tuning, state.act, variants)
 
 
 ## The state a fresh run starts from. `start` is one of the map's
-## start_options(); null takes the first.
-static func new_run_state(p_map: RegionMap, p_tuning: MapTuning, start: StartOption = null) -> RunState:
+## start_options(); null takes the first. `run_variants` are the switchboard
+## choices the run keeps; null reads CampaignVariants.load_active().
+static func new_run_state(p_map: RegionMap, p_tuning: MapTuning, start: StartOption = null,
+		run_variants: CampaignVariants = null) -> RunState:
 	if start == null:
 		start = p_map.get_start("")
+	if run_variants == null:
+		run_variants = CampaignVariants.load_active()
+	p_tuning = ActPacing.paced(p_tuning, 0, run_variants)
 	var s := RunState.new()
+	s.variants = run_variants.run_choices()
 	s.region_set_id = p_map.id
 	s.act = 0
 	s.start_id = start.id
@@ -64,6 +86,7 @@ static func new_run_state(p_map: RegionMap, p_tuning: MapTuning, start: StartOpt
 	s.material = p_tuning.start_material + start.material
 	s.time_points = 0
 	s.grid = p_tuning.start_grid
+	EnergyGridRules.start(s, p_tuning, run_variants)
 	return s
 
 
@@ -286,6 +309,7 @@ func attack(region_id: String) -> bool:
 	if not can_attack(region_id):
 		return false
 	var region := map.get_region(region_id)
+	set_focus(region_id)
 	var request := FightRequest.new(
 		FightRequest.Kind.ATTACK, region_id, region.defense, squad_provider.get_squad())
 	var result := await _run_fight(request)
@@ -330,12 +354,20 @@ func boss_fight() -> FightResult:
 
 
 ## Grid percent a finished fight takes from the grid.
+## TODO(decision: grid-cost-owner): by default StubFightService charges the
+## same on victory and defeat, so the map applies the defeat multiplier
+## itself; see GridCostOwner for the other options.
 func fight_grid_charge(kind: FightRequest.Kind, result: FightResult) -> float:
-	if kind == FightRequest.Kind.ATTACK and not result.is_victory():
-		# TODO(decision: grid-cost-owner): StubFightService charges the same on
-		# victory and defeat, so the map applies the defeat multiplier itself.
-		return result.grid_cost * tuning.defeat_grid_multiplier
-	return result.grid_cost
+	var v := _fight_variants if _fight_variants != null else next_fight_variants.call() as CampaignVariants
+	return GridCostOwner.map_charge(kind, result, v, tuning.defeat_grid_multiplier)
+
+
+## Makes `region_id` the player's focus, which auto-expansion leans toward.
+## Attacking a region makes it the focus; the map screen may call this when
+## a region is selected.
+func set_focus(region_id: String) -> void:
+	if map.has_region(region_id):
+		state.focus_id = region_id
 
 
 ## Applies a finished attack: capture on victory, grid cost, rewards, time.
@@ -348,6 +380,7 @@ func apply_attack_result(region_id: String, result: FightResult) -> void:
 	else:
 		_log("The assault on %s was repelled." % region.name)
 	state.grid = maxf(0.0, state.grid - fight_grid_charge(FightRequest.Kind.ATTACK, result))
+	_end_fight_variants()
 	_add_rewards(result)
 	_advance(tuning.attack_time)
 	changed.emit()
@@ -364,6 +397,7 @@ func apply_defense_result(region_id: String, result: FightResult) -> void:
 		_set_owned(region_id, false)
 		_log("Lost %s. It is hostile again." % region.name)
 	state.grid = maxf(0.0, state.grid - fight_grid_charge(FightRequest.Kind.DEFEND, result))
+	_end_fight_variants()
 	_add_rewards(result)
 	changed.emit()
 
@@ -381,10 +415,11 @@ func _advance(points: int) -> void:
 			rates[region_id] = pressure_rate(region_id)
 		for region_id in state.owned:
 			state.pressure[region_id] = minf(tuning.forces_defense_at, pressure_of(region_id) + rates[region_id])
-		state.energy += float(income[MapRegion.ENERGY]) / tuning.points_per_day
+		EnergyGridRules.accrue_point(state, income, tuning, variants)
 		state.material += float(income[MapRegion.MATERIAL]) / tuning.points_per_day
-		state.grid = minf(tuning.max_grid, state.grid + income[MapRegion.POWER] / tuning.grid_regen_divisor)
 		state.time_points += 1
+		if state.time_points % tuning.points_per_day == 0:
+			_expand()
 	var defense_id := pending_defense()
 	if not defense_id.is_empty():
 		var attacker := attacker_of(defense_id)
@@ -400,6 +435,7 @@ func _run_fight(request: FightRequest) -> FightResult:
 		push_error("Campaign: not starting an invalid fight for '%s'" % request.territory_id)
 		return null
 	fighting = true
+	_fight_variants = next_fight_variants.call()
 	changed.emit()
 	fight_started.emit(request)
 	fight_service.start_fight(request)
@@ -407,6 +443,22 @@ func _run_fight(request: FightRequest) -> FightResult:
 	fighting = false
 	fight_finished.emit(request, result)
 	return result
+
+
+## Clears the fight-start variants once a fight's result is applied.
+func _end_fight_variants() -> void:
+	_fight_variants = null
+
+
+## A day of auto-expansion, when the run has it on in this act.
+func _expand() -> void:
+	if not AutoExpansion.is_on(variants, state.act):
+		return
+	for region_id in AutoExpansion.advance_day(map, state, variants):
+		_set_owned(region_id, true)
+		state.pressure[region_id] = tuning.pressure_after_capture
+		_log("%s went over to your side." % map.get_region(region_id).name)
+		expanded.emit(region_id)
 
 
 func _set_owned(region_id: String, held: bool) -> void:
@@ -423,7 +475,7 @@ func _set_owned(region_id: String, held: bool) -> void:
 
 
 func _add_rewards(result: FightResult) -> void:
-	state.energy += result.rewards.get(FightResult.ENERGY, 0)
+	EnergyGridRules.add_energy(state, result.rewards.get(FightResult.ENERGY, 0), tuning, variants)
 	state.material += result.rewards.get(FightResult.MATERIAL, 0)
 
 

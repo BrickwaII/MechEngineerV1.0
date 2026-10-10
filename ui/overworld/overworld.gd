@@ -76,6 +76,7 @@ var _popups: Control
 
 var _grid_bar: MeterBar
 var _grid_text: Label
+var _grid_title: Label
 var _grid_rate: Label
 var _countdown: Label
 var _day_line: Label
@@ -253,6 +254,12 @@ func _use_campaign(c: Campaign) -> void:
 	_refresh()
 
 
+## True when the run plays the shared_pool energy-grid variant: grid capacity
+## and Energy are one pool, kept in RunState.grid.
+func is_shared_pool() -> bool:
+	return campaign != null and campaign.variants != null and EnergyGridRules.is_shared(campaign.variants)
+
+
 ## True when the map is on screen with nothing over it, so changes to the run
 ## can be shown: not hidden behind a fight or readout, a message or the zoom.
 func can_show_changes() -> bool:
@@ -321,7 +328,7 @@ func _pop_number(key: String, amount: int) -> void:
 		popup.color = Palette.MATERIAL
 		popup.icon = null
 	elif key == "grid":
-		popup.text = "%+d%% GRID" % amount
+		popup.text = ("%+d%% POOL" if is_shared_pool() else "%+d%% GRID") % amount
 		popup.color = Palette.WARNING if amount > 0 else Palette.DANGER
 		popup.icon = null
 	var offset: Array = ScreenFeel.value("map.popup_offset_px", [0, 0])
@@ -428,7 +435,8 @@ func _build_top_bar() -> Control:
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.alignment = BoxContainer.ALIGNMENT_BEGIN
 	row.add_child(grid)
-	grid.add_child(_text("GRID CAPACITY", 11, Palette.TEXT_DIM))
+	_grid_title = _text("GRID CAPACITY", 11, Palette.TEXT_DIM)
+	grid.add_child(_grid_title)
 	_grid_bar = MeterBar.new()
 	_grid_bar.custom_minimum_size = Vector2(260, 16)
 	_grid_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -580,14 +588,23 @@ func _refresh() -> void:
 	_grid_bar.ghost_from = (s.grid - ghost) / t.max_grid
 	_grid_bar.ghost_ratio = ghost / t.max_grid
 	_grid_text.text = "%d%%" % roundi(s.grid)
-	_grid_rate.text = "+%s%%/DAY" % _number(income[MapRegion.POWER] * t.points_per_day / t.grid_regen_divisor)
+	# With the shared pool (energy-grid variant) the bar is the one pool of
+	# grid and Energy, and there is no separate Energy count.
+	var shared := is_shared_pool()
+	_grid_title.text = "POWER POOL" if shared else "GRID CAPACITY"
+	_grid_bar.fill_color = Palette.ENERGY if shared else Color("#f2b84b")
+	if shared:
+		var divisor := campaign.variants.param_float(CampaignVariants.ENERGY_GRID, "pool_regen_divisor", 1.0)
+		_grid_rate.text = "+%s%%/DAY" % _number((income[MapRegion.POWER] + income[MapRegion.ENERGY]) * t.points_per_day / maxf(divisor, 0.001))
+	else:
+		_grid_rate.text = "+%s%%/DAY" % _number(income[MapRegion.POWER] * t.points_per_day / t.grid_regen_divisor)
 
 	_countdown.text = "PAYLOAD IN %d DAYS" % campaign.days_left()
 	_day_line.text = "ACT %d · %s · DAY %d / %d · %d OF %d TERRITORIES" % [
 		s.act + 1, campaign.map.name.to_upper(), campaign.day(), t.total_points / t.points_per_day,
 		s.owned.size(), campaign.map.regions.size()]
 	_clear(_income)
-	for key in [MapRegion.ENERGY, MapRegion.MATERIAL]:
+	for key in ([MapRegion.MATERIAL] if shared else [MapRegion.ENERGY, MapRegion.MATERIAL]):
 		var stock: float = s.energy if key == MapRegion.ENERGY else s.material
 		_income.add_child(_resource_readout(key, floori(stock), income[key]))
 

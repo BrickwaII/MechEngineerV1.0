@@ -93,12 +93,16 @@ var globe_edge_degrees: float
 var globe_node_min_facing: float
 
 var errors: Array[String] = []
+## The settings this tuning was read from, its base laid in, for
+## with_overrides().
+var source: Dictionary = {}
 
 
 static func load_file(path: String) -> MapTuning:
 	var tuning := MapTuning.new()
 	var data := _read_file(path, tuning.errors, [])
 	if tuning.errors.is_empty():
+		tuning.source = data
 		tuning._read(data)
 	return tuning
 
@@ -140,7 +144,18 @@ static func _lay_over(base: Dictionary, over: Dictionary) -> void:
 
 static func from_dict(data: Dictionary) -> MapTuning:
 	var tuning := MapTuning.new()
+	tuning.source = data
 	tuning._read(data)
+	return tuning
+
+
+## A copy with `over` laid over these settings, nested objects key by key, as
+## a file lays over its base. Used by act pacing presets (ActPacing).
+func with_overrides(over: Dictionary) -> MapTuning:
+	var merged := source.duplicate(true)
+	_lay_over(merged, over.duplicate(true))
+	var tuning := from_dict(merged)
+	tuning.errors.append_array(errors)
 	return tuning
 
 

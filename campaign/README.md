@@ -16,3 +16,17 @@ Layer 3. Map, time, pressure, run state. May import contracts only until the int
   fights through SquadProvider and FightService. Runs headless.
 - `run_state.gd`: what a save keeps, including the act and the start's
   traits; saves and loads exactly.
+- `variants/`: the campaign side of the variant switchboard
+  (data/variants/variants.json). `campaign_variants.gd` reads the campaign
+  decisions; each decision's rules are one small module:
+  - `energy_grid_rules.gd` (energy-grid): Energy and grid separate, or one
+    shared pool; the spend and regen rules are in the file's notes.
+  - `grid_cost_owner.gd` (grid-cost-owner): who adds the defeat surcharge.
+  - `act_pacing.gd` (act-pacing): per-act tuning presets laid over the act
+    files.
+  - `auto_expansion.gd` (auto-expansion): held ground claiming weak
+    neighbors on a daily progress meter, faster near the player's focus.
+  squad-size is applied to the draft's bot tuning by the run flow (ui/run/).
+  Next-run choices are kept in RunState.variants when a run starts, so a save
+  plays on with them; grid-cost-owner is read when each fight starts.
+  `screenshots/` holds the switchboard and a map with auto-expansion on.

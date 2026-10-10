@@ -28,6 +28,13 @@ var income_bonus: Dictionary[String, int] = {}
 ## Factor on the pressure rate of particular regions, from the starting
 ## location. Regions not listed build pressure at the normal rate.
 var pressure_rate_factor: Dictionary[String, float] = {}
+## The switchboard's next-run choices this run began with (decision id ->
+## option id), so a saved run plays on with them. See CampaignVariants.
+var variants: Dictionary[String, String] = {}
+## auto-expansion progress per hostile region id, 0 to 100 percent.
+var expansion: Dictionary[String, float] = {}
+## The region the player last attacked or selected, or "".
+var focus_id: String = ""
 
 
 func duplicate_state() -> RunState:
@@ -51,12 +58,16 @@ func to_dict() -> Dictionary:
 		"grid": grid,
 		"income_bonus": Dictionary(income_bonus),
 		"pressure_rate_factor": Dictionary(pressure_rate_factor),
+		"variants": Dictionary(variants),
+		"expansion": Dictionary(expansion),
+		"focus_id": focus_id,
 	}
 
 
 ## Builds a state from to_dict() output. Returns null if a field is missing or
 ## has the wrong type. A version 1 save, from before acts and starts, loads as
-## act 1 with the default start.
+## act 1 with the default start. variants, expansion and focus_id are optional:
+## a save from before them plays every default with no expansion progress.
 static func from_dict(d: Dictionary) -> RunState:
 	var version := int(d.get("version", -1))
 	if version != FORMAT_VERSION and version != 1:
@@ -90,6 +101,15 @@ static func from_dict(d: Dictionary) -> RunState:
 	var factors: Dictionary = d.get("pressure_rate_factor", {})
 	for region_id: Variant in factors:
 		state.pressure_rate_factor[str(region_id)] = float(factors[region_id])
+	var chosen: Variant = d.get("variants", {})
+	var progress: Variant = d.get("expansion", {})
+	if not chosen is Dictionary or not progress is Dictionary:
+		return null
+	for decision: Variant in chosen:
+		state.variants[str(decision)] = str(chosen[decision])
+	for region_id: Variant in progress:
+		state.expansion[str(region_id)] = float(progress[region_id])
+	state.focus_id = str(d.get("focus_id", ""))
 	return state
 
 
