@@ -40,6 +40,8 @@ static func apply(bot: Bot, uses: Dictionary[String, int], ledger: SkillUseLedge
 		var skill := bot_skill_for(bot, combat_id, tuning)
 		if skill != null:
 			change.skill_name = skill.display_name
+			change.uses_per_level = tuning.uses_per_level
+			change.max_level = tuning.max_level
 			change.level_before = skill.level
 			change.banked_before = ledger.get_banked(bot.id, skill.display_name)
 			var total := change.banked_before + change.uses

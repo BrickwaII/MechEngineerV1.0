@@ -11,6 +11,18 @@ static func member(id: String, s: UnitStats, hp := -1) -> SquadMemberSummary:
 	return SquadMemberSummary.new(id, id.capitalize(), current, s.hp, "test", s)
 
 
+## Copies of `squad` with their skills dropped, so each member fights with
+## CombatTuning.player_skills. For tests of fight mechanics that predate bot
+## skills; tests of bot skills use the summaries' own skills.
+static func without_skills(squad: Array[SquadMemberSummary]) -> Array[SquadMemberSummary]:
+	var out: Array[SquadMemberSummary] = []
+	for m in squad:
+		var copy: SquadMemberSummary = m.duplicate()
+		copy.skills = []
+		out.append(copy)
+	return out
+
+
 static func request(squad: Array[SquadMemberSummary], level := 0) -> FightRequest:
 	return FightRequest.new(FightRequest.Kind.ATTACK, "test_territory", level, squad)
 

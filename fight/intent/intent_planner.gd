@@ -8,10 +8,14 @@ extends RefCounted
 ##
 ## Every option a unit has is scored with IntentWeights, leaned by its
 ## Personality, and the highest score wins. Options, in a fixed order:
-## - attack: each affordable attack skill on each living opponent;
+## - attack: each affordable attack skill on each living opponent (a skill that
+##   hits all opponents is one option: its damage is the total, aimed at the
+##   first; its kill bonus counts every opponent it would down);
 ## - heal: each affordable heal skill on each living, hurt ally (self included);
 ## - wait: for each attack skill it cannot afford yet but could, on each opponent.
-## Ties go to the earlier option, so plans are deterministic.
+## Ties go to the earlier option, so plans are deterministic. Damage counts the
+## target's guard (Brace, Shield Ally) the way the fight resolves it. Guard
+## skills are not planned: no enemy has one yet.
 ##
 ## How each scale leans the choice, with the default weights:
 ## - aggressive raises damage and kill, defensive raises the cost of energy;
@@ -75,9 +79,9 @@ func options_for(fight: Fight, unit: Combatant) -> Array[UnitIntent]:
 	var allies: Array[Combatant] = []
 	allies.assign(fight.combatants.filter(func(c: Combatant) -> bool: return c.side == unit.side and c.is_alive()))
 	var latest := latest_opponent_actor(fight, unit)
-	for skill_id in unit.skill_ids:
-		var skill := fight.tuning.skill(skill_id)
-		if skill == null:
+	for skill in unit.skills():
+		var skill_id := skill.id
+		if skill.is_guard():
 			continue
 		if skill.is_heal() or weights.role_of(skill_id) == IntentWeights.ROLE_HEAL:
 			if unit.can_afford(skill):
@@ -90,9 +94,19 @@ func options_for(fight: Fight, unit: Combatant) -> Array[UnitIntent]:
 		var affordable := unit.can_afford(skill)
 		if not affordable and skill.energy_cost_milli() > unit.max_energy_milli:
 			continue
-		for target in opponents:
-			var dmg := DamageRules.damage(unit.stats, target.stats, skill, fight.tuning)
+		var aims: Array[Combatant] = opponents
+		if skill.hits_all() and not opponents.is_empty():
+			aims = [opponents[0]]
+		for target in aims:
+			var dmg := DamageRules.damage_to(unit, target, skill, fight.tuning)
 			var score := _attack_score(dmg, target, target == latest, skill, p)
+			if skill.hits_all():
+				dmg = 0
+				score = -_cost_score(skill, p)
+				for o in opponents:
+					var each := DamageRules.damage_to(unit, o, skill, fight.tuning)
+					dmg += each
+					score += _attack_score(each, o, o == latest, null, p)
 			if affordable:
 				out.append(UnitIntent.new(unit.id, UnitIntent.Kind.ATTACK, FightAction.use(skill_id, target.id), dmg, score))
 			else:
@@ -122,8 +136,9 @@ static func latest_opponent_actor(fight: Fight, unit: Combatant) -> Combatant:
 	return null
 
 
+## The score of dealing `dmg` to `target`; `skill`'s cost is subtracted unless null.
 func _attack_score(dmg: int, target: Combatant, is_latest: bool, skill: CombatSkill, p: Personality) -> float:
-	var score := dmg * weights.weight(IntentWeights.DAMAGE, p) - _cost_score(skill, p)
+	var score := dmg * weights.weight(IntentWeights.DAMAGE, p) - (_cost_score(skill, p) if skill != null else 0.0)
 	if dmg >= target.hp:
 		score += weights.weight(IntentWeights.KILL, p)
 	if is_latest:

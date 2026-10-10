@@ -127,12 +127,29 @@ func _bot_panel(r: BotFightReport) -> Control:
 
 
 func _skill_row(c: SkillChange) -> Control:
-	var name := c.skill_name if c.has_bot_skill() else c.combat_skill_id.capitalize()
+	return _row(skill_row_left(c), skill_row_right(c), skill_row_color(c))
+
+
+## "Patch Up ×3", or the combat skill's name for a use with no bot skill.
+static func skill_row_left(c: SkillChange) -> String:
+	return "%s ×%d" % [c.skill_name if c.has_bot_skill() else c.combat_skill_id.capitalize(), c.uses]
+
+
+## "Lv 1 · 3/5 to Lv 2", "LEVEL UP  1 → 2 · 1/5", "Lv 10 · max", or, for the
+## basic attack a bot keeps without holding it as a skill, "basic attack".
+static func skill_row_right(c: SkillChange) -> String:
 	if not c.has_bot_skill():
-		return _row("%s ×%d" % [name, c.uses], "no skill to train", TEXT_DIM)
+		return "basic attack"
+	var progress := "max" if c.is_max_level() else "%d/%d to Lv %d" % [c.banked_after, c.uses_per_level, c.level_after + 1]
 	if c.levels_gained() > 0:
-		return _row("%s ×%d" % [name, c.uses], "LEVEL UP  %d → %d" % [c.level_before, c.level_after], LEVEL_UP)
-	return _row("%s ×%d" % [name, c.uses], "Lv %d · %d banked" % [c.level_after, c.banked_after], TEXT)
+		return "LEVEL UP  %d → %d · %s" % [c.level_before, c.level_after, progress]
+	return "Lv %d · %s" % [c.level_after, progress]
+
+
+static func skill_row_color(c: SkillChange) -> Color:
+	if not c.has_bot_skill():
+		return TEXT_DIM
+	return LEVEL_UP if c.levels_gained() > 0 else TEXT
 
 
 func _scale_row(r: BotFightReport, scale: int) -> Control:

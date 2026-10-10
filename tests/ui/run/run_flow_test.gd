@@ -7,7 +7,9 @@ extends GdUnitTestSuite
 const SCENE := preload("res://ui/run/run_flow.tscn")
 const Helpers := preload("res://tests/ui/fight/fight_ui_helpers.gd")
 const SAVE_PATH := "user://run_flow_test.tres"
-const RUN_SEED := 11
+## Bots fight with their own drafted skills, so a seed must draft a squad
+## that wins its first fight: 11 drafted three low-attack support bots.
+const RUN_SEED := 12
 
 var _runner: GdUnitSceneRunner
 var _flow: RunFlow
@@ -58,7 +60,7 @@ func _play_battle(screen: BattleScreen) -> void:
 	var guard := 0
 	while not fight.is_over() and guard < 2000:
 		if screen.handler.is_player_turn():
-			Helpers.play_turn_by_mouse(screen)
+			Helpers.play_support_turn_by_mouse(screen)
 		else:
 			await _frames(1)
 		guard += 1
@@ -180,6 +182,10 @@ func test_one_whole_run_map_fight_post_fight_map() -> void:
 		drifted = drifted or r.personality_after != r.personality_before
 		# TODO(decision: hp-carryover): bots heal to full between fights.
 		assert_int(bot.hp).is_equal(bot.get_max_hp())
+		# Every skill the bot used trains one of its own skills, except the
+		# basic attack a bot keeps without holding Strike.
+		for change in r.skill_changes:
+			assert_bool(change.has_bot_skill() or change.combat_skill_id == fight.tuning.basic_attack).is_true()
 	assert_bool(drifted).is_true()
 	# Applied once: the fight is marked.
 	assert_str(PostFight.apply(fight, _flow.squad.get_fielded()).error).is_not_empty()
@@ -326,3 +332,53 @@ func test_a_missing_save_keeps_the_run() -> void:
 	assert_bool(_flow.load_run("user://no_such_run.tres")).is_false()
 	assert_object(_flow.overworld.campaign).is_same(campaign)
 	assert_int(_flow.stage).is_equal(RunFlow.Stage.MAP)
+
+
+func test_a_fight_in_the_run_levels_up_the_bot_skills_it_used() -> void:
+	await _open()
+	await _draft()
+	var tuning := PostFightTuning.load_default()
+	# Bank one use short of a level on every skill of every fielded bot.
+	var levels := {}
+	for bot in _flow.squad.get_fielded():
+		for skill in bot.skills:
+			_flow.ledger.set_banked(bot.id, skill.display_name, tuning.uses_per_level - 1)
+			levels["%s/%s" % [bot.id, skill.display_name]] = skill.level
+	_flow.overworld._on_attack(_adjacent_target())
+	await _frames(1)
+	var fight := _flow.battle_screen.fight
+	await _play_battle(_flow.battle_screen)
+	await _await_stage(RunFlow.Stage.POST_FIGHT)
+	var report := _flow.fight_service.last_report
+	var level_ups := 0
+	for bot in _flow.squad.get_fielded():
+		var r := report.bot(bot.id)
+		for change in r.skill_changes:
+			if not change.has_bot_skill():
+				continue
+			var skill := _skill_named(bot, change.skill_name)
+			assert_int(change.level_after).is_equal(levels["%s/%s" % [bot.id, skill.display_name]] + 1)
+			assert_int(skill.level).is_equal(change.level_after)
+			level_ups += 1
+	assert_int(level_ups).is_greater(0)
+	# The readout shows the level-up, not "no skill to train".
+	var text := _texts(_flow.readout)
+	assert_str(text).contains("LEVEL UP")
+	assert_str(text).not_contains("no skill to train")
+	assert_bool(fight.is_over()).is_true()
+
+
+func _skill_named(bot: Bot, skill_name: String) -> Skill:
+	for skill in bot.skills:
+		if skill.display_name == skill_name:
+			return skill
+	return null
+
+
+func _texts(node: Node) -> String:
+	var out := PackedStringArray()
+	if node is Label:
+		out.append((node as Label).text)
+	for child in node.get_children():
+		out.append(_texts(child))
+	return "\n".join(out)
