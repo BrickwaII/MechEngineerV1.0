@@ -9,10 +9,19 @@ const DEFAULT_PATH := "res://data/combat/enemy_tables.json"
 var enemies: Dictionary = {}
 ## Defense level -> {count, pool, rewards}.
 var levels: Dictionary = {}
+## Which faction fields enemies where (data/combat/factions.json). Null: every
+## fight draws from the generic level pools.
+var factions: FactionTable
+
+
+## The shipped table, with the shipped factions.
 
 
 static func load_default() -> EnemyTable:
-	return load_file(DEFAULT_PATH)
+	var t := load_file(DEFAULT_PATH)
+	if t != null:
+		t.factions = FactionTable.load_default()
+	return t
 
 
 static func load_file(path: String) -> EnemyTable:
@@ -62,6 +71,27 @@ func pick(level: int, rng: RandomNumberGenerator) -> Array[String]:
 	return out
 
 
+## Enemy ids for `request`'s fight: the faction holding its territory under
+## `faction_rule` (a FightVariants enemy-factions option), or the generic
+## pool of its level when no faction holds it.
+func pick_for(request: FightRequest, rng: RandomNumberGenerator,
+		faction_rule := FightVariants.FACTIONS_BY_ACT) -> Array[String]:
+	if factions != null:
+		var ids := factions.pick_for_territory(self, request.territory_id, request.defense_level, faction_rule, rng)
+		if not ids.is_empty():
+			return ids
+	return pick(request.defense_level, rng)
+
+
+## The sprite that draws `enemy_id`: {"unit": manifest unit id, "tier": tier},
+## or {} when the enemy names none.
+func sprite_of(enemy_id: String) -> Dictionary:
+	var e: Dictionary = enemies.get(enemy_id, {})
+	if not e.has("sprite"):
+		return {}
+	return {"unit": str(e.sprite), "tier": str(e.get("tier", "beginner"))}
+
+
 func rewards(level: int) -> Dictionary[String, int]:
 	var out: Dictionary[String, int] = {}
 	var r: Dictionary = levels[level].rewards
@@ -86,4 +116,6 @@ func validate(tuning: CombatTuning) -> Array[String]:
 		for s: String in enemies[id].skills:
 			if tuning.skill(s) == null:
 				problems.append("enemy %s has unknown skill %s" % [id, s])
+	if factions != null:
+		problems.append_array(factions.validate(self))
 	return problems

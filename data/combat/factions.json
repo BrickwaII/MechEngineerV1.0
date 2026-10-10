@@ -1,0 +1,29 @@
+{
+	"_comment": "Enemy factions (M7 P4). Prototype roster only; deeper faction mechanics stay deferred. factions: name, color (the faction color the sprites and the territory panel use), icon (a 32x32 picture for the territory panel) and unit types; a unit type joins the pool from defense level from_level. A faction fight draws enemy_tables.json levels[level].count enemies, with replacement and the fight seed, from the pool, each as <unit>_<tier>. tier_by_act: the tier per defense level 0 to 5 in each act. regions: the faction holding each region, by act (acts as in data/tuning/acts.json), listing every region of every map variant of the act. mixed_pool: the factions enemy-factions = mixed draws from per region. Read by fight/faction_table.gd. Every number here is a first guess, not balance.",
+	"factions": {
+		"human_resistance": {"name": "Human Resistance", "short_name": "Resistance", "color": "#a4ad4a", "icon": "res://assets/enemies/human_resistance/icon_human_resistance.png", "description": "Soldiers, tanks and humans piloting mechs.", "units": [{"unit": "resistance_soldier", "from_level": 0}, {"unit": "resistance_mech", "from_level": 2}, {"unit": "resistance_tank", "from_level": 3}]},
+		"enhanced_humans": {"name": "Enhanced Humans", "short_name": "Enhanced", "color": "#4f8cff", "icon": "res://assets/enemies/enhanced_humans/icon_enhanced_humans.png", "description": "Cyborgs and tech-augmented troops.", "units": [{"unit": "enhanced_cyborg", "from_level": 0}, {"unit": "enhanced_trooper", "from_level": 1}]},
+		"rival_ai": {"name": "Rival AI", "short_name": "Rival AI", "color": "#ff6b5e", "icon": "res://assets/enemies/rival_ai/icon_rival_ai.png", "description": "A rival AI's combat units, plus a rogue splinter AI's swarms.", "units": [{"unit": "rival_hunter", "from_level": 0}, {"unit": "splinter_swarm", "from_level": 1}, {"unit": "rival_walker", "from_level": 3}]},
+		"aliens": {"name": "Aliens", "short_name": "Aliens", "color": "#e05ad0", "icon": "res://assets/enemies/aliens/icon_aliens.png", "description": "Wildcard alien units.", "units": [{"unit": "alien_stalker", "from_level": 0}, {"unit": "alien_spitter", "from_level": 1}]}
+	},
+	"tiers": ["beginner", "medium", "advanced"],
+	"tier_by_act": {
+		"act1": ["beginner", "beginner", "beginner", "medium", "advanced", "advanced"],
+		"act2": ["beginner", "beginner", "medium", "medium", "advanced", "advanced"],
+		"act3": ["beginner", "medium", "medium", "advanced", "advanced", "advanced"]
+	},
+	"mixed_pool": ["human_resistance", "enhanced_humans", "rival_ai", "aliens"],
+	"regions": {
+		"act1": {
+			"human_resistance": ["ballard", "bellevue", "bothell", "burien", "central_seattle", "edmonds", "issaquah", "kenmore", "kirkland", "lake_forest_park", "mercer_island", "newcastle", "north_seattle", "north_shore", "redmond", "renton", "sammamish", "seatac", "seattle", "shoreline", "south_seattle", "tukwila", "west_seattle", "woodinville"]
+		},
+		"act2": {
+			"rival_ai": ["alberta", "arizona", "baja_california", "british_columbia", "california", "central_rockies", "chihuahua", "colorado", "great_basin", "idaho", "mexico_west", "montana", "nevada", "new_mexico", "northern_mexico", "northern_rockies", "oregon", "pacific_northwest", "rockies", "sonora", "southwest", "texas", "utah", "washington", "western_canada", "wyoming"],
+			"enhanced_humans": ["alabama", "arkansas", "carolinas", "central_plains", "chesapeake", "coahuila", "dakotas", "deep_south", "florida", "georgia", "great_lakes", "illinois", "indiana", "iowa", "iowa_missouri", "kansas", "kentucky", "louisiana", "lower_mississippi", "maine", "manitoba", "maritimes", "mexico_east", "michigan", "mid_atlantic", "minnesota", "mississippi", "missouri", "nebraska", "new_england", "new_jersey", "new_york", "north_carolina", "north_dakota", "northern_new_england", "northern_plains", "nuevo_leon", "ohio", "ohio_valley", "oklahoma", "ontario", "pennsylvania", "prairies", "quebec", "quebec_maritimes", "saskatchewan", "south_carolina", "south_dakota", "southeast", "southern_new_england", "southern_plains", "tamaulipas", "tennessee", "tennessee_alabama", "upper_midwest", "virginia", "virginias", "west_virginia", "wisconsin"]
+		},
+		"act3": {
+			"rival_ai": ["andes", "argentina_chile", "brazil", "canada", "central_america", "colombia_venezuela", "latin_america", "mexico", "mexico_caribbean", "north_america", "peru_bolivia", "united_states"],
+			"aliens": ["arabia", "asia", "australia", "balkans", "british_isles", "central_africa", "central_asia", "china", "east_africa", "east_asia", "east_southern_africa", "eastern_europe", "egypt", "europe", "france", "germany", "iberia", "india", "indonesia", "iran", "italy", "japan", "korea", "levant", "maghreb", "mainland_se_asia", "middle_east", "middle_east_north_africa", "new_zealand_pacific", "nordic", "north_africa", "northern_europe", "oceania", "pakistan", "philippines", "poland", "russia", "russia_central_asia", "russia_west", "siberia", "south_asia", "southeast_asia", "southern_africa", "sub_saharan_africa", "turkey", "ukraine", "west_africa", "west_central_africa", "western_europe"]
+		}
+	}
+}

@@ -19,6 +19,10 @@ replacing the file (same size and layout) and updating its row here.
 |---|---|---|---|
 | Ally bot parts (legs, body, head, arm; 2 variants x 3 tiers each) | `assets/sprites/units/ally_frame/*.png` | `tools/asset_gen/gen_sprites.py` | CC0 1.0 |
 | Enemy hunter drone, 3 tiers | `assets/sprites/units/enemy_drone/*.png` | `tools/asset_gen/gen_sprites.py` | CC0 1.0 |
+| Human resistance enemies (soldier, tank, pilot mech), 3 tiers each | `assets/enemies/human_resistance/*.png` | `tools/asset_gen/gen_enemies.py` | CC0 1.0 |
+| Enhanced human enemies (cyborg, augmented trooper), 3 tiers each | `assets/enemies/enhanced_humans/*.png` | `tools/asset_gen/gen_enemies.py` | CC0 1.0 |
+| Rival AI enemies (walker, rogue splinter swarm), 3 tiers each | `assets/enemies/rival_ai/*.png` | `tools/asset_gen/gen_enemies.py` | CC0 1.0 |
+| Alien enemies (stalker, spitter), 3 tiers each | `assets/enemies/aliens/*.png` | `tools/asset_gen/gen_enemies.py` | CC0 1.0 |
 | Effects: hit spark, heal plus, energy spark, muzzle flash, shield shimmer, down burst | `assets/sprites/effects/*.png` | `tools/asset_gen/gen_sprites.py` | CC0 1.0 |
 | Particle textures (white, for tinting) | `assets/sprites/particles/*.png` | `tools/asset_gen/gen_sprites.py` | CC0 1.0 |
 | Interface boxes, buttons, checkbox, slider, arrow | `assets/ui/*.png` | `tools/asset_gen/gen_sprites.py` | CC0 1.0 |

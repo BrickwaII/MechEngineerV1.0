@@ -23,6 +23,16 @@ Combat core (M2), pure logic with no scenes:
   them for a fight. `WaitRules` (d-wait, d-wait-length), `ElasticityRules`
   (d-elasticity) and `HpCarryover` (hp-carryover) implement the options;
   d-personality-map picks a drift rule set in `PostFightTuning`.
+- `FactionTable`: enemy factions (data/combat/factions.json, M7 P4). Which
+  faction holds each region, by act; the tier enemies field by act and
+  defense level; which unit types join at which level. `EnemyTable.pick_for()`
+  draws a fight's enemies from the territory's faction, or from the generic
+  level pools for territories outside every act and under the enemy-factions
+  switch's `generic` option. `EnemyTable.sprite_of()` names the manifest
+  sprite of an enemy. The map reads a region's faction with
+  `FactionTable.faction_for_region(region_id)` (region ids are unique across
+  acts), its name, color and icon with `faction_name()`, `faction_color()` and
+  `faction_icon()`.
 - `PatientFightPolicy`: waits for its strongest attack; batch runs use it so
   the wait options show.
 - `HeadlessFightRunner`: plays a fight from a seed and policies, with a text log.

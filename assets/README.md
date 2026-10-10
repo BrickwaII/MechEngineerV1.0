@@ -7,6 +7,7 @@ or `data/feel/sprite_manifest.json`:
 
 ```sh
 python3 tools/asset_gen/gen_sprites.py   # sprites, effects, interface, icons (needs Pillow)
+python3 tools/asset_gen/gen_enemies.py   # enemy faction sprites in enemies/ (needs Pillow)
 python3 tools/asset_gen/gen_font.py      # Mech Pixel font (needs Pillow)
 python3 tools/asset_gen/gen_sfx.py       # sound effects and music loop
 godot --headless --import --path .       # reimport
@@ -16,6 +17,7 @@ godot --headless --path . -s res://ui/common/build_theme.gd   # rebuild the them
 | Folder | What |
 |---|---|
 | `sprites/units/<unit>/` | Unit sheets, one per tier (enemies) or per part, variant and tier (allies) |
+| `enemies/<faction>/` | Enemy faction sheets, `<unit>_<tier>.png`, one per unit type and tier (P4) |
 | `sprites/effects/` | Effect sheets, one row of frames each (listed under `effects` in the manifest) |
 | `sprites/particles/` | Small white textures for particle systems to tint |
 | `ui/` | 9-slice boxes for the theme (12x12 art stored at 2x), checkbox, slider, arrow |
@@ -91,6 +93,13 @@ a faction color). Tiers read as the same unit getting stronger: same
 silhouette, more armor, bigger weapon, brighter effects. P4 adds one entry per
 unit type; `faction` is one of the P4 factions (`human_resistance`,
 `enhanced_humans`, `rival_ai`, `aliens`).
+
+Which sheet draws a fight enemy: each enemy in `data/combat/enemy_tables.json`
+names its manifest unit and tier (`sprite`, `tier`).
+`SpriteManifest.for_enemy("resistance_soldier_medium#2")` returns
+`{"unit": "resistance_soldier", "tier": "medium"}` for a combatant id or an
+enemy id. The faction colors and the drawing code for these units are in
+`tools/asset_gen/gen_enemies.py`; `ui/dev/enemy_lineup.tscn` shows them all.
 
 ### Ally entry
 
