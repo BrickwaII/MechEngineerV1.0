@@ -1,0 +1,10 @@
+{
+	"_comment": "Fight screen and demo tuning. Pacing and layout only; combat numbers live in data/combat/.",
+	"timeline_length": 8,
+	"enemy_turn_delay_seconds": 0.6,
+	"demo": {
+		"draft_seed": 1,
+		"territory_id": "demo_arena",
+		"defense_level": 1
+	}
+}
