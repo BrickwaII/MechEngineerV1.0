@@ -20,6 +20,8 @@ One playable run: the project's main scene (`ui/main/main.tscn`) opens it.
   map state and the act.
 - Battle screen: F3 toggles the `DebugOverlay` (hidden by default). It shows
   the intents the screen telegraphs.
-- Run seed: random per new run unless `run_seed` is set.
+- Run seed: random per new run unless `run_seed` is set. Act 1's start is
+  picked from it (`seeded_start()`); no start choice in normal play. Dev
+  option: `choose_start = true` brings the choice back.
 
 Screenshots of one run: `screenshots/` (Godot does not import it).

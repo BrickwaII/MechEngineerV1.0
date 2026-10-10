@@ -13,10 +13,11 @@ var _runner: GdUnitSceneRunner
 var _flow: RunFlow
 
 
-func _open(auto_fights := false) -> void:
+func _open(auto_fights := false, choose_start := false) -> void:
 	_flow = SCENE.instantiate()
 	_flow.run_seed = RUN_SEED
 	_flow.auto_fights = auto_fights
+	_flow.choose_start = choose_start
 	_flow.fight_screen_tuning = Helpers.fast_tuning()
 	_runner = scene_runner(auto_free(_flow))
 	await _runner.simulate_frames(2)
@@ -38,13 +39,6 @@ func _draft() -> void:
 	for i in screen.picker.squad_size():
 		screen.cards[screen.picker.bots()[i].id].pressed.emit()
 	screen.start_button.pressed.emit()
-	await _frames(1)
-
-
-## The first start of the map, as its START HERE button does.
-func _choose_first_start() -> void:
-	var map: RegionMap = _flow.overworld.campaign.map
-	_flow.overworld.choose_start(map.start_options()[0].id)
 	await _frames(1)
 
 
@@ -103,14 +97,40 @@ func test_the_drafted_bots_reach_the_map_through_real_contracts() -> void:
 	assert_object(overworld.campaign.squad_provider).is_same(overworld.squad_provider)
 	var ids: Array = overworld.campaign.squad_provider.get_squad().map(func(m: SquadMemberSummary) -> String: return m.id)
 	assert_array(ids).is_equal(Array(_flow.squad.fielded_ids))
-	# The shipped act 1 map offers a choice of start.
+	# No start choice in normal play: the run seed picks one of act 1's starts.
+	assert_bool(overworld._modal.visible).is_false()
+	var options: Array = overworld.campaign.map.start_options()
+	assert_int(options.size()).is_greater(1)
+	assert_str(overworld.campaign.state.start_id).is_equal(options[posmod(RUN_SEED, options.size())].id)
+	assert_str(_flow.seeded_start(options)).is_equal(overworld.campaign.state.start_id)
+
+
+func test_the_seeded_start_follows_the_seed() -> void:
+	await _open()
+	var options: Array = RegionMap.load_file("res://data/regions/seattle.json").start_options()
+	var picked := {}
+	for seed_value in range(options.size()):
+		_flow.current_seed = seed_value
+		picked[_flow.seeded_start(options)] = true
+	# Every start is reachable, and the same seed always gives the same one.
+	assert_int(picked.size()).is_equal(options.size())
+	_flow.current_seed = -7
+	assert_str(_flow.seeded_start(options)).is_equal(_flow.seeded_start(options))
+
+
+func test_the_start_choice_is_a_dev_option() -> void:
+	await _open(false, true)
+	await _draft()
+	var overworld: Control = _flow.overworld
 	assert_bool(overworld._modal.visible).is_true()
+	var options: Array = overworld.campaign.map.start_options()
+	overworld.choose_start(options[-1].id)
+	assert_str(overworld.campaign.state.start_id).is_equal(options[-1].id)
 
 
 func test_one_whole_run_map_fight_post_fight_map() -> void:
 	await _open()
 	await _draft()
-	await _choose_first_start()
 	var overworld: Control = _flow.overworld
 	var campaign: Campaign = overworld.campaign
 	var target := _adjacent_target()
@@ -175,7 +195,6 @@ func test_one_whole_run_map_fight_post_fight_map() -> void:
 func test_a_lost_fight_leaves_the_region_hostile_and_still_trains_the_bots() -> void:
 	await _open()
 	await _draft()
-	await _choose_first_start()
 	var overworld: Control = _flow.overworld
 	var campaign: Campaign = overworld.campaign
 	var target := _adjacent_target()
@@ -205,7 +224,6 @@ func test_a_lost_fight_leaves_the_region_hostile_and_still_trains_the_bots() -> 
 func test_auto_fights_run_the_same_flow_headless() -> void:
 	await _open(true)
 	await _draft()
-	await _choose_first_start()
 	var overworld: Control = _flow.overworld
 	var target := _adjacent_target()
 	await overworld._on_attack(target)
@@ -219,7 +237,6 @@ func test_auto_fights_run_the_same_flow_headless() -> void:
 func test_f3_shows_the_debug_overlay_on_the_battle_screen() -> void:
 	await _open()
 	await _draft()
-	await _choose_first_start()
 	_flow.overworld._on_attack(_adjacent_target())
 	await _frames(1)
 	var overlay := _flow.debug_overlay
@@ -249,7 +266,6 @@ func test_new_run_on_the_map_goes_back_to_the_draft() -> void:
 func test_save_and_load_round_trip_with_bots() -> void:
 	await _open(true)
 	await _draft()
-	await _choose_first_start()
 	var overworld: Control = _flow.overworld
 	await overworld._on_attack(_adjacent_target())
 	_flow.continue_to_map()
@@ -292,7 +308,6 @@ func test_save_and_load_round_trip_with_bots() -> void:
 func test_loading_over_a_run_in_progress_replaces_it() -> void:
 	await _open(true)
 	await _draft()
-	await _choose_first_start()
 	assert_int(_flow.save_run(SAVE_PATH)).is_equal(OK)
 	var saved_owned := Array(_flow.overworld.campaign.state.owned)
 	await _flow.overworld._on_attack(_adjacent_target())
