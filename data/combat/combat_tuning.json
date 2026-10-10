@@ -1,5 +1,5 @@
 {
-	"_comment": "Combat tuning. Every number here is a first guess, not balance. Energy values are in whole points unless the key ends in _milli (thousandths of a point).",
+	"_comment": "Combat tuning. Every number here is a first guess, not balance. Energy values are in whole points unless the key ends in _milli (thousandths of a point). A skill with \"effect\": \"heal\" restores (attack x power_percent / 100) hp to a living ally, capped at what it lost; every other skill deals damage.",
 	"timeline": {
 		"action_threshold": 100,
 		"min_charge_per_tick": 1
@@ -28,6 +28,7 @@
 	"skills": {
 		"strike": {"name": "Strike", "energy_cost": 0, "power_percent": 100},
 		"heavy_strike": {"name": "Heavy Strike", "energy_cost": 4, "power_percent": 150},
-		"overload": {"name": "Overload", "energy_cost": 9, "power_percent": 220}
+		"overload": {"name": "Overload", "energy_cost": 9, "power_percent": 220},
+		"repair": {"name": "Repair", "energy_cost": 2, "power_percent": 100, "effect": "heal"}
 	}
 }

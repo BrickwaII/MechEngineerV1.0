@@ -45,3 +45,29 @@ static func play_turn_by_mouse(s: BattleScreen) -> void:
 			target = c
 	s.skill_buttons[best].pressed.emit()
 	click(s.unit_panels[target.id])
+
+
+## Bolt, one strong fast bot, against two Warden Mechs (supportive, by
+## data/combat/intent/enemy_personalities.json) that can Repair each other.
+static func healer_request() -> FightRequest:
+	var squad: Array[SquadMemberSummary] = [SquadMemberSummary.new(
+		"bolt", "Bolt", 60, 60, "aggressive", UnitStats.new(60, 14, 4, 20, 0, 10))]
+	return FightRequest.new(FightRequest.Kind.ATTACK, "test_territory", 1, squad)
+
+
+static func healer_table() -> EnemyTable:
+	var levels := []
+	for level in range(FightRequest.MIN_DEFENSE_LEVEL, FightRequest.MAX_DEFENSE_LEVEL + 1):
+		levels.append({"level": level, "count": 2, "pool": ["warden_mech"], "rewards": {"energy": 3, "material": 1}})
+	return EnemyTable.from_dict({
+		"enemies": {"warden_mech": {
+			"name": "Warden Mech", "hp": 40, "attack": 9, "defense": 1, "speed": 4, "elasticity": 0,
+			"battery_capacity": 10, "skills": ["strike", "repair"]}},
+		"levels": levels,
+	})
+
+
+static func healer_screen() -> BattleScreen:
+	var s: BattleScreen = BATTLE_SCENE.instantiate()
+	s.setup(healer_request(), SEED, fast_tuning(), null, healer_table())
+	return s

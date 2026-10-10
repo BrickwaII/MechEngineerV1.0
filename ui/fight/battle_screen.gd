@@ -10,6 +10,11 @@ extends Control
 ##   left-click an enemy   select target (resolves the action)
 ##   Wait button           wait (for the selected skill, else the next one)
 ##   Cancel / right-click  cancel
+##   point at an enemy     preview the selected skill on it (changes nothing)
+##
+## Enemies telegraph their intent and act by it (IntentFightPolicy), so what
+## each enemy panel says is what that enemy does next. FightTelegraph holds
+## the intents, the revision marks and the choice preview.
 ##
 ## Call setup() before adding the screen to the tree.
 
@@ -26,6 +31,7 @@ signal fight_finished(result: FightResult)
 var tuning: FightScreenTuning
 var handler: FightCommandHandler
 var fight: Fight
+var telegraph: FightTelegraph
 ## Pause before each enemy action. Tests set 0 to play enemies at once.
 var enemy_turn_delay := 0.0
 
@@ -37,13 +43,22 @@ var cancel_button: Button
 var prompt_label: Label
 var message_label: Label
 var log_label: Label
-## Space for the choice preview. Placeholder until fight/preview/ is wired in.
-## TODO(m4-telegraph): show the preview of the hovered or selected choice here.
+## The choice preview: what the selected skill would do to the target under
+## the pointer.
 var preview_area: PanelContainer
+var preview_label: Label
+## The unit under the pointer, or "".
+var hovered_id := ""
+## The preview shown now, or null. Read-only; for tests.
+var shown_preview: ChoicePreview
 var header_label: Label
 
 var _enemy_clock := 0.0
 var _finished_sent := false
+## Fight.action_count the intents were last refreshed at.
+var _planned_at := 0
+## The unit that took the latest action, or "".
+var _last_actor_id := ""
 
 
 ## Builds the fight. `p_tuning` defaults to data/ui/fight_screen.json; the
@@ -53,7 +68,11 @@ func setup(request: FightRequest, fight_seed: int, p_tuning: FightScreenTuning =
 	tuning = p_tuning if p_tuning != null else FightScreenTuning.load_default()
 	enemy_turn_delay = tuning.enemy_turn_delay_seconds
 	fight = Fight.new(request, fight_seed, combat_tuning, enemy_table)
-	handler = FightCommandHandler.new(fight, null, false)
+	var planner := IntentPlanner.new()
+	handler = FightCommandHandler.new(fight, IntentFightPolicy.new(planner), false)
+	# Planned once time has run to the first decision, as after every action.
+	telegraph = FightTelegraph.new(fight, planner)
+	_planned_at = fight.action_count
 	handler.changed.connect(refresh)
 	handler.action_resolved.connect(_on_action_resolved)
 	handler.fight_over.connect(_on_fight_over)
@@ -122,12 +141,44 @@ func on_cancel_pressed() -> void:
 	send(FightCommand.cancel())
 
 
+## Shows the selected skill's preview on `unit_id`, as pointing at it does.
+## "" clears it.
+func preview_target(unit_id: String) -> void:
+	hovered_id = unit_id
+	refresh()
+
+
+func on_unit_hovered(unit_id: String, inside: bool) -> void:
+	if inside:
+		preview_target(unit_id)
+	elif hovered_id == unit_id:
+		preview_target("")
+
+
+## The action being previewed: the selected skill on the unit under the
+## pointer. Null when there is none or it is not allowed.
+func previewed_action() -> FightAction:
+	if not handler.is_player_turn() or not handler.is_choosing_target() or hovered_id.is_empty():
+		return null
+	if handler.selected_bot_id != handler.actor().id or not handler.target_problem(hovered_id).is_empty():
+		return null
+	return FightAction.use(handler.selected_skill_id, hovered_id)
+
+
 func refresh() -> void:
+	_sync_intents()
 	if timeline_bar == null:
 		return
 	var actor := handler.actor()
+	var action := previewed_action()
+	shown_preview = telegraph.preview_choice(fight, action) if action != null else null
 	for c in fight.combatants:
-		unit_panels[c.id].refresh(c, _highlight_for(c))
+		var panel := unit_panels[c.id]
+		panel.refresh(c, _highlight_for(c))
+		panel.show_intent(telegraph.tag_of(c.id),
+			telegraph.intent_text(fight, c.id) if c.is_alive() else "", telegraph.change_text(c.id))
+		panel.show_preview(_panel_preview(c.id))
+	_refresh_preview_box(action)
 	var upcoming: Array[TimelineEntry] = []
 	if not fight.is_over():
 		upcoming = fight.upcoming(tuning.timeline_length)
@@ -174,8 +225,48 @@ func _refresh_commands() -> void:
 	cancel_button.disabled = not can_act or not handler.is_choosing_target()
 
 
-func _on_action_resolved(_actor_id: String, _tag: String) -> void:
+func _on_action_resolved(actor_id: String, _tag: String) -> void:
+	_last_actor_id = actor_id
 	message_label.text = ""
+
+
+## Re-plans the enemies once per action, after time has run to the next
+## decision: the state the next enemy will act from.
+func _sync_intents() -> void:
+	if fight.action_count == _planned_at:
+		return
+	_planned_at = fight.action_count
+	telegraph.after_action(fight, fight.combatant(_last_actor_id))
+
+
+func _panel_preview(unit_id: String) -> String:
+	if shown_preview == null:
+		return ""
+	var lines := PackedStringArray()
+	var effect := shown_preview.effect_on(unit_id)
+	if effect != null:
+		lines.append(FightTelegraph.effect_text(effect))
+	var change := shown_preview.change_for(unit_id)
+	if effect != null and effect.would_go_down():
+		pass
+	elif change != null:
+		lines.append(telegraph.intent_change_text(fight, change))
+	elif not shown_preview.intent_changes_known and telegraph.intent_of(unit_id) != null:
+		lines.append("intent after: ?")
+	return "\n".join(lines)
+
+
+func _refresh_preview_box(action: FightAction) -> void:
+	if action != null:
+		preview_label.text = "PREVIEW\n" + telegraph.describe_choice(fight, action, shown_preview)
+		preview_label.add_theme_color_override("font_color", Palette.PREVIEW)
+	elif handler.is_player_turn() and handler.is_choosing_target():
+		preview_label.text = "PREVIEW\n%s: point at a target to see what it does." % (
+			fight.tuning.skill(handler.selected_skill_id).display_name)
+		preview_label.add_theme_color_override("font_color", Palette.TEXT_DIM)
+	else:
+		preview_label.text = "PREVIEW\nChoose a skill, then point at a target."
+		preview_label.add_theme_color_override("font_color", Palette.TEXT_DIM)
 
 
 func _on_fight_over(result: FightResult) -> void:
@@ -232,6 +323,7 @@ func _build_layout() -> void:
 		(enemies if c.side == Combatant.Side.ENEMY else bots).add_child(panel)
 		panel.setup(c)
 		panel.clicked.connect(on_unit_clicked)
+		panel.hovered.connect(on_unit_hovered)
 		unit_panels[c.id] = panel
 
 	var bar := PanelContainer.new()
@@ -267,7 +359,7 @@ func _build_layout() -> void:
 
 	preview_area = PanelContainer.new()
 	preview_area.name = "PreviewArea"
-	preview_area.custom_minimum_size = Vector2(300, 0)
+	preview_area.custom_minimum_size = Vector2(380, 0)
 	var preview_style := StyleBoxFlat.new()
 	preview_style.bg_color = Palette.PANEL_RAISED
 	preview_style.border_color = Palette.RULE
@@ -275,7 +367,9 @@ func _build_layout() -> void:
 	preview_style.set_content_margin_all(8)
 	preview_area.add_theme_stylebox_override("panel", preview_style)
 	bar_row.add_child(preview_area)
-	_label(preview_area, "PREVIEW\n(choice preview goes here)", 12, Palette.TEXT_DIM)
+	preview_label = _label(preview_area, "", 12, Palette.TEXT_DIM)
+	preview_label.name = "PreviewLabel"
+	preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
 ## Skill ids any bot in the fight has, in the tuning's menu order.

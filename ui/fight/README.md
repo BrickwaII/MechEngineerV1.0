@@ -17,6 +17,20 @@ fight and turn the mouse into `FightCommand`s.
 
 Placeholder art: bots are teal squares, enemies red diamonds.
 
-Hooks for the M3 wiring (intent and preview): every enemy `UnitPanel` has an
-`intent_label` (node `IntentLabel`), and `BattleScreen.preview_area` (node
-`PreviewArea`) sits beside the command bar. Both are marked TODO(m4-telegraph).
+Intent and preview (M4, from fight/intent/ and fight/preview/):
+- `FightTelegraph`: no scene, tested headless. Holds an `IntentTracker`, turns
+  each enemy's intent into words ("Heavy Strike -> Spark (9)"), keeps a
+  "changed: <why>" mark per revised intent until the next bot action
+  resolves, gives each unit's personality tag, and runs the choice preview on
+  a copy of the fight.
+- Enemy panels show their intent (node `IntentLabel`), re-planned after every
+  action; a revised intent turns purple with a `ChangeLabel` and border for
+  one turn. Every panel shows its personality tag (`TagLabel`).
+- Enemies act with `IntentFightPolicy` on the same planner, so the telegraph
+  is what happens.
+- With a skill selected, pointing at a target fills the preview box
+  (`PreviewArea`) and each touched panel's `PreviewLabel`: damage, hp after,
+  who goes down, which enemy intents would change. Unknown values show "?".
+  Nothing is submitted until the click.
+
+Screenshots: screenshots/intent_row.png, intent_changed.png, choice_preview.png.

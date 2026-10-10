@@ -25,12 +25,31 @@ func test_plays_the_planned_intent_when_the_fight_allows_it() -> void:
 	assert_str(action.skill_id).is_equal("heavy_strike")
 
 
-func test_falls_back_to_a_legal_option_when_the_intent_is_a_heal() -> void:
-	# The combat core resolves attacks only, so a planned heal cannot be played yet.
+func test_plays_a_planned_heal() -> void:
 	var f := T.healer_fight()
 	f.combatant("grunt#1").hp = 10
 	f.combatant("bolt").stats = T.stats(60, 12, 4, 1, 10)
 	f.combatant("bolt").charge_per_tick = 1
+	var planner := T.healer_planner()
+	var actor := f.advance()
+	assert_str(actor.id).is_equal("medic#1")
+	assert_int(planner.plan(f, actor).kind).is_equal(UnitIntent.Kind.HEAL)
+	var action := IntentFightPolicy.new(planner).choose(f, actor, RandomNumberGenerator.new())
+	assert_str(str(action)).is_equal("repair on grunt#1")
+	assert_str(f.submit(action)).is_empty()
+	assert_int(f.combatant("grunt#1").hp).is_equal(18)
+
+
+func test_falls_back_to_a_legal_option_when_a_heal_role_is_not_a_heal_skill() -> void:
+	# intent_weights.json calls "repair" a heal, but this tuning does not.
+	var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(CombatTuning.DEFAULT_PATH))
+	d.skills["repair"] = {"name": "Repair", "energy_cost": 2, "power_percent": 100}
+	var f := T.fight(
+		[{"id": "bolt", "stats": T.stats(60, 12, 4, 1, 10)}],
+		[
+			{"id": "medic#1", "stats": T.stats(30, 8, 2, 4, 10), "skills": ["strike", "repair"]},
+			{"id": "grunt#1", "stats": T.stats(30, 6, 2, 4, 10), "skills": ["strike"], "hp": 10},
+		], CombatTuning.from_dict(d))
 	var planner := T.healer_planner()
 	var actor := f.advance()
 	assert_str(actor.id).is_equal("medic#1")

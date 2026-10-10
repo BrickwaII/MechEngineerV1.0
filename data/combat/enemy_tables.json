@@ -4,7 +4,7 @@
 		"scrap_drone": {"name": "Scrap Drone", "hp": 14, "attack": 5, "defense": 2, "speed": 6, "elasticity": 1, "battery_capacity": 6, "skills": ["strike"]},
 		"rust_hound": {"name": "Rust Hound", "hp": 20, "attack": 7, "defense": 3, "speed": 8, "elasticity": 2, "battery_capacity": 8, "skills": ["strike", "heavy_strike"]},
 		"sentry_turret": {"name": "Sentry Turret", "hp": 30, "attack": 8, "defense": 6, "speed": 3, "elasticity": 0, "battery_capacity": 12, "skills": ["strike", "overload"]},
-		"warden_mech": {"name": "Warden Mech", "hp": 45, "attack": 10, "defense": 7, "speed": 5, "elasticity": 3, "battery_capacity": 14, "skills": ["strike", "heavy_strike", "overload"]}
+		"warden_mech": {"name": "Warden Mech", "hp": 45, "attack": 10, "defense": 7, "speed": 5, "elasticity": 3, "battery_capacity": 14, "skills": ["strike", "heavy_strike", "overload", "repair"]}
 	},
 	"levels": [
 		{"level": 0, "count": 2, "pool": ["scrap_drone"], "rewards": {"energy": 4, "material": 2}},

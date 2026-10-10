@@ -79,7 +79,7 @@ func options_for(fight: Fight, unit: Combatant) -> Array[UnitIntent]:
 		var skill := fight.tuning.skill(skill_id)
 		if skill == null:
 			continue
-		if weights.role_of(skill_id) == IntentWeights.ROLE_HEAL:
+		if skill.is_heal() or weights.role_of(skill_id) == IntentWeights.ROLE_HEAL:
 			if unit.can_afford(skill):
 				for ally in allies:
 					var healed := heal_amount(unit, ally, skill)
@@ -104,11 +104,9 @@ func options_for(fight: Fight, unit: Combatant) -> Array[UnitIntent]:
 
 
 ## HP `skill` would restore to `ally`: attack x power% / 100, capped at what
-## the ally has lost.
-@warning_ignore("integer_division")
+## the ally has lost. The same rule the fight resolves heals with.
 static func heal_amount(healer: Combatant, ally: Combatant, skill: CombatSkill) -> int:
-	var power := maxi(0, healer.stats.attack * skill.power_percent / 100)
-	return mini(power, maxi(0, ally.max_hp - ally.hp))
+	return DamageRules.heal(healer.stats, ally.hp, ally.max_hp, skill)
 
 
 ## The opponent of `unit` that took the most recent non-wait action, or null.

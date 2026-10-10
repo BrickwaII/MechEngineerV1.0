@@ -96,7 +96,10 @@ func check_action(action: FightAction) -> String:
 	var target := combatant(action.target_id)
 	if target == null or not target.is_alive():
 		return "no living target %s" % action.target_id
-	if target.side == pending_actor.side:
+	if skill.is_heal():
+		if target.side != pending_actor.side:
+			return "%s may not heal an opponent" % pending_actor.id
+	elif target.side == pending_actor.side:
 		return "%s may not target an ally" % pending_actor.id
 	return ""
 
@@ -175,8 +178,16 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 	var target := combatant(action.target_id)
 	var energy_before := actor.energy()
 	actor.spend(skill)
-	var dmg := DamageRules.damage(actor.stats, target.stats, skill, tuning)
 	var hp_before := target.hp
+	if skill.is_heal():
+		target.hp += DamageRules.heal(actor.stats, target.hp, target.max_hp, skill)
+		actor.finish_action(tuning.action_threshold)
+		action_tags.append("%s:%s" % [actor.id, skill.id])
+		_log("%s uses %s on %s: %d healed, hp %d -> %d, energy %d -> %d" % [
+			actor.display_name, skill.display_name, target.display_name, target.hp - hp_before, hp_before,
+			target.hp, energy_before, actor.energy()])
+		return
+	var dmg := DamageRules.damage(actor.stats, target.stats, skill, tuning)
 	target.hp = maxi(0, target.hp - dmg)
 	actor.finish_action(tuning.action_threshold)
 	action_tags.append("%s:%s" % [actor.id, skill.id])

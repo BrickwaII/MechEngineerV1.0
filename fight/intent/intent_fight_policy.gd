@@ -1,9 +1,9 @@
 class_name IntentFightPolicy
 extends FightPolicy
 ## Plays a unit by its intent, so headless fights use the same choices the
-## preview shows. When the best intent is one the fight cannot resolve yet
-## (healing an ally: the combat core only resolves attacks), the next legal
-## option is played instead. Uses no randomness.
+## preview shows. When the best intent is one the fight cannot resolve (a heal
+## skill the combat tuning does not mark as a heal), the next legal option is
+## played instead. Uses no randomness.
 
 var planner: IntentPlanner
 

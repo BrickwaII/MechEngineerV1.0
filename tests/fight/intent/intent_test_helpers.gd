@@ -11,7 +11,7 @@ static func stats(hp: int, attack: int, defense: int, speed: int, battery: int) 
 ## Default tuning plus a heal skill, "repair": 2 energy, heals 100% of attack.
 static func tuning_with_repair() -> CombatTuning:
 	var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(CombatTuning.DEFAULT_PATH))
-	d.skills["repair"] = {"name": "Repair", "energy_cost": 2, "power_percent": 100}
+	d.skills["repair"] = {"name": "Repair", "energy_cost": 2, "power_percent": 100, "effect": "heal"}
 	return CombatTuning.from_dict(d)
 
 

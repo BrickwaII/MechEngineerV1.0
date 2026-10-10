@@ -63,7 +63,8 @@ static func from_dict(d: Dictionary) -> CombatTuning:
 		t.player_skills.append(id)
 	for id: String in d.skills:
 		var s: Dictionary = d.skills[id]
-		t.skills[id] = CombatSkill.new(id, s.name, int(s.energy_cost), int(s.power_percent))
+		t.skills[id] = CombatSkill.new(
+			id, s.name, int(s.energy_cost), int(s.power_percent), String(s.get("effect", CombatSkill.EFFECT_DAMAGE)))
 	return t
 
 
@@ -83,6 +84,9 @@ func validate() -> Array[String]:
 	for id in player_skills:
 		if not skills.has(id):
 			problems.append("player skill %s is not defined" % id)
+	for id in skills:
+		if not skills[id].effect in [CombatSkill.EFFECT_DAMAGE, CombatSkill.EFFECT_HEAL]:
+			problems.append("skill %s has unknown effect %s" % [id, skills[id].effect])
 	return problems
 
 

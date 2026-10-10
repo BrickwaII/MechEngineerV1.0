@@ -68,7 +68,7 @@ func test_a_whole_fight_is_playable_by_mouse() -> void:
 	assert_int(results.size()).is_equal(1)
 	assert_bool(_screen.prompt_label.text in ["VICTORY", "DEFEAT"]).is_true()
 	# The same choices through the headless runner give the same fight.
-	var runner := HeadlessFightRunner.run(Helpers.request(), Helpers.SEED, SimpleFightPolicy.new())
+	var runner := HeadlessFightRunner.run(Helpers.request(), Helpers.SEED, SimpleFightPolicy.new(), IntentFightPolicy.new())
 	assert_array(_screen.fight.action_tags).is_equal(runner.action_tags)
 
 
