@@ -69,13 +69,17 @@ func _build_bot(rng: RandomNumberGenerator, bot_id: String, bot_name: String) ->
 ## changes any other part of a draft.
 func _starting_skills(shuffled: Array) -> Array:
 	var picked := shuffled.slice(0, _tuning.starting_skill_count)
-	if _tuning.draft_rule != BotTuning.DRAFT_RULE_DAMAGE_GUARANTEE or picked.is_empty():
+	if picked.is_empty() or picked.any(func(s: Skill) -> bool: return _tuning.is_guaranteed_skill(s)):
 		return picked
-	if picked.any(func(s: Skill) -> bool: return _tuning.is_damage_skill(s)):
-		return picked
+	# Swap out the basic attack's skill when drawn (a bot fights with it anyway),
+	# else the last skill.
+	var slot := picked.size() - 1
+	for i in picked.size():
+		if (picked[i] as Skill).effect_id == _tuning.basic_attack_effect_id:
+			slot = i
 	for template: Skill in shuffled.slice(picked.size()):
-		if _tuning.is_damage_skill(template):
-			picked[-1] = template
+		if _tuning.is_guaranteed_skill(template):
+			picked[slot] = template
 			break
 	return picked
 
