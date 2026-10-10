@@ -1,0 +1,27 @@
+{
+	"acts": [
+		{
+			"id": "act1",
+			"name": "Seattle",
+			"region_file": "res://data/regions/seattle.json",
+			"tuning_file": "res://data/tuning/overworld.json"
+		},
+		{
+			"id": "act2",
+			"name": "Puget Sound",
+			"region_file": "res://data/regions/puget_sound.json",
+			"tuning_file": "res://data/tuning/overworld.json",
+			"zoom_focus": "seattle"
+		}
+	],
+	"zoom": {
+		"energy_kept": 1.0,
+		"material_kept": 1.0,
+		"grid_restore": 25.0,
+		"held_per_bonus_region": 5,
+		"max_bonus_regions": 2,
+		"keep_income_bonus": true,
+		"fade_seconds": 0.35,
+		"zoom_seconds": 1.6
+	}
+}
