@@ -19,9 +19,20 @@ func test_every_bot_is_complete() -> void:
 		assert_int(member.max_hp).is_greater(0)
 		assert_int(member.hp).is_between(1, member.max_hp)
 		assert_int(member.stats.hp).is_equal(member.max_hp)
+		assert_array(member.skills).is_not_empty()
+		for skill in member.skills:
+			assert_str(skill[SquadMemberSummary.SKILL_NAME]).is_not_empty()
+			assert_str(skill[SquadMemberSummary.SKILL_EFFECT_ID]).is_not_empty()
+			assert_int(skill[SquadMemberSummary.SKILL_LEVEL]).is_greater_equal(1)
 
 
 func test_changes_to_a_returned_squad_do_not_leak_into_the_next_call() -> void:
 	var provider := StubSquadProvider.new()
 	provider.get_squad()[0].hp = 0
 	assert_int(provider.get_squad()[0].hp).is_greater(0)
+
+
+func test_changes_to_a_returned_skill_do_not_leak_into_the_next_call() -> void:
+	var provider := StubSquadProvider.new()
+	provider.get_squad()[0].skills[0][SquadMemberSummary.SKILL_LEVEL] = 9
+	assert_int(provider.get_squad()[0].skills[0][SquadMemberSummary.SKILL_LEVEL]).is_equal(1)
