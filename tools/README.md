@@ -71,3 +71,10 @@ dealt, energy spent and hp left.
 
 The scenario format is in `data/scenarios/README.md`. The screens that use
 these tools are in `ui/dev/`.
+
+## Asset generators
+
+`tools/asset_gen/` makes the placeholder art, font and sounds in `assets/`
+(CC0, see `CREDITS.md`) from `data/feel/palette.json` and
+`data/feel/sprite_manifest.json`. Python 3; the sprite and font scripts need
+Pillow. Commands are in `assets/README.md`.
