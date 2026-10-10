@@ -1,0 +1,4 @@
+{
+	"_comment": "What the fight preview may not predict. A skill listed here has a random outcome, so the preview reports its damage, and anything that follows from it, as unknown. Damage is deterministic today, so the list is empty.",
+	"random_skills": []
+}

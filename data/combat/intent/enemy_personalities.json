@@ -1,0 +1,9 @@
+{
+	"_comment": "Personality per enemy id in enemy_tables.json. Scales run -1 to 1: aggressive (-1) to defensive (+1), solitary (-1) to supportive (+1), reactive (-1) to methodical (+1). An enemy with no entry is balanced. Every number here is a first guess. TODO(decision: d-personality-map).",
+	"enemies": {
+		"scrap_drone": {"generation": 3, "aggressive_defensive": -0.6, "solitary_supportive": -0.4, "reactive_methodical": -0.6},
+		"rust_hound": {"generation": 3, "aggressive_defensive": -0.8, "solitary_supportive": -0.2, "reactive_methodical": -0.4},
+		"sentry_turret": {"generation": 3, "aggressive_defensive": 0.6, "solitary_supportive": 0.2, "reactive_methodical": 0.8},
+		"warden_mech": {"generation": 3, "aggressive_defensive": 0.3, "solitary_supportive": 0.6, "reactive_methodical": 0.4}
+	}
+}
