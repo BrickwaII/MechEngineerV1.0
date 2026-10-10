@@ -32,6 +32,9 @@ var fight_service: FightService = StubFightService.new()
 var save_action: Callable
 var load_action: Callable
 var new_run_action: Callable
+## Callable(options: Array[StartOption]) -> String. When set, new_run() starts
+## on the start it names and offers no choice; when unset the player chooses.
+var start_picker: Callable
 
 var campaign: Campaign
 var plan: ActPlan
@@ -75,6 +78,11 @@ func new_run() -> void:
 	var error := start_new_run()
 	if not error.is_empty():
 		_show_message("CANNOT LOAD MAP", "The map data did not load", error)
+		return
+	if start_picker.is_valid():
+		var options := campaign.map.start_options()
+		if options.size() > 1:
+			choose_start(start_picker.call(options))
 		return
 	show_start_choice()
 

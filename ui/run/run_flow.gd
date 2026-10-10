@@ -28,6 +28,9 @@ signal stage_changed(stage: Stage)
 
 ## Set before the flow enters the tree. NO_SEED draws a new seed per run.
 @export var run_seed := NO_SEED
+## Dev option: let the player choose act 1's start. In normal play the start
+## is picked from the run seed and no choice is shown.
+@export var choose_start := false
 ## Plays fights with AutoFightService instead of the battle screen.
 @export var auto_fights := false
 ## Battle screen tuning; null means data/ui/fight_screen.json.
@@ -133,6 +136,11 @@ func load_run(path := save_path) -> bool:
 	return true
 
 
+## The start this run's seed gives, one of `options`.
+func seeded_start(options: Array) -> String:
+	return options[posmod(current_seed, options.size())].id
+
+
 func _on_squad_chosen(_summaries: Array[SquadMemberSummary]) -> void:
 	start_map(draft_screen.picker.squad, SkillUseLedger.new())
 
@@ -145,6 +153,8 @@ func _open_overworld() -> void:
 	overworld.save_action = func() -> void: save_run()
 	overworld.load_action = func() -> void: load_run()
 	overworld.new_run_action = new_run
+	if not choose_start:
+		overworld.start_picker = seeded_start
 	add_child(overworld)
 
 
