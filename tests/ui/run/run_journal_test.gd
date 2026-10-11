@@ -294,9 +294,10 @@ func test_f8_pauses_and_writes_a_report_with_the_save_and_journal() -> void:
 
 func test_the_form_and_the_map_open_the_run_folder() -> void:
 	await _open(true)
-	assert_bool(_flow.folder_button.visible).is_false()
+	assert_object(_flow.folder_button).is_null()
 	await _draft()
-	assert_bool(_flow.folder_button.visible).is_true()
+	assert_object(_flow.folder_button.get_parent()).is_same(_flow.overworld.get("_wait_button").get_parent())
+	assert_str(_flow.folder_button.text).is_equal("RUN FOLDER")
 	_flow.folder_button.pressed.emit()
 	_flow.open_feedback()
 	_flow.feedback_form.folder_button.pressed.emit()

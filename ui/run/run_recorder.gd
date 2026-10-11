@@ -129,7 +129,7 @@ func write(line: Dictionary) -> Dictionary:
 	var unix: float = clock.call()
 	var stamped := {
 		"kind": line.get("kind", ""),
-		"ts": Time.get_datetime_string_from_unix_time(int(unix + _utc_offset_s()), true)
+		"ts": Time.get_datetime_string_from_unix_time(int(unix + _utc_offset_s()))
 			+ ".%03d" % int(fmod(unix, 1.0) * 1000.0),
 		"unix": unix,
 		"play_s": snappedf(play_seconds(), 0.001),

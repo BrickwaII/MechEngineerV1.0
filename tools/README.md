@@ -90,3 +90,27 @@ these tools are in `ui/dev/`.
 `data/feel/sprite_manifest.json`. Python 3; the sprite and font scripts need
 Pillow. `gen_enemies.py` draws the enemy faction sprites in `assets/enemies/`.
 Commands are in `assets/README.md`.
+
+## Run replay and timeline
+
+Re-plays a run from its journal, headless, and prints a readable timeline:
+act, day, every map action, each fight with its outcome, length in actions
+and real time, what each bot learned, and each act's real-time length
+against the 10 to 30 minute target (`data/run/run_data.json`).
+
+```sh
+godot --headless --path . -s res://tools/replay_run.gd -- "<run folder or journal.jsonl>" [--detail] [--no-replay]
+```
+
+The replay drafts from the run seed with the recorded picks, plays every map
+action on a real `Campaign`, every fight from its recorded battle commands
+(enemies by the same intent policy), applies the post-fight changes, and at
+every snapshot line compares the map state and every bot with the journal.
+Fights are deterministic for a seed, so a mismatch is a bug: the tool prints
+`REPLAY MISMATCH` with each difference and exits 1. `--detail` lists every
+command and resolved action.
+
+- `RunJournal`: the journal format (every line kind is listed at the top of
+  `run_journal.gd`), the writer, snapshots and the comparison.
+- `RunReplay`: the replay. `RunTimeline`: the timeline text.
+- `RunDataSettings`: reads `data/run/run_data.json`.

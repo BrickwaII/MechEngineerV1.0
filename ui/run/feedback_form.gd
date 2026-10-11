@@ -65,7 +65,8 @@ func _ready() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	box.add_child(row)
-	row.add_child(_label("Category", "text", 10))
+	row.alignment = BoxContainer.ALIGNMENT_BEGIN
+	row.add_child(_label("Category", "text", 10, false))
 	category_picker = OptionButton.new()
 	category_picker.name = "Category"
 	for c in settings.feedback_categories:
@@ -74,7 +75,7 @@ func _ready() -> void:
 	var mood_row := HBoxContainer.new()
 	mood_row.add_theme_constant_override("separation", 6)
 	box.add_child(mood_row)
-	mood_row.add_child(_label("Mood  %d = awful, %d = great" % [settings.mood_min, settings.mood_max], "text", 10))
+	mood_row.add_child(_label("Mood  (%d awful, %d great)" % [settings.mood_min, settings.mood_max], "text", 10, false))
 	var group := ButtonGroup.new()
 	for value in range(settings.mood_min, settings.mood_max + 1):
 		var b := Button.new()
@@ -127,10 +128,12 @@ func _on_save() -> void:
 	submitted.emit(note_edit.text.left(settings.note_max_chars), category(), rating())
 
 
-func _label(text: String, color: String, font_size: int) -> Label:
+func _label(text: String, color: String, font_size: int, wrap := true) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if wrap:
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	l.add_theme_color_override("font_color", FeelData.color(color))
 	l.add_theme_font_size_override("font_size", ScreenTheme.size(font_size))
 	return l

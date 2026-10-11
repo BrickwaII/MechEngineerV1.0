@@ -19,7 +19,7 @@ extends Control
 ## and keeps the folder's summary. The run autosaves at the map start, after
 ## each fight and at each act change (data/run/run_data.json). Only the bots
 ## picked in the draft are kept. F8 pauses and opens the feedback form
-## (FeedbackForm, FeedbackReport); the map shows an OPEN RUN FOLDER button.
+## (FeedbackForm, FeedbackReport); the map gets a RUN FOLDER button beside NEW RUN.
 ##
 ## Variants: F4 opens the variant switchboard (ui/dev/) over the game, and a
 ## corner label lists the active non-default choices. A new run reads the
@@ -40,7 +40,6 @@ const READOUT_SCENE := preload("res://ui/post_fight/post_fight_readout.tscn")
 
 const NO_SEED := -1
 const CONTINUE_SIZE := Vector2(220, 48)
-const FOLDER_BUTTON_SIZE := Vector2(200, 36)
 const SCREEN_MARGIN := 24.0
 const LABEL_MARGIN := 6.0
 ## Above every screen of the run, so the label and F4 screen always show.
@@ -109,7 +108,7 @@ var _variant_layer: CanvasLayer
 var feedback_form: FeedbackForm
 ## The folder of the last F8 report written.
 var last_report_dir := ""
-## The map's OPEN RUN FOLDER button.
+## The map's RUN FOLDER button, in the row with WAIT, SAVE, LOAD and NEW RUN.
 var folder_button: Button
 var _screenshot: Image
 var _loading := false
@@ -129,16 +128,6 @@ func _ready() -> void:
 	_variant_layer.add_child(variant_label)
 	variant_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, int(LABEL_MARGIN))
 	variant_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	folder_button = Button.new()
-	folder_button.name = "OpenRunFolderButton"
-	folder_button.text = "OPEN RUN FOLDER"
-	folder_button.custom_minimum_size = FOLDER_BUTTON_SIZE
-	folder_button.visible = false
-	folder_button.pressed.connect(open_run_folder)
-	_variant_layer.add_child(folder_button)
-	folder_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, int(LABEL_MARGIN))
-	folder_button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	folder_button.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	get_tree().node_added.connect(_on_node_added)
 	if start_dir.is_empty() or not continue_run(start_dir):
 		new_run()
@@ -180,7 +169,6 @@ func toggle_switchboard() -> void:
 	switchboard_screen.closed.connect(toggle_switchboard)
 	_variant_layer.add_child(switchboard_screen)
 	_variant_layer.move_child(variant_label, -1)
-	_refresh_folder_button()
 
 
 ## Drops the run in progress and opens the draft for a new one.
@@ -420,6 +408,22 @@ func _open_overworld() -> void:
 		overworld.start_picker = seeded_start
 	overworld.campaign_started.connect(_on_campaign_started)
 	add_child(overworld)
+	_add_folder_button()
+
+
+## RUN FOLDER beside the map's NEW RUN button, styled like it.
+func _add_folder_button() -> void:
+	var wait: Variant = overworld.get("_wait_button")
+	if not wait is Button:
+		return
+	var row: Node = (wait as Button).get_parent()
+	var last := row.get_child(row.get_child_count() - 1) as Button
+	folder_button = last.duplicate(0) as Button if last != null else Button.new()
+	folder_button.name = "OpenRunFolderButton"
+	folder_button.text = "RUN FOLDER"
+	folder_button.tooltip_text = "Open this run's folder: its save, journal and F8 reports."
+	folder_button.pressed.connect(open_run_folder)
+	row.add_child(folder_button)
 
 
 ## A new Campaign on the map: the next act after a zoom, or a load. The
@@ -549,6 +553,7 @@ func _close_all() -> void:
 		_free(node)
 	draft_screen = null
 	overworld = null
+	folder_button = null
 	readout = null
 	continue_button = null
 	battle_screen = null
@@ -557,13 +562,7 @@ func _close_all() -> void:
 
 func _set_stage(p_stage: Stage) -> void:
 	stage = p_stage
-	_refresh_folder_button()
 	stage_changed.emit(stage)
-
-
-func _refresh_folder_button() -> void:
-	if folder_button != null:
-		folder_button.visible = stage == Stage.MAP and switchboard_screen == null and not run_dir.is_empty()
 
 
 # --- F8 feedback ------------------------------------------------------------------
