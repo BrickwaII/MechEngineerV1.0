@@ -74,6 +74,17 @@
 			]
 		},
 		{
+			"id": "odds-model",
+			"name": "Map odds",
+			"layer": "fight",
+			"applies": "live",
+			"default": "simulated",
+			"options": [
+				{"id": "simulated", "name": "Simulated auto-fights", "description": "The map's odds label comes from headless auto-fights of the current squad against the region's own enemy draw (fight/odds/); the panel shows the label and the win rate. runs and the label bands are in data/combat/odds.json."},
+				{"id": "formula", "name": "Stat formula", "description": "The old placeholder: squad attack plus defense against the region's defense level (odds in data/tuning/overworld.json); no percentage."}
+			]
+		},
+		{
 			"id": "draft-rule",
 			"name": "Draft rule",
 			"layer": "bot_data",

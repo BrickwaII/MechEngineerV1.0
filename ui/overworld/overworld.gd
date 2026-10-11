@@ -11,6 +11,11 @@ extends Control
 ## a whoosh, an act title card and a music crossfade (ActMusic); the
 ## territory panel names the enemy faction holding a hostile region, with
 ## its icon (FactionLookup over P4's FactionTable).
+##
+## Odds (R1-D): the panel's odds for attacking a region come from MapOdds:
+## simulated auto-fights of the squad against the region's own enemies,
+## shown as "RISKY · 42%", or the old stat formula under the switchboard's
+## odds-model "formula". Set odds.run_seed to seed them with the run.
 
 const Palette := preload("res://ui/overworld/palette.gd")
 const MapView := preload("res://ui/overworld/map_view.gd")
@@ -63,6 +68,8 @@ var _events: PackedStringArray = []
 var _hover_wait := false
 ## The map's music, one loop per act.
 var music: ActMusic
+## The odds the panel shows for attacking a region.
+var odds: MapOdds
 ## Which enemy faction holds each region, from data/combat/.
 var factions := FactionLookup.load_default()
 ## The run as it looked at the last refresh, and the changes not yet shown.
@@ -103,6 +110,10 @@ func _ready() -> void:
 	music = ActMusic.new()
 	music.name = "ActMusic"
 	add_child(music)
+	odds = MapOdds.new()
+	odds.name = "MapOdds"
+	odds.estimated.connect(_on_odds_estimated)
+	add_child(odds)
 	_build_layout()
 	new_run()
 
@@ -624,6 +635,7 @@ func _refresh() -> void:
 	_wait_button.disabled = not campaign.can_act() or zooming
 	_status.text = "FIGHT IN PROGRESS" if campaign.fighting else ""
 	map_view.queue_redraw()
+	odds.update(campaign, map_view.selected_id)
 	_refresh_panel()
 	_refresh_log()
 
@@ -762,13 +774,31 @@ func _panel_defense(region: MapRegion) -> void:
 	line.add_child(_text(campaign.tuning.defense_label(region.defense).to_upper(), 16, Palette.TEXT))
 	rows.add_child(line)
 	rows.add_child(_note(campaign.tuning.opposition(region.defense), 14))
-	var odds := HBoxContainer.new()
-	odds.add_theme_constant_override("separation", 10)
-	odds.add_child(_text("YOUR ODDS", 11, Palette.TEXT_DIM))
-	var label := campaign.odds_label(region.id)
-	odds.add_child(_text(label.to_upper(), 16, _odds_color(label)))
-	rows.add_child(odds)
+	var line_odds := HBoxContainer.new()
+	line_odds.name = "Odds"
+	line_odds.add_theme_constant_override("separation", 10)
+	line_odds.add_child(_text("YOUR ODDS", 11, Palette.TEXT_DIM))
+	line_odds.add_child(_text(odds_text(region.id), 16, _odds_color(odds.label_for(campaign, region.id))))
+	rows.add_child(line_odds)
+	if odds.is_simulated():
+		rows.add_child(_note("Auto-fights against this territory's enemies, %d of them. The auto-player fights differently from you." % odds.estimator.tuning.runs, 13))
 	_panel.add_child(rows)
+
+
+## The odds as the panel shows them: "RISKY · 42%" from simulated
+## auto-fights, "SIMULATING..." while they play, or the formula's "RISKY".
+func odds_text(region_id: String) -> String:
+	if not odds.is_simulated():
+		return campaign.odds_label(region_id).to_upper()
+	var e := odds.estimate_for(campaign, region_id)
+	if e == null:
+		return "SIMULATING..."
+	return "%s · %d%%" % [e.label.to_upper(), e.percent()]
+
+
+func _on_odds_estimated(region_id: String) -> void:
+	if campaign != null and region_id == map_view.selected_id:
+		_refresh_panel()
 
 
 func _panel_pressure(region_id: String) -> void:
@@ -1269,6 +1299,9 @@ func _resource_readout(key: String, stock: int, per_day: int) -> Control:
 
 
 func _odds_color(label: String) -> Color:
+	if odds.is_simulated():
+		var index := odds.estimator.tuning.band_index(label)
+		return Palette.ODDS[mini(index, Palette.ODDS.size() - 1)] if index >= 0 else Palette.TEXT_DIM
 	var bands := campaign.tuning.odds_bands
 	for i in bands.size():
 		if bands[i]["label"] == label:

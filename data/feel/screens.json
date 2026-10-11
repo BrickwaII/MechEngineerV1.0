@@ -3,6 +3,10 @@
 	"map": {
 		"_comment": "hover_ms: how fast a region lights up under the cursor. select_ms: the selection outline pop. capture_ms: the takeover sweep from the region's node across its shape. ring_*: pressure rings pulse once they reach the warning level, faster when imminent. pending_*: the hatched pending cost on the time and grid bars marches and breathes. meter_ms: how long a bar takes to slide to a new value.",
 		"hover_ms": 120,
+		"odds": {
+			"_comment": "The panel's simulated odds play their auto-fights a few at a time: at most frame_budget_ms of each frame (at least one fight), so the map never stalls.",
+			"frame_budget_ms": 6
+		},
 		"hover_lighten": 0.14,
 		"hover_outline_px": 2,
 		"select_ms": 180,
