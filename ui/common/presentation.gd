@@ -1,10 +1,12 @@
 extends Node
 ## Autoload "Presentation": applies the saved settings to the audio buses at
 ## start and whenever they change, owns the one SoundPlayer (registered as
-## SoundPlayer.current), and opens the settings screen on the open_settings
+## SoundPlayer.current) and the one MusicDirector (MusicDirector.current),
+## and opens the settings screen on the open_settings
 ## action (F10) from any screen.
 
 var sound: SoundPlayer
+var music: MusicDirector
 
 
 func _ready() -> void:
@@ -16,6 +18,10 @@ func _ready() -> void:
 	sound.name = "Sound"
 	add_child(sound)
 	SoundPlayer.current = sound
+	music = MusicDirector.new()
+	music.name = "Music"
+	add_child(music)
+	MusicDirector.current = music
 
 
 func _unhandled_input(event: InputEvent) -> void:

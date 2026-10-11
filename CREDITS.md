@@ -38,6 +38,7 @@ replacing the file (same size and layout) and updating its row here.
 | Skill sounds, level layers, victory and defeat stingers | `assets/fight/audio/*.wav` | `tools/asset_gen/gen_battle.py` (synthesized) | CC0 1.0 |
 | Map and between-fight sounds (region select, capture, resource gain and loss, card flip and snap, tally tick, level-up, personality shift, screen and zoom whooshes) | `assets/map/audio/sfx/*.wav` | `tools/asset_gen/gen_map_audio.py` (synthesized) | CC0 1.0 |
 | Act music loops (Lake Washington metro, North America, globe) | `assets/map/audio/music/*.wav` | `tools/asset_gen/gen_map_audio.py` (synthesized) | CC0 1.0 |
+| Context music (menu loop, battle loop and boss variant, post-fight readout loop, victory and defeat stings) | `assets/music/*.wav` | `tools/asset_gen/gen_music.py` (synthesized) | CC0 1.0 |
 | Audio bus layout (Music, Effects, Interface) | `assets/audio/default_bus_layout.tres` | hand-written | CC0 1.0 |
 | Asset license text | `assets/LICENSE.md` | hand-written | CC0 1.0 |
 

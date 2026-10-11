@@ -101,6 +101,7 @@ func _ready() -> void:
 	variant_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, int(LABEL_MARGIN))
 	variant_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	get_tree().node_added.connect(_on_node_added)
+	stage_changed.connect(func(s: Stage) -> void: MusicDirector.follow_stage(Stage.keys()[s]))
 	new_run()
 
 
