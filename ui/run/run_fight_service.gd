@@ -58,21 +58,13 @@ func start_fight(request: FightRequest) -> void:
 ## Sets every bot's HP after `fight` by the hp-carryover variant. With no
 ## fight (a stub service), or the default, every bot heals to full.
 func heal_squad(fight: Fight = null) -> void:
-	var rule := variants if variants != null and fight != null else FightVariants.defaults()
-	var end_hp := HpCarryover.end_hp_by_id(fight)
-	for bot in squad.bots:
-		bot.hp = HpCarryover.hp_after(end_hp.get(bot.id, bot.hp), bot.get_max_hp(), rule)
+	FightAftermath.heal(squad, fight, variants)
 
 
 func _on_inner_finished(result: FightResult) -> void:
 	# Both real services keep the fight they played; a stub has none.
 	var fight := inner.get("last_fight") as Fight
-	if fight != null and fight.is_over():
-		var tuning := post_fight_tuning
-		if tuning == null:
-			tuning = PostFightTuning.for_variants(variants if variants != null else FightVariants.defaults())
-		last_report = PostFight.apply(fight, squad.get_fielded(), ledger, tuning)
-	heal_squad(fight if fight != null and fight.is_over() else null)
+	last_report = FightAftermath.apply(fight, squad, ledger, variants, post_fight_tuning)
 	if _campaign_variants != null:
 		result = GridCostOwner.service_result(_request_kind, result, _campaign_variants)
 	if last_report != null:

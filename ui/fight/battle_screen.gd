@@ -40,6 +40,8 @@ const ENEMIES_PER_COLUMN := 3
 
 ## Emitted once, when the fight is over.
 signal fight_finished(result: FightResult)
+## Every command sent, after it was applied: `problem` is "" or why it was refused.
+signal command_sent(command: FightCommand, problem: String)
 
 var tuning: FightScreenTuning
 var handler: FightCommandHandler
@@ -142,6 +144,7 @@ func _process(delta: float) -> void:
 func send(command: FightCommand) -> String:
 	var problem := handler.apply(command)
 	message_label.text = problem
+	command_sent.emit(command, problem)
 	return problem
 
 

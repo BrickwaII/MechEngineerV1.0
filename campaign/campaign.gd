@@ -14,6 +14,9 @@ extends RefCounted
 ## next_fight_variants.
 
 signal changed
+## The player chose a map action that needs no fight: WAIT, or REINFORCE on
+## `region_id`. Emitted before the action changes anything.
+signal acted(action: Action, region_id: String)
 signal event_logged(text: String)
 signal fight_started(request: FightRequest)
 signal fight_finished(request: FightRequest, result: FightResult)
@@ -287,6 +290,7 @@ func can_reinforce(region_id: String) -> bool:
 func wait() -> bool:
 	if not can_act():
 		return false
+	acted.emit(Action.WAIT, "")
 	_advance(tuning.wait_time)
 	changed.emit()
 	return true
@@ -295,6 +299,7 @@ func wait() -> bool:
 func reinforce(region_id: String) -> bool:
 	if not can_reinforce(region_id):
 		return false
+	acted.emit(Action.REINFORCE, region_id)
 	state.pressure[region_id] = maxf(0.0, pressure_of(region_id) - tuning.reinforce_relief)
 	state.grid = maxf(0.0, state.grid - tuning.reinforce_grid_cost)
 	_log("Reinforced %s." % map.get_region(region_id).name)

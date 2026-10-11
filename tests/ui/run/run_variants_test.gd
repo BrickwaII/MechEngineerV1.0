@@ -6,12 +6,15 @@ const SCENE := preload("res://ui/run/run_flow.tscn")
 const Helpers := preload("res://tests/ui/fight/fight_ui_helpers.gd")
 const USER_FILE := "user://run_variants_test.json"
 
+const RunData := preload("res://tests/ui/run/run_data_helpers.gd")
+const RUNS_ROOT := "user://test_runs/run_variants_test"
 var _flow: RunFlow
 
 
 func after_test() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(USER_FILE))
 	CampaignVariants.user_path = ""
+	RunData.remove_tree(RUNS_ROOT)
 
 
 func _save(choices: Dictionary) -> void:
@@ -27,6 +30,7 @@ func _open() -> void:
 	_flow.auto_fights = true
 	_flow.variants_path = USER_FILE
 	_flow.fight_screen_tuning = Helpers.fast_tuning()
+	_flow.runs_root = RUNS_ROOT
 	var runner := scene_runner(auto_free(_flow))
 	await runner.simulate_frames(2)
 

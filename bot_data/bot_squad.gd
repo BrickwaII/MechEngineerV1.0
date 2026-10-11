@@ -35,6 +35,12 @@ func get_fielded() -> Array[Bot]:
 	return fielded
 
 
+## A squad of only the fielded bots, in field order, with no bench: a run
+## keeps only the bots picked in the draft. The bots are shared, not copied.
+func to_fielded_squad() -> BotSquad:
+	return BotSquad.new(get_fielded(), fielded_ids, squad_size)
+
+
 func validation_errors() -> PackedStringArray:
 	var errors := PackedStringArray()
 	var ids := {}
