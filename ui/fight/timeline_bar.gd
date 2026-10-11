@@ -3,6 +3,12 @@ extends Control
 ## first chip is the unit acting now. When the order changes, chips slide to
 ## their new places (feel tween "ui_slow"), new chips fade in and dropped ones
 ## fade out, so a change in the order is seen, not just redrawn.
+##
+## Hovering a unit lights its upcoming slots and dims the rest
+## (set_highlight). While a previewed choice would change the order, the bar
+## shows the order it would leave, titled AFTER in the preview color, and the
+## chips slide there; the order comes back when the preview ends.
+## Hover and preview look: data/feel/battle_readout.json "timeline".
 
 const CHIP_HEIGHT := 28
 const GAP := 6
@@ -11,6 +17,12 @@ const TITLE_WIDTH := 60
 ## Combatant ids in the order shown, for tests and the intent hookup.
 var shown_ids: Array[String] = []
 var settings: GameSettings
+## The unit whose slots are lit, or "".
+var highlight_id := ""
+## True while the bar shows the order a previewed choice would leave.
+var showing_preview := false
+
+var _entries: Array[TimelineEntry] = []
 
 ## Chip key ("<id>#<n>", the n-th time the id appears) -> chip.
 var _chips: Dictionary[String, PanelContainer] = {}
@@ -29,7 +41,34 @@ func _init() -> void:
 	add_child(_title)
 
 
-func refresh(entries: Array[TimelineEntry]) -> void:
+## Slot indexes lit by the highlight, for tests.
+func lit_slots() -> Array[int]:
+	var out: Array[int] = []
+	if highlight_id.is_empty():
+		return out
+	for i in shown_ids.size():
+		if shown_ids[i] == highlight_id:
+			out.append(i)
+	return out
+
+
+## Lights the upcoming slots of `unit_id` and dims the others; "" clears.
+func set_highlight(unit_id: String) -> void:
+	if unit_id == highlight_id:
+		return
+	highlight_id = unit_id
+	_restyle()
+
+
+## Shows `entries`; `preview` marks them as the order a choice would leave.
+func refresh(entries: Array[TimelineEntry], preview := false) -> void:
+	_entries = entries
+	showing_preview = preview
+	_title.text = ReadoutStyle.text("timeline.preview_title", "AFTER") if preview else "NEXT"
+	if preview:
+		_title.add_theme_color_override("font_color", ReadoutStyle.color("timeline.preview_color"))
+	else:
+		_title.remove_theme_color_override("font_color")
 	shown_ids.clear()
 	var seen := {}
 	var keys: Array[String] = []
@@ -57,7 +96,8 @@ func refresh(entries: Array[TimelineEntry]) -> void:
 			chip = _chip(entries[i])
 			_chips[key] = chip
 			add_child(chip)
-		_style_chip(chip, entries[i], i == 0)
+		chip.set_meta("slot", i)
+		_restyle_chip(chip)
 		var label: Label = chip.get_child(0)
 		label.text = entries[i].display_name + (" (wait)" if entries[i].ends_wait else "")
 		chip.tooltip_text = "acts at tick %d" % entries[i].tick
@@ -75,6 +115,24 @@ func refresh(entries: Array[TimelineEntry]) -> void:
 		x += chip.get_combined_minimum_size().x + GAP
 
 
+func _restyle() -> void:
+	for key: String in _chips:
+		_restyle_chip(_chips[key])
+
+
+## Styles a chip for its slot: side, the unit acting now, the hover light.
+func _restyle_chip(chip: PanelContainer) -> void:
+	var i: int = chip.get_meta("slot", -1)
+	if i < 0 or i >= _entries.size():
+		return
+	var entry := _entries[i]
+	var lit := not highlight_id.is_empty() and entry.combatant_id == highlight_id
+	_style_chip(chip, entry, i == 0, lit)
+	var label: Label = chip.get_child(0)
+	var dim := not highlight_id.is_empty() and not lit
+	label.modulate.a = ReadoutStyle.number("timeline.dim_alpha", 0.35) if dim else 1.0
+
+
 func _chip(entry: TimelineEntry) -> PanelContainer:
 	var chip := PanelContainer.new()
 	chip.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -86,7 +144,7 @@ func _chip(entry: TimelineEntry) -> PanelContainer:
 	return chip
 
 
-func _style_chip(chip: PanelContainer, entry: TimelineEntry, is_now: bool) -> void:
+func _style_chip(chip: PanelContainer, entry: TimelineEntry, is_now: bool, lit := false) -> void:
 	var style := StyleBoxFlat.new()
 	var side_color := FeelData.color("enemy" if entry.side == Combatant.Side.ENEMY else "ally")
 	style.bg_color = side_color.darkened(0.6)
@@ -94,6 +152,10 @@ func _style_chip(chip: PanelContainer, entry: TimelineEntry, is_now: bool) -> vo
 	style.set_border_width_all(2 if is_now else 1)
 	# Enemies get a notched left edge, bots a square one: side reads by shape too.
 	style.border_width_left = 4 if entry.side == Combatant.Side.ENEMY else (2 if is_now else 1)
+	if lit:
+		style.border_color = ReadoutStyle.color("timeline.hover_color")
+		style.set_border_width_all(int(ReadoutStyle.number("timeline.hover_border_px", 3)))
+		style.bg_color = side_color.darkened(0.35)
 	style.content_margin_left = 8
 	style.content_margin_right = 8
 	style.content_margin_top = 6

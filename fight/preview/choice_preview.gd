@@ -17,6 +17,18 @@ var guard_changes: Dictionary[String, int] = {}
 var intent_changes_known := true
 ## One revision per enemy whose intent would change. Empty when unknown.
 var intent_changes: Array[IntentRevision] = []
+## Unit id -> its energy right after the choice resolves, for every unit whose
+## energy the choice would change (the cost the actor pays).
+var energy_after: Dictionary[String, int] = {}
+## Every enemy's intent once time runs to the next decision after the choice:
+## what the screen would telegraph next. Empty when unknown or the fight ends.
+var intents_after: Dictionary[String, UnitIntent] = {}
+## The upcoming order once the choice resolves and time runs to the next
+## decision, as Fight.upcoming() would give it then. Empty when unknown.
+var order_after: Array[TimelineEntry] = []
+## The fight as it would stand at that next decision. Read-only; null when
+## unknown. For reading the arrows the intents_after would draw.
+var fight_after: Fight
 
 
 func is_allowed() -> bool:
