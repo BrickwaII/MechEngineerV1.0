@@ -6,7 +6,9 @@ extends GdUnitTestSuite
 
 const SCENE := preload("res://ui/run/run_flow.tscn")
 const Helpers := preload("res://tests/ui/fight/fight_ui_helpers.gd")
+const RunData := preload("res://tests/ui/run/run_data_helpers.gd")
 const SAVE_PATH := "user://run_flow_test.res"
+const RUNS_ROOT := "user://test_runs/run_flow_test"
 ## Bots fight with their own drafted skills, so the seed must draft a squad
 ## that wins its first fight. 13 does under both draft rules.
 const RUN_SEED := 13
@@ -21,12 +23,14 @@ func _open(auto_fights := false, choose_start := false) -> void:
 	_flow.auto_fights = auto_fights
 	_flow.choose_start = choose_start
 	_flow.fight_screen_tuning = Helpers.fast_tuning()
+	_flow.runs_root = RUNS_ROOT
 	_runner = scene_runner(auto_free(_flow))
 	await _runner.simulate_frames(2)
 
 
 func after_test() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
+	RunData.remove_tree(RUNS_ROOT)
 
 
 func _frames(n: int) -> void:

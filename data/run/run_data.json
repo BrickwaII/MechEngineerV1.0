@@ -1,0 +1,19 @@
+{
+	"runs_folder": "user://runs",
+	"legacy_save": "user://run.res",
+	"autosave": {
+		"at_map_start": true,
+		"after_fight": true,
+		"after_act": true
+	},
+	"feedback": {
+		"categories": ["bug", "balance", "UI", "idea", "other"],
+		"mood_min": 1,
+		"mood_max": 5,
+		"mood_default": 3,
+		"note_max_chars": 4000
+	},
+	"load_list_max": 100,
+	"replay_float_tolerance": 0.000001,
+	"act_target_minutes": [10, 30]
+}

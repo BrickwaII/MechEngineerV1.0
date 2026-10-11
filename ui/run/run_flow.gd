@@ -13,6 +13,14 @@ extends Control
 ## Save and load go through RunSave, so a save holds the bots as well as the
 ## map. F3 on the battle screen shows the debug overlay (hidden by default).
 ##
+## Run data: every run has its own folder (RunFolder) with its save, its
+## journal and its F8 reports. A RunRecorder writes the journal of every
+## draft pick, map action, battle command and fight, with state snapshots,
+## and keeps the folder's summary. The run autosaves at the map start, after
+## each fight and at each act change (data/run/run_data.json). Only the bots
+## picked in the draft are kept. F8 pauses and opens the feedback form
+## (FeedbackForm, FeedbackReport); the map gets a RUN FOLDER button beside NEW RUN.
+##
 ## Variants: F4 opens the variant switchboard (ui/dev/) over the game, and a
 ## corner label lists the active non-default choices. A new run reads the
 ## draft rule and the act maps from it; each fight reads the fight-side
@@ -30,7 +38,6 @@ const DRAFT_SCENE := preload("res://ui/draft/draft_screen.tscn")
 const OVERWORLD_SCENE := preload("res://ui/overworld/overworld.tscn")
 const READOUT_SCENE := preload("res://ui/post_fight/post_fight_readout.tscn")
 
-const SAVE_PATH := "user://run.res"
 const NO_SEED := -1
 const CONTINUE_SIZE := Vector2(220, 48)
 const SCREEN_MARGIN := 24.0
@@ -58,11 +65,23 @@ var variants_path := FightVariants.USER_PATH
 var fight_screen_tuning: FightScreenTuning
 ## Set on the overworld when it is made, as its own exports: tests use them.
 var region_file := ""
-var save_path := SAVE_PATH
+## Where run folders go; "" means data/run/run_data.json's runs_folder. Tests
+## point it elsewhere.
+var runs_root := ""
+## Set before the flow enters the tree: continue the run in this folder
+## instead of starting a new one.
+var start_dir := ""
+## Opens a folder in the system file browser; tests replace it.
+var folder_opener: Callable = func(path: String) -> void: OS.shell_open(path)
+var run_settings := RunDataSettings.load_default()
 
 var stage := Stage.DRAFT
 ## The seed this run's draft came from.
 var current_seed := 0
+## This run's folder.
+var run_dir := ""
+## Writes this run's journal and summary.
+var recorder: RunRecorder
 var squad: BotSquad
 var ledger: SkillUseLedger
 var fight_service: RunFightService
@@ -85,6 +104,15 @@ var variant_label: VariantLabel
 ## The wipe between screens.
 var transition: ScreenTransition
 var _variant_layer: CanvasLayer
+## The F8 form while it shows, or null.
+var feedback_form: FeedbackForm
+## The folder of the last F8 report written.
+var last_report_dir := ""
+## The map's RUN FOLDER button, in the row with WAIT, SAVE, LOAD and NEW RUN.
+var folder_button: Button
+var _screenshot: Image
+var _loading := false
+var _last_act := -1
 
 
 func _ready() -> void:
@@ -102,10 +130,15 @@ func _ready() -> void:
 	variant_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	get_tree().node_added.connect(_on_node_added)
 	stage_changed.connect(func(s: Stage) -> void: MusicDirector.follow_stage(Stage.keys()[s]))
-	new_run()
+	if start_dir.is_empty() or not continue_run(start_dir):
+		new_run()
 
 
 func _exit_tree() -> void:
+	if recorder != null:
+		recorder.finish()
+	if get_tree().paused and feedback_form != null:
+		get_tree().paused = false
 	# The campaign layer reads choices from this path; stop pointing it here.
 	if CampaignVariants.user_path == variants_path:
 		CampaignVariants.user_path = ""
@@ -117,6 +150,9 @@ func _input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key != null and key.pressed and not key.echo and key.keycode == KEY_F4:
 		toggle_switchboard()
+		get_viewport().set_input_as_handled()
+	elif key != null and key.pressed and not key.echo and key.keycode == KEY_F8:
+		open_feedback()
 		get_viewport().set_input_as_handled()
 
 
@@ -140,27 +176,101 @@ func toggle_switchboard() -> void:
 func new_run() -> void:
 	transition.cover()
 	_close_all()
-	squad = null
-	ledger = null
+	_set_squad(null, null)
 	current_seed = run_seed if run_seed != NO_SEED else randi()
 	CampaignVariants.user_path = variants_path
 	run_board = Switchboard.load_board(variants_path)
 	variant_label.show_board(run_board)
+	var bot_tuning := run_bot_tuning()
+	_begin_recording(RunFolder.create(runs_folder(), current_seed))
+	recorder.start(run_dir, current_seed, {
+		"variants": Dictionary(run_board.choices),
+		"draft_rule": bot_tuning.draft_rule,
+		"draft_size": bot_tuning.draft_size,
+		"squad_size": bot_tuning.squad_size,
+		"act_variants": Array(run_map_variants()),
+		"region_file": region_file,
+		"choose_start": choose_start,
+		"auto_fights": auto_fights,
+	})
 	draft_screen = DRAFT_SCENE.instantiate()
 	draft_screen.draft_seed = current_seed
-	draft_screen.bot_tuning = run_bot_tuning()
+	draft_screen.bot_tuning = bot_tuning
 	draft_screen.squad_chosen.connect(_on_squad_chosen)
 	add_child(draft_screen)
 	draft_screen.start_button.text = "DEPLOY SQUAD"
+	recorder.draft_open(draft_screen.picker.bots())
 	_set_stage(Stage.DRAFT)
+
+
+## Continues the run in folder `dir` from its save: a new session of the same
+## journal. False, with nothing changed, if the folder has no usable save.
+func continue_run(dir: String) -> bool:
+	if RunSave.load_file(RunFolder.save_path(dir)) == null:
+		return false
+	transition.cover()
+	_close_all()
+	CampaignVariants.user_path = variants_path
+	run_board = Switchboard.load_board(variants_path)
+	variant_label.show_board(run_board)
+	_begin_recording(dir)
+	recorder.resume(dir)
+	return load_run()
+
+
+## The folder this flow's run folders go in.
+func runs_folder() -> String:
+	return runs_root if not runs_root.is_empty() else run_settings.runs_folder
+
+
+## Opens this run's folder in the system file browser.
+func open_run_folder() -> void:
+	if not run_dir.is_empty():
+		folder_opener.call(ProjectSettings.globalize_path(run_dir))
+
+
+func _begin_recording(dir: String) -> void:
+	if recorder != null:
+		recorder.finish()
+	run_dir = dir
+	recorder = RunRecorder.new()
+	recorder.squad = squad
+	recorder.ledger = ledger
+	recorder.auto_fights = auto_fights
+	var path := variants_path
+	recorder.fight_variants_source = func() -> FightVariants: return FightVariants.load_active(path)
+	recorder.campaign_variants_source = func() -> CampaignVariants: return CampaignVariants.load_active(path)
+	recorder.fight_seed_source = func(request: FightRequest) -> int:
+		return fight_service.inner.seed_for(request) if fight_service != null and fight_service.inner.has_method("seed_for") else 0
+	recorder.last_fight_source = func() -> Fight:
+		return fight_service.inner.get("last_fight") as Fight if fight_service != null else null
+	recorder.snapshot_written.connect(_on_snapshot_written)
+	recorder.run_ended.connect(func(_won: bool) -> void: _autosave())
+
+
+func _set_squad(p_squad: BotSquad, p_ledger: SkillUseLedger) -> void:
+	squad = p_squad
+	ledger = p_ledger
+	if recorder != null:
+		recorder.squad = squad
+		recorder.ledger = ledger
 
 
 ## Takes the drafted squad to the map, where the start choice opens.
 func start_map(p_squad: BotSquad, p_ledger: SkillUseLedger) -> void:
+	_open_map(p_squad, p_ledger)
+	if recorder != null and overworld.campaign != null:
+		recorder.map_start(overworld.campaign)
+		recorder.set_act_name(overworld.plan.act_name(overworld.campaign.state.act))
+		if run_settings.autosave_at_map_start:
+			_autosave()
+
+
+func _open_map(p_squad: BotSquad, p_ledger: SkillUseLedger) -> void:
 	transition.cover()
 	_close_all()
-	squad = p_squad
-	ledger = p_ledger
+	_set_squad(p_squad, p_ledger)
+	_last_act = -1
 	_open_overworld()
 	_set_stage(Stage.MAP)
 
@@ -177,44 +287,83 @@ func continue_to_map() -> void:
 	_set_stage(Stage.MAP)
 
 
-## Saves the map, the bots and the banked skill uses in one file.
-func save_run(path := save_path) -> Error:
+## Saves the map, the bots and the banked skill uses in one file: this run's
+## save in its folder unless `path` names another. An autosave (`auto`)
+## writes nothing in the map's log.
+func save_run(path := "", auto := false) -> Error:
 	if overworld == null or overworld.campaign == null or overworld.campaign.fighting:
 		return ERR_BUSY
+	if path.is_empty():
+		if run_dir.is_empty():
+			return ERR_UNCONFIGURED
+		path = RunFolder.save_path(run_dir)
 	var error := RunSave.make(current_seed, squad, ledger, overworld.campaign.state).save_file(path)
-	overworld.log_event("Run saved." if error == OK else "Could not save the run (%s)." % error_string(error))
+	if not auto:
+		overworld.log_event("Run saved." if error == OK else "Could not save the run (%s)." % error_string(error))
+	if error == OK and recorder != null:
+		recorder.action(RunJournal.ACTION_SAVE, "", {"auto": auto, "file": path.get_file()})
 	return error
 
 
-## Continues the run saved at `path`: the same bots, map state and act.
-## False, with the current run kept, if there is no usable save.
-func load_run(path := save_path) -> bool:
+## Continues the run saved at `path` (this run's save when empty): the same
+## bots, map state and act. False, with the current run kept, if there is no
+## usable save.
+func load_run(path := "") -> bool:
+	if path.is_empty() and not run_dir.is_empty():
+		path = RunFolder.save_path(run_dir)
 	var save := RunSave.load_file(path)
 	if save == null:
 		if overworld != null:
 			overworld.log_event("No saved run.")
 		return false
+	# Runs saved before run folders kept the bench; a run keeps its squad only.
+	save.squad = save.squad.to_fielded_squad()
+	_loading = true
+	var loaded := _load_save(save)
+	_loading = false
+	if loaded and recorder != null:
+		_last_act = overworld.campaign.state.act
+		recorder.action(RunJournal.ACTION_LOAD, "", {"file": path.get_file()})
+		recorder.snapshot(RunJournal.SNAPSHOT_LOAD)
+		recorder.set_act_name(overworld.plan.act_name(overworld.campaign.state.act))
+	return loaded
+
+
+func _load_save(save: RunSave) -> bool:
 	if overworld == null:
-		start_map(save.squad, save.ledger)
 		current_seed = save.run_seed
+		_open_map(save.squad, save.ledger)
 		if overworld.load_state(save.run_state()):
 			return true
 		new_run()
 		return false
 	var kept := [squad, ledger, fight_service, overworld.squad_provider, overworld.fight_service]
-	squad = save.squad
-	ledger = save.ledger
+	_set_squad(save.squad, save.ledger)
 	_hand_services_to(overworld)
 	if not overworld.load_state(save.run_state()):
-		squad = kept[0]
-		ledger = kept[1]
+		_set_squad(kept[0], kept[1])
 		fight_service = kept[2]
 		overworld.squad_provider = kept[3]
 		overworld.fight_service = kept[4]
 		return false
 	current_seed = save.run_seed
+	overworld.odds.run_seed = current_seed
 	_close_readout_and_show_map()
 	return true
+
+
+## TODO(decision: autosave): the run saves itself at the map start, after
+## every fight and at every act change (data/run/run_data.json "autosave"), so
+## Continue and the F8 report always have a recent save. There is one save per
+## run; SAVE on the map writes the same file.
+func _autosave() -> void:
+	save_run("", true)
+
+
+func _on_snapshot_written(reason: String) -> void:
+	if (reason == RunJournal.SNAPSHOT_FIGHT and run_settings.autosave_after_fight) \
+			or (reason == RunJournal.SNAPSHOT_ACT and run_settings.autosave_after_act):
+		_autosave()
 
 
 ## Bot tuning for this run's draft: data/bot_data/ with the switchboard's
@@ -244,8 +393,12 @@ func seeded_start(options: Array) -> String:
 	return options[posmod(current_seed, options.size())].id
 
 
+## A run keeps only the bots picked in the draft, in pick order.
 func _on_squad_chosen(_summaries: Array[SquadMemberSummary]) -> void:
-	start_map(draft_screen.picker.squad, SkillUseLedger.new())
+	var picked := draft_screen.picker.squad.to_fielded_squad()
+	if recorder != null:
+		recorder.draft_done(picked.fielded_ids)
+	start_map(picked, SkillUseLedger.new())
 
 
 func _open_overworld() -> void:
@@ -259,7 +412,40 @@ func _open_overworld() -> void:
 	overworld.new_run_action = new_run
 	if not choose_start:
 		overworld.start_picker = seeded_start
+	overworld.campaign_started.connect(_on_campaign_started)
 	add_child(overworld)
+	overworld.odds.run_seed = current_seed
+	_add_folder_button()
+
+
+## RUN FOLDER beside the map's NEW RUN button, styled like it.
+func _add_folder_button() -> void:
+	var wait: Variant = overworld.get("_wait_button")
+	if not wait is Button:
+		return
+	var row: Node = (wait as Button).get_parent()
+	var last := row.get_child(row.get_child_count() - 1) as Button
+	folder_button = last.duplicate(0) as Button if last != null else Button.new()
+	folder_button.name = "OpenRunFolderButton"
+	folder_button.text = "RUN FOLDER"
+	folder_button.tooltip_text = "Open this run's folder: its save, journal and F8 reports."
+	folder_button.pressed.connect(open_run_folder)
+	row.add_child(folder_button)
+
+
+## A new Campaign on the map: the next act after a zoom, or a load. The
+## journal follows it; an act change gets its line, snapshot and autosave.
+func _on_campaign_started(c: Campaign) -> void:
+	if recorder == null:
+		return
+	var zoomed := not _loading and _last_act >= 0 and c.state.act > _last_act
+	if zoomed:
+		recorder.action(RunJournal.ACTION_ACT_ZOOM, "", {"to_act": c.state.act})
+	recorder.watch_campaign(c)
+	_last_act = c.state.act
+	if zoomed:
+		recorder.set_act_name(overworld.plan.act_name(c.state.act))
+		recorder.snapshot(RunJournal.SNAPSHOT_ACT)
 
 
 ## Gives `screen` real contracts implementations over the current squad.
@@ -292,7 +478,10 @@ func _on_node_added(node: Node) -> void:
 
 func _on_region_selected(region_id: String) -> void:
 	if overworld != null and overworld.campaign != null:
+		var before: String = overworld.campaign.state.focus_id
 		overworld.campaign.set_focus(region_id)
+		if recorder != null and overworld.campaign.state.focus_id != before:
+			recorder.action(RunJournal.ACTION_FOCUS, region_id)
 
 
 func _on_screen_opened(screen: BattleScreen) -> void:
@@ -307,6 +496,8 @@ func _on_screen_opened(screen: BattleScreen) -> void:
 	debug_overlay.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, int(SCREEN_MARGIN))
 	debug_overlay.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	debug_overlay.fight = screen.fight
+	if recorder != null:
+		recorder.watch_battle(screen)
 	_set_stage(Stage.FIGHT)
 
 
@@ -369,6 +560,7 @@ func _close_all() -> void:
 		_free(node)
 	draft_screen = null
 	overworld = null
+	folder_button = null
 	readout = null
 	continue_button = null
 	battle_screen = null
@@ -378,6 +570,96 @@ func _close_all() -> void:
 func _set_stage(p_stage: Stage) -> void:
 	stage = p_stage
 	stage_changed.emit(stage)
+
+
+# --- F8 feedback ------------------------------------------------------------------
+
+## Pauses the game and opens the feedback form, with a screenshot taken
+## first. Does nothing while the form is already up or outside a run.
+func open_feedback() -> void:
+	if feedback_form != null or recorder == null or run_dir.is_empty():
+		return
+	# Headless runs render nothing to take.
+	var texture := get_viewport().get_texture() if DisplayServer.get_name() != "headless" else null
+	_screenshot = texture.get_image() if texture != null else null
+	# The report carries the save as it is now, when the map allows saving.
+	if stage == Stage.MAP:
+		_autosave()
+	recorder.pause()
+	get_tree().paused = true
+	feedback_form = FeedbackForm.new()
+	feedback_form.name = "FeedbackForm"
+	feedback_form.settings = run_settings
+	feedback_form.context_text = "Run %s · %s" % [run_dir.get_file(), screen_name()]
+	feedback_form.submitted.connect(write_feedback)
+	feedback_form.cancelled.connect(close_feedback)
+	feedback_form.open_folder_requested.connect(open_run_folder)
+	_variant_layer.add_child(feedback_form)
+
+
+## Writes the F8 report and closes the form. Returns the report's folder.
+func write_feedback(note: String, category: String, rating: int) -> String:
+	var info := {
+		"note": note,
+		"category": category,
+		"rating": rating,
+		"stage": Stage.keys()[stage].to_lower(),
+		"screen": screen_name(),
+		"run": run_dir.get_file(),
+		"seed": current_seed,
+		"variants": Dictionary(Switchboard.load_board(variants_path).choices),
+		"time": Time.get_datetime_string_from_system(false, true),
+		"play_s": snappedf(recorder.play_seconds(), 0.001),
+	}
+	if overworld != null and overworld.campaign != null:
+		info["act"] = overworld.campaign.state.act + 1
+		info["act_name"] = overworld.plan.act_name(overworld.campaign.state.act)
+		info["day"] = overworld.campaign.day()
+	last_report_dir = FeedbackReport.write(RunFolder.reports_path(run_dir), info, _screenshot,
+		RunFolder.save_path(run_dir), RunFolder.journal_path(run_dir))
+	recorder.feedback(last_report_dir.get_file(), category, rating)
+	close_feedback()
+	if overworld != null:
+		overworld.log_event("Feedback saved to reports/%s." % last_report_dir.get_file())
+	return last_report_dir
+
+
+## Closes the F8 form and unpauses.
+func close_feedback() -> void:
+	if feedback_form != null:
+		_free(feedback_form)
+		feedback_form = null
+	_screenshot = null
+	get_tree().paused = false
+	if recorder != null:
+		recorder.unpause()
+
+
+## Which screen is up, for the F8 report: "map", "map: <message title>",
+## "battle: attack <region>", "post-fight readout", "draft".
+func screen_name() -> String:
+	var text := ""
+	match stage:
+		Stage.DRAFT:
+			text = "draft"
+		Stage.FIGHT:
+			text = "battle"
+			if battle_screen != null:
+				text += ": %s %s" % [FightRequest.Kind.keys()[battle_screen.fight.request.kind].to_lower(),
+					battle_screen.fight.request.territory_id]
+		Stage.POST_FIGHT:
+			text = "post-fight readout"
+		_:
+			text = "map"
+			var modal: Variant = overworld.get("_modal") if overworld != null else null
+			var title: Variant = overworld.get("_modal_title") if overworld != null else null
+			if modal is Control and (modal as Control).visible and title is Label:
+				text += ": %s" % (title as Label).text
+			if overworld != null and overworld.get("zooming"):
+				text += " (act zoom)"
+	if switchboard_screen != null:
+		text += " + F4 switchboard"
+	return text
 
 
 static func _free(node: Node) -> void:

@@ -14,3 +14,4 @@ Region files and tuning tables. Hand-edited, no code.
 - `tuning/overworld.json`: every overworld number; `tuning/act1.json` to
   `act3.json` lay each act's pacing over it (countdown, action costs, pressure).
 - `feel/`: presentation tables. `palette.json` (every screen's colors), `feel.json` (tween presets, hit pause, shake, popups, ghost bar), `audio.json` (sounds, variation, throttling, music tracks and the music director's contexts), `settings.json` (settings defaults), `sprite_manifest.json` (unit sheets and tiers, format in `assets/README.md`).
+- `run/run_data.json`: run data. Where run folders go, the old save path, autosave points, the F8 form's categories and mood range, the load list length, the replay's number tolerance, and the act length target in real minutes.

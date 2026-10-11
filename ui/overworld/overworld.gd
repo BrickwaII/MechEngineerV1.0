@@ -22,6 +22,9 @@ const MapView := preload("res://ui/overworld/map_view.gd")
 const GlobeView := preload("res://ui/overworld/globe_view.gd")
 const MeterBar := preload("res://ui/overworld/meter_bar.gd")
 
+## A new Campaign took over the map: a new run, the next act, or a load.
+signal campaign_started(campaign: Campaign)
+
 const SAVE_PATH := "user://overworld.save"
 const MAP_SIZE := Vector2(880, 620)
 const PANEL_WIDTH := 400.0
@@ -255,6 +258,7 @@ func _region_names(region_ids: PackedStringArray) -> String:
 
 func _use_campaign(c: Campaign) -> void:
 	campaign = c
+	campaign_started.emit(c)
 	campaign.changed.connect(_refresh)
 	campaign.event_logged.connect(_event)
 	campaign.fight_started.connect(_on_fight_started)

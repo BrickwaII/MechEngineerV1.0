@@ -42,6 +42,9 @@ Combat core (M2), pure logic with no scenes:
   the wait options show.
 - `HeadlessFightRunner`: plays a fight from a seed and policies, with a text log.
 - `AutoFightService`: a contracts FightService built on the runner.
+- `FightAftermath`: what a run does to its bots when a fight ends (PostFight,
+  then HP by hp-carryover), shared by the game's RunFightService and the
+  headless replay (tools/run_replay.gd) so both apply the same rules.
 - `odds/`: honest map odds. `OddsEstimator` plays N seeded headless
   auto-fights (AutoFightService's policies) of the squad against the
   territory's own enemy draw and returns a win rate and its label;

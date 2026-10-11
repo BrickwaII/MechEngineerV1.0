@@ -1,0 +1,28 @@
+RUN seed 13 · started 2026-10-11T08:06 · squad 3 of 5 · variants: defaults
+00:00          session start (2026-10-11T08:06)
+00:00  DRAFT   picked Rivet, Crank, Anvil (0m 00s)
+00:00  A1 D1   start at renton_works
+── ACT 1 (lake_washington_12) ──
+00:00  A1 D1     [run_start] holds 1/12 · grid 100.0 · energy 0.0 · material 10.0
+00:01  A1 D1     wait
+00:01  A1 D1     focus Tukwila
+00:01  A1 D1     attack Tukwila
+00:05  A1 D1     -> VICTORY, 23 actions, 0m 04s real, 30 commands (0 refused), grid -11.0
+00:05             Rivet: Arc Sweep +3 uses, aggressive +0.100, reactive +0.060
+00:05             Crank: Overcharge Shot +3 uses, aggressive +0.060, reactive +0.020
+00:05             Anvil: aggressive +0.100
+00:05  A1 D2     wait
+00:05  A1 D2     reinforce Renton
+00:05  A1 D2     focus South Seattle
+00:05  A1 D2     attack South Seattle
+00:11  A1 D2     -> DEFEAT, 34 actions, 0m 06s real, 40 commands (0 refused), grid -13.8
+00:11             Rivet: Arc Sweep level 1→2, Arc Sweep -1 uses, aggressive +0.100, solitary +0.020, reactive +0.100
+00:11             Crank: Overcharge Shot +2 uses, aggressive +0.040, reactive +0.020
+00:11             Anvil: aggressive +0.100
+00:12  A1 D3     wait
+00:12  A1 D3     reinforce Renton
+00:12  A1 D3     save
+00:14  A1 D3   F8 report: balance, mood 2 (2026-10-11_080645)
+── ACT 1 done: 0m 14s real (target 10-30 min: SHORT) · days 1-3 · holds 2/12 · fights 1 won 1 lost ──
+00:14  (run in progress · 0m 15s played)
+REPLAY OK: 156 lines, 2 fights, 3 snapshots matched.
