@@ -235,6 +235,8 @@ func _run_row(summary: Dictionary) -> Control:
 		name_text += "  ·  %s" % summary.act_name
 	text.add_child(_label(name_text, "text_bright" if not finished else "text_dim", 10, false))
 	text.add_child(_label(RunFolder.describe(summary), "text_dim", 10, false))
+	# TODO(decision: finished-runs): a finished run is listed with its result
+	# and folder but cannot be loaded; there is no run-over screen to return to.
 	var load := _small_button("LOAD" if not finished else ("WON" if summary.get("won", false) else "LOST"),
 		load_run_folder.bind(summary.dir))
 	load.disabled = not RunFolder.can_continue(summary)

@@ -352,6 +352,10 @@ func _load_save(save: RunSave) -> bool:
 	return true
 
 
+## TODO(decision: autosave): the run saves itself at the map start, after
+## every fight and at every act change (data/run/run_data.json "autosave"), so
+## Continue and the F8 report always have a recent save. There is one save per
+## run; SAVE on the map writes the same file.
 func _autosave() -> void:
 	save_run("", true)
 
