@@ -1,0 +1,23 @@
+{
+	"_comment": "Named skill ranks (skill-progression = ranks in data/variants/variants.json). A skill climbs tier by tier: the base tier, then each later tier's name prefix (\"Mega Overcharge Shot\"). Inside a tier it climbs +1 to +steps; past the last step it shifts to the next tier. Rank 1 is the base skill; a bot Skill's level is its rank. Every number here is a first guess, not balance. TODO(decision: skill-ranks).",
+	"tiers": [
+		{"id": "base", "prefix": "", "steps": 5, "fx_levels": [1, 3]},
+		{"id": "mega", "prefix": "Mega", "steps": 5, "fx_levels": [5, 8]},
+		{"id": "ultra", "prefix": "Ultra", "steps": 0, "fx_levels": [10, 10]}
+	],
+	"_power_comment": "Power added on top of the skill's power_percent, in percent of it: step_power_percent per small step (+1, +2 ...), tier_power_percent per tier shift. A guard never blocks more than guard.max_percent in combat_tuning.json.",
+	"step_power_percent": 6,
+	"tier_power_percent": 25,
+	"_uses_comment": "Skill uses that take a skill from rank n to rank n + 1, in rank order: uses_to_next[0] is base to +1. One entry per rank below the top. Uses bank across fights. The jumps into a new tier (base +5 to Mega, Mega +5 to Ultra) cost the most.",
+	"uses_to_next": [6, 8, 10, 12, 14, 20, 22, 25, 28, 31, 34, 60],
+	"_bonuses_comment": "Combat skill id -> tier id -> bonus effects gained on reaching that tier (a later tier's entry replaces an earlier one). pierce_percent: ignores that share of the target's defense. weakest_bonus_percent: (all-opponent skills) that much more damage to the living opponent with the least hp. heal_guard_percent: a heal also guards its target for that share of its next hit. reflect_percent: a guard also deals that share of the damage it blocks back to the attacker.",
+	"bonuses": {
+		"strike": {"mega": {"pierce_percent": 25}, "ultra": {"pierce_percent": 50}},
+		"heavy_strike": {"mega": {"pierce_percent": 50}, "ultra": {"pierce_percent": 100}},
+		"arc_sweep": {"mega": {"weakest_bonus_percent": 50}, "ultra": {"weakest_bonus_percent": 100}},
+		"patch_up": {"mega": {"heal_guard_percent": 25}, "ultra": {"heal_guard_percent": 50}},
+		"brace": {"mega": {"reflect_percent": 50}, "ultra": {"reflect_percent": 100}},
+		"shield": {"mega": {"reflect_percent": 50}, "ultra": {"reflect_percent": 100}}
+	},
+	"_save_comment": "A save from before ranks (format 1) held a flat level 1 to 10 at +power_percent_per_level each. It converts to the highest rank whose power is no more than that level's, so no skill grows stronger by the conversion."
+}

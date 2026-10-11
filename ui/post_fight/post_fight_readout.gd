@@ -1,16 +1,18 @@
 extends Control
 ## The post-fight readout: per bot, what it did (tag counters), which skills
-## levelled, and how its personality shifted. Call show_report() with what
+## ranked up, and how its personality grew. Call show_report() with what
 ## PostFight.apply() returned.
 ##
 ## It counts up (TallySequence, data/feel/screens.json "readout"): each bot's
 ## panel comes in, its counters and skill uses tick up one row after another,
-## then the payoffs land: a level-up pops in gold with a chime, a personality
-## shift slides its dot to the new value. One bot after another. A click or
-## a key skips to the end; the animation speed setting shortens it, and skip
-## shows the end at once.
-
-const ScaleBar := preload("res://ui/post_fight/scale_bar.gd")
+## then the payoffs land: a rank-up takes the screen with the level-up callout
+## (LevelUpCallout: before and after numbers, a sound, a pop and a hit pause;
+## a Mega or Ultra tier shift is a bigger moment with its own sound), and the
+## personality hexagon (PersonalityHexagon) traces its new outline, then fills
+## from the old shape to the new one with a rising sound. One bot after
+## another. A click or a key skips to the end; the animation speed setting
+## shortens it, and skip shows the end at once.
+## Only one-shot sounds play here; the readout's music is R1-D's.
 
 const BACKGROUND := Color("#0b121b")
 const PANEL := Color("#111b27")
@@ -45,6 +47,12 @@ var _subtitle: Label
 var _hint: Label
 var _columns: HBoxContainer
 var _popups: Control
+## The level-up callout on screen, or null.
+var _callout: LevelUpCallout
+## Step index of the callout on screen, or -1.
+var _callout_step := -1
+## Grow steps whose rising sound already played.
+var _grow_sounded := {}
 ## Step index -> the row it reveals and animates.
 var _step_rows := {}
 ## Bot index -> its panel.
@@ -104,6 +112,8 @@ func show_report(p_report: PostFightReport) -> void:
 		_columns.remove_child(child)
 		child.queue_free()
 	_step_rows.clear()
+	_grow_sounded.clear()
+	_clear_callout()
 	_panels.clear()
 	_panel_rows.clear()
 	tally = null
@@ -156,6 +166,7 @@ func skip() -> void:
 	for row: Control in _step_rows.values():
 		row.modulate.a = 1.0
 		row.position.x = 0.0
+	_clear_callout()
 	_finish()
 
 
@@ -175,6 +186,8 @@ func _process(delta: float) -> void:
 	var started := tally.advance(delta)
 	for i in range(before, mini(tally.current, tally.steps.size())):
 		_apply_step(i, 1.0)
+		if i == _callout_step:
+			_dismiss_callout()
 	_reveal(started)
 	if not tally.is_done():
 		_apply_step(tally.current, tally.progress(tally.current))
@@ -195,7 +208,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## The level-up callout on screen, or null. Public so tests can read it.
+func callout() -> LevelUpCallout:
+	return _callout if is_instance_valid(_callout) else null
+
+
 func _finish() -> void:
+	_dismiss_callout()
 	_hint.visible = false
 	set_process(false)
 	tally_finished.emit()
@@ -218,9 +237,8 @@ func _reveal(started: Array[int]) -> void:
 				ticked = true
 			"level_up":
 				_level_up(i)
-			"shift":
-				_slide_in(_step_rows[i])
-				SoundPlayer.fire(&"personality_shift")
+			"grow":
+				_fade_in(_step_rows[i])
 	if ticked:
 		SoundPlayer.fire(&"tally_tick")
 
@@ -243,23 +261,37 @@ func _slide_in(row: Control) -> void:
 	tween.tween_property(row, "position:x", 0.0, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
-## The payoff for a level-up: the row turns gold and pops, a "LV n!" number
-## rises from it, and the chime plays.
+## The payoff for a level-up: the skill's row turns gold and pops, and the
+## level-up callout takes the screen until the step ends.
 func _level_up(index: int) -> void:
-	var row: Control = _step_rows[index]
-	SoundPlayer.fire(&"level_up")
+	var row: Control = _step_rows.get(index)
 	var change := tally.steps[index].change
-	var popup := NumberPopup.new()
-	popup.setup(change.level_after, "crit", settings)
-	popup.text = "LV %d!" % change.level_after
-	popup.icon = null
-	popup.position = row.global_position - _popups.global_position + Vector2(row.size.x - 40.0, 0)
-	_popups.add_child(popup)
-	if (settings if settings else GameSettings.shared()).reduced_motion or FeelTween.seconds("ui_pop", settings) <= 0.0:
+	_dismiss_callout()
+	_callout = LevelUpCallout.new()
+	_callout.setup(change, settings)
+	_callout_step = index
+	_popups.add_child(_callout)
+	_callout.play(_popups.size, _popups)
+	if row == null or (settings if settings else GameSettings.shared()).reduced_motion \
+			or FeelTween.seconds("ui_pop", settings) <= 0.0:
 		return
 	row.pivot_offset = row.size / 2.0
 	row.scale = Vector2.ONE * ScreenFeel.number("readout.level_up_pop_scale", 1.0)
 	FeelTween.to(row, "scale", Vector2.ONE, "ui_pop", settings)
+
+
+func _dismiss_callout() -> void:
+	if is_instance_valid(_callout):
+		_callout.dismiss()
+	_callout = null
+	_callout_step = -1
+
+
+func _clear_callout() -> void:
+	if is_instance_valid(_callout):
+		_callout.queue_free()
+	_callout = null
+	_callout_step = -1
 
 
 ## Ties each step to its row in the panels.
@@ -272,8 +304,8 @@ func _bind_steps() -> void:
 				_step_rows[i] = panel.find_child("Count_%s" % step.key, true, false)
 			"skill", "level_up":
 				_step_rows[i] = panel.find_child("Skill_%s" % step.change.combat_skill_id, true, false)
-			"shift":
-				_step_rows[i] = panel.find_child("Scale_%d" % step.key, true, false)
+			"grow":
+				_step_rows[i] = panel.find_child("Hexagon", true, false)
 	# A level-up shares its skill's row.
 	for i in _step_rows.keys():
 		if _step_rows[i] == null:
@@ -299,15 +331,17 @@ func _apply_step(index: int, p: float) -> void:
 		"level_up":
 			if row != null and p > 0.0:
 				_set_skill_right(row, step.change, true)
-		"shift":
+		"grow":
 			if row != null:
-				var r := report.bots[step.bot]
-				var bar: Control = row.get_child(1)
-				var eased := 1.0 - pow(1.0 - p, 3.0)
-				bar.after = lerpf(r.personality_before[step.key], r.personality_after[step.key], eased)
-				var value: Label = row.get_child(3)
-				value.text = "%+.2f" % (r.shift(step.key) * eased) if p > 0.0 else "·"
-				value.add_theme_color_override("font_color", ACCENT if p > 0.0 else TEXT_DIM)
+				var hex: PersonalityHexagon = row.find_child("Chart", true, false)
+				var was_filling := hex.fill_progress() > 0.0
+				hex.progress = p
+				# The rising sound starts with the fill, once.
+				if hex.fill_progress() > 0.0 and not was_filling and p < 1.0 and not _grow_sounded.has(index):
+					_grow_sounded[index] = true
+					SoundPlayer.fire(&"personality_grow")
+				var growth: Label = row.find_child("Growth", true, false)
+				growth.modulate.a = 1.0 if hex.fill_progress() > 0.0 else 0.0
 
 
 func _set_skill_right(row: Control, c: SkillChange, final: bool) -> void:
@@ -317,7 +351,8 @@ func _set_skill_right(row: Control, c: SkillChange, final: bool) -> void:
 		right.add_theme_color_override("font_color", skill_row_color(c))
 		(row.get_child(0) as Label).add_theme_color_override("font_color", skill_row_color(c))
 	else:
-		right.text = "basic attack" if not c.has_bot_skill() else "Lv %d" % c.level_before
+		var before := _rank_or_base(c.rank_before) if c.ranked else "Lv %d" % c.level_before
+		right.text = "basic attack" if not c.has_bot_skill() else before
 		right.add_theme_color_override("font_color", TEXT_DIM if not c.has_bot_skill() else TEXT)
 		(row.get_child(0) as Label).add_theme_color_override("font_color", TEXT_DIM if not c.has_bot_skill() else TEXT)
 
@@ -377,17 +412,15 @@ func _bot_panel(index: int, r: BotFightReport) -> Control:
 		box.add_child(row)
 
 	box.add_child(_heading("PERSONALITY"))
-	for scale in Personality.SCALE_COUNT:
-		var row := _scale_row(r, scale)
-		row.name = "Scale_%d" % scale
-		box.add_child(row)
-		if not r.is_scale_active(scale) or is_zero_approx(r.shift(scale)):
-			_panel_rows[index].append(row)
+	var hex_box := _hexagon_box(r)
+	box.add_child(hex_box)
+	if not r.personality_grew():
+		_panel_rows[index].append(hex_box)
 	return panel
 
 
 func _skill_name(c: SkillChange) -> String:
-	return c.skill_name if c.has_bot_skill() else c.combat_skill_id.capitalize()
+	return _skill_name_of(c)
 
 
 func _skill_row(c: SkillChange) -> Control:
@@ -396,7 +429,13 @@ func _skill_row(c: SkillChange) -> Control:
 
 ## "Patch Up ×3", or the combat skill's name for a use with no bot skill.
 static func skill_row_left(c: SkillChange) -> String:
-	return "%s ×%d" % [c.skill_name if c.has_bot_skill() else c.combat_skill_id.capitalize(), c.uses]
+	return "%s ×%d" % [_skill_name_of(c), c.uses]
+
+
+static func _skill_name_of(c: SkillChange) -> String:
+	if not c.has_bot_skill():
+		return c.combat_skill_id.capitalize()
+	return c.name_after if not c.name_after.is_empty() else c.skill_name
 
 
 ## "Lv 1 · 3/5 to Lv 2", "LEVEL UP  1 > 2 · 1/5", "Lv 10 · max", or, for the
@@ -404,10 +443,20 @@ static func skill_row_left(c: SkillChange) -> String:
 static func skill_row_right(c: SkillChange) -> String:
 	if not c.has_bot_skill():
 		return "basic attack"
+	if c.ranked:
+		var progress_r := "max" if c.is_max_level() else "%d/%d" % [c.banked_after, c.uses_per_level]
+		if c.levels_gained() > 0:
+			return "%s %s > %s · %s" % ["TIER UP" if c.is_tier_shift() else "RANK UP",
+				_rank_or_base(c.rank_before), _rank_or_base(c.rank_after), progress_r]
+		return "%s · %s" % [_rank_or_base(c.rank_after), progress_r]
 	var progress := "max" if c.is_max_level() else "%d/%d to Lv %d" % [c.banked_after, c.uses_per_level, c.level_after + 1]
 	if c.levels_gained() > 0:
 		return "LEVEL UP  %d > %d · %s" % [c.level_before, c.level_after, progress]
 	return "Lv %d · %s" % [c.level_after, progress]
+
+
+static func _rank_or_base(label: String) -> String:
+	return "base" if label.is_empty() else label
 
 
 static func skill_row_color(c: SkillChange) -> Color:
@@ -416,36 +465,40 @@ static func skill_row_color(c: SkillChange) -> Color:
 	return LEVEL_UP if c.levels_gained() > 0 else TEXT
 
 
-func _scale_row(r: BotFightReport, scale: int) -> Control:
-	var poles: Array = Personality.POLES[scale]
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	var active := r.is_scale_active(scale)
-	var left := _label(poles[0], 10, TEXT_DIM)
-	left.custom_minimum_size.x = 80
-	left.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(left)
-	var bar: Control = ScaleBar.new()
-	bar.active = active
-	bar.before = r.personality_before[scale]
-	bar.after = r.personality_after[scale]
-	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(bar)
-	var right := _label(poles[1], 10, TEXT_DIM)
-	right.custom_minimum_size.x = 80
-	row.add_child(right)
-	var shift_text := "locked"
-	var color := TEXT_DIM
-	if active:
-		var shift := r.shift(scale)
-		shift_text = "%+.2f" % shift if not is_zero_approx(shift) else "·"
-		color = ACCENT if not is_zero_approx(shift) else TEXT_DIM
-	var value := _label(shift_text, 10, color)
-	value.custom_minimum_size.x = 50
-	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(value)
-	return row
+## The personality hexagon and, under it, what grew ("+0.06 aggressive").
+func _hexagon_box(r: BotFightReport) -> Control:
+	var box := VBoxContainer.new()
+	box.name = "Hexagon"
+	box.add_theme_constant_override("separation", 2)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var hex := PersonalityHexagon.new()
+	hex.name = "Chart"
+	var hex_size: Array = ScreenFeel.value("readout.hex_size", [260, 200])
+	hex.custom_minimum_size = Vector2(hex_size[0], hex_size[1])
+	hex.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	hex.min_extent = ScreenFeel.number("readout.hex_min_extent", 0.5)
+	hex.outline_share = ScreenFeel.number("readout.outline_share", 0.35)
+	hex.before = r.personality_before.duplicate()
+	hex.after = r.personality_after.duplicate()
+	box.add_child(hex)
+	var growth := _label(growth_text(r), 10, ACCENT if r.personality_grew() else TEXT_DIM)
+	growth.name = "Growth"
+	growth.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	growth.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(growth)
+	return box
+
+
+## What grew, biggest first: "+0.06 aggressive  +0.02 solitary", or "No change".
+static func growth_text(r: BotFightReport) -> String:
+	var grown: Array = []
+	for i in Personality.ENDS.size():
+		if i < r.personality_after.size() and r.growth(i) > 0.0001:
+			grown.append([r.growth(i), Personality.ENDS[i]])
+	if grown.is_empty():
+		return "No change"
+	grown.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
+	return "  ".join(grown.map(func(g: Array) -> String: return "+%.2f %s" % [g[0], g[1]]))
 
 
 func _row(left: String, right: String, color: Color) -> Control:

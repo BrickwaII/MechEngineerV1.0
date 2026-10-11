@@ -17,14 +17,20 @@
 			{"label": "ally_target", "pole": "supportive"}
 		]
 	},
+	"_drift_comment": "Each personality spectrum holds two ends that only grow. Every push adds per_push to its end; one end grows at most max_per_end_per_fight in one fight. With tag-weight = per_energy (data/variants/variants.json) a decision counts as energy spent / energy_per_push pushes.",
 	"drift": {
 		"per_push": 0.02,
-		"max_per_scale_per_fight": 0.1
+		"max_per_end_per_fight": 0.1
 	},
+	"_skill_levels_comment": "Flat levels (skill-progression = flat_levels). Named ranks read data/combat/skill_ranks.json instead.",
 	"skill_levels": {
 		"uses_per_level": 5,
 		"levels_per_step": 1,
 		"max_level": 10
+	},
+	"_level_up_callout_comment": "The readout's level-up callout shows damage against a target with this much defense (0: the skill's raw damage).",
+	"level_up_callout": {
+		"reference_defense": 0
 	},
 	"_combat_skill_effects_comment": "Combat skill id -> bot skill effect_id. A use of the combat skill counts toward the bot skill with that effect. Empty means no bot skill matches. Must agree with bot_skill_effects in data/combat/combat_tuning.json (a test checks).",
 	"combat_skill_effects": {

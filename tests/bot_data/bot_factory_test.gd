@@ -68,15 +68,19 @@ func test_drafted_bots_start_at_full_hp_with_starting_skills() -> void:
 		assert_array(bot.skills).has_size(_tuning.starting_skill_count)
 
 
-func test_drafted_personality_uses_only_the_active_scales() -> void:
+## The starting roll is signed, as before, and splits onto the two ends: only
+## one end of a rolled spectrum starts above 0. Spectrums the generation does
+## not weigh start at 0 but can still grow (post-fight drift).
+func test_drafted_personality_rolls_the_weighed_spectrums_onto_one_end() -> void:
 	for bot in _factory.build_draft(11):
 		assert_int(bot.personality.generation).is_equal(_tuning.starting_generation)
 		for scale in Personality.SCALE_COUNT:
-			var value := bot.personality.get_raw_value(scale)
+			var net := bot.personality.get_net(scale)
+			assert_float(minf(bot.personality.get_first_end(scale), bot.personality.get_second_end(scale))).is_equal(0.0)
 			if bot.personality.is_active(scale):
-				assert_float(value).is_between(_tuning.personality_start_range.x, _tuning.personality_start_range.y)
+				assert_float(net).is_between(_tuning.personality_start_range.x, _tuning.personality_start_range.y)
 			else:
-				assert_float(value).is_equal(0.0)
+				assert_float(net).is_equal(0.0)
 
 
 func test_drafted_bots_do_not_share_skill_objects_with_the_catalog() -> void:

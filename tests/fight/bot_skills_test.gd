@@ -83,8 +83,11 @@ func test_enemies_keep_their_table_skills() -> void:
 	assert_str(fight.combatant("foe#1").skill("overload").display_name).is_equal("Overload")
 
 
+## Flat levels (skill-progression = flat_levels); ranks: skill_rank_bonus_test.
 func test_level_scales_power_by_the_tunable() -> void:
-	var tuning := _tuning()
+	var flat := FightVariants.defaults()
+	flat.choose(FightVariants.SKILL_PROGRESSION, FightVariants.PROGRESSION_FLAT)
+	var tuning := _tuning().with_variants(flat)
 	tuning.power_percent_per_level = 10
 	var squad: Array[SquadMemberSummary] = [
 		_member("one", H.stats(30, 10, 0, 5, 10), [["Strike", "damage_single", 1]]),
@@ -169,7 +172,9 @@ func test_shield_ally_blocks_part_of_an_allys_next_hit() -> void:
 
 
 func test_guard_never_blocks_more_than_the_cap_and_never_drops_below_min_damage() -> void:
-	var tuning := _tuning()
+	var flat := FightVariants.defaults()
+	flat.choose(FightVariants.SKILL_PROGRESSION, FightVariants.PROGRESSION_FLAT)
+	var tuning := _tuning().with_variants(flat)
 	tuning.max_guard_percent = 80
 	tuning.power_percent_per_level = 100
 	var squad: Array[SquadMemberSummary] = [_member("anvil", H.stats(60, 5, 0, 10, 10), [["Brace", "guard_self", 5]])]
@@ -238,7 +243,8 @@ func test_post_fight_counts_patch_up_toward_the_bots_patch_up() -> void:
 	var squad: Array[SquadMemberSummary] = [medic.to_summary(), tank.to_summary()]
 	var fight := _fight(squad, H.stats(1000, 1, 0, 1, 0))
 	var tuning := PostFightTuning.load_default()
-	for i in tuning.uses_per_level:
+	var needed := tuning.uses_to_next(1)
+	for i in needed:
 		assert_bool(_until(fight, "medic")).is_true()
 		assert_str(fight.submit(FightAction.use("patch_up", "tank"))).is_empty()
 	# End the fight: the action limit counts as defeat, which still trains.
@@ -251,9 +257,9 @@ func test_post_fight_counts_patch_up_toward_the_bots_patch_up() -> void:
 	var change: SkillChange = report.bot("medic").skill_changes.filter(
 		func(c: SkillChange) -> bool: return c.combat_skill_id == "patch_up")[0]
 	assert_str(change.skill_name).is_equal("Patch Up")
-	assert_int(change.uses).is_equal(tuning.uses_per_level)
-	assert_int(change.levels_gained()).is_equal(tuning.levels_per_step)
-	assert_int(medic.skills[0].level).is_equal(1 + tuning.levels_per_step)
+	assert_int(change.uses).is_equal(needed)
+	assert_int(change.levels_gained()).is_equal(1)
+	assert_int(medic.skills[0].level).is_equal(2)
 
 
 func test_post_fight_maps_each_combat_skill_back_to_the_same_bot_effect() -> void:

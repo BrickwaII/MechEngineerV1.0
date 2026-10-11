@@ -45,6 +45,9 @@ var wait_length := 0
 var energy_spent_milli := 0
 ## Percent of the next hit this unit takes that is blocked. 0 when unguarded.
 var guard_percent := 0
+## Share of the damage the guard blocks that goes back to the attacker (a
+## Mega or Ultra guard skill's reflect). Cleared with the guard.
+var reflect_percent := 0
 
 var _tuning: CombatTuning
 ## Skill id -> this unit's CombatSkill, built from the tuning and the overrides.
@@ -75,12 +78,10 @@ func _init(
 	skill_ids = p_skill_ids.duplicate()
 	skill_overrides = p_skill_overrides
 	for skill_id in skill_ids:
-		var base := tuning.skill(skill_id)
-		if base == null:
+		if tuning.skill(skill_id) == null:
 			continue
 		var o: Dictionary = skill_overrides.get(skill_id, {})
-		_skills[skill_id] = base.at_level(
-			int(o.get("level", 1)), String(o.get("name", "")), tuning.power_percent_per_level, tuning.max_guard_percent)
+		_skills[skill_id] = tuning.skill_at(skill_id, int(o.get("level", 1)), String(o.get("name", "")))
 	charge_per_tick = maxi(tuning.min_charge_per_tick, p_stats.speed)
 	max_energy_milli = maxi(0, p_stats.battery_capacity) * MILLI
 	energy_milli = max_energy_milli * tuning.starting_energy_percent / 100
@@ -179,6 +180,7 @@ func clone_for_preview() -> Combatant:
 	var c := Combatant.new(id, display_name, side, order, stats, hp, skill_ids, _tuning, skill_overrides)
 	c.max_hp = max_hp
 	c.guard_percent = guard_percent
+	c.reflect_percent = reflect_percent
 	c.gauge = gauge
 	c.energy_milli = energy_milli
 	c.wait_target_milli = wait_target_milli

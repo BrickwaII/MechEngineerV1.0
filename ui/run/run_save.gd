@@ -4,9 +4,14 @@ extends Resource
 ## the run's seed. One Godot resource file. Use .res (binary): a .tres text file
 ## rounds some floats in their last digit, so a reload would not be exact.
 
-const FORMAT_VERSION := 1
+## 2: two-ended personalities and named skill ranks (GrowthSaveUpgrade
+## converts a version 1 file as it loads).
+const FORMAT_VERSION := GrowthSaveUpgrade.FORMAT_GROWTH
 
-@export var version := FORMAT_VERSION
+## Defaults to version 1: Godot leaves a property at its default out of the
+## file, and version 1 files hold none, so a file without one is version 1.
+## make() stamps FORMAT_VERSION, which is then always written.
+@export var version := GrowthSaveUpgrade.FORMAT_FLAT_LEVELS
 @export var run_seed := 0
 @export var squad: BotSquad
 @export var ledger: SkillUseLedger
@@ -16,6 +21,7 @@ const FORMAT_VERSION := 1
 
 static func make(p_run_seed: int, p_squad: BotSquad, p_ledger: SkillUseLedger, state: RunState) -> RunSave:
 	var save := RunSave.new()
+	save.version = FORMAT_VERSION
 	save.run_seed = p_run_seed
 	save.squad = p_squad
 	save.ledger = p_ledger
@@ -45,6 +51,9 @@ static func load_file(path: String) -> RunSave:
 	if not ResourceLoader.exists(path):
 		return null
 	var save := ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE) as RunSave
+	if save != null and save.version < FORMAT_VERSION:
+		GrowthSaveUpgrade.upgrade_squad(save.squad, save.version)
+		save.version = FORMAT_VERSION
 	if save == null or not save.is_valid():
 		return null
 	return save

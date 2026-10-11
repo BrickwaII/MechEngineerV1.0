@@ -35,17 +35,44 @@ static func combat_tuning() -> CombatTuning:
 	return t
 
 
-## The post-fight data file, with the drift and level numbers pinned. The
-## drift rules are the real ones from data/post_fight/.
+## The post-fight data file, with the drift and level numbers pinned, playing
+## flat levels (skill-progression = flat_levels) so level counts stay simple;
+## rank tests use rank_tuning(). The drift rules are the real ones from
+## data/post_fight/.
 static func tuning() -> PostFightTuning:
 	var t := PostFightTuning.load_default()
+	t.progression = FightVariants.PROGRESSION_FLAT
+	t.tag_weight = FightVariants.TAG_WEIGHT_PER_ACTION
 	t.drift_per_push = 0.02
-	t.max_drift_per_scale_per_fight = 0.1
+	t.max_drift_per_end_per_fight = 0.1
 	t.uses_per_level = 3
 	t.levels_per_step = 1
 	t.max_level = 10
 	t.combat_skill_effects = {"strike": "damage_single", "heavy_strike": "damage_single_heavy", "overload": ""}
 	return t
+
+
+## tuning() with named ranks and a pinned rank table: 3, 4, 5, 6, 7 uses to
+## +1 .. +5, then 10 to Mega, 8 to Mega +1 and so on, 20 to Ultra.
+static func rank_tuning() -> PostFightTuning:
+	var t := tuning()
+	t.progression = FightVariants.PROGRESSION_RANKS
+	t.ranks = ranks()
+	return t
+
+
+static func ranks() -> SkillRanks:
+	return SkillRanks.from_dict({
+		"tiers": [
+			{"id": "base", "prefix": "", "steps": 5, "fx_levels": [1, 3]},
+			{"id": "mega", "prefix": "Mega", "steps": 5, "fx_levels": [5, 8]},
+			{"id": "ultra", "prefix": "Ultra", "steps": 0, "fx_levels": [10, 10]},
+		],
+		"step_power_percent": 6,
+		"tier_power_percent": 25,
+		"uses_to_next": [3, 4, 5, 6, 7, 10, 8, 8, 8, 8, 8, 20],
+		"bonuses": {"heavy_strike": {"mega": {"pierce_percent": 50}, "ultra": {"pierce_percent": 100}}},
+	})
 
 
 static func bot(id: String, speed: int, generation := 3) -> Bot:

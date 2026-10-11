@@ -572,7 +572,7 @@ func _build_layout() -> void:
 
 ## "PATCH UP  [3]", or "PATCH UP Lv2  [3]" above level 1.
 static func skill_button_text(skill: CombatSkill) -> String:
-	var level := " Lv%d" % skill.level if skill.level > 1 else ""
+	var level := " Lv%d" % skill.level if skill.level > 1 and not skill.names_rank else ""
 	return "%s%s  [%d]" % [skill.display_name.to_upper(), level, skill.energy_cost]
 
 

@@ -41,7 +41,8 @@ func test_report_covers_each_fielded_bot() -> void:
 	var ra := report.bot("a")
 	assert_int(ra.decisions).is_equal(3)
 	assert_int(ra.label_counts["hit_enemy"]).is_equal(3)
-	assert_float(ra.shift(Personality.Scale.AGGRESSIVE_DEFENSIVE)).is_equal_approx(-0.06, 0.0001)
+	assert_float(ra.growth(Personality.ENDS.find("aggressive"))).is_equal_approx(0.06, 0.0001)
+	assert_bool(ra.personality_grew()).is_true()
 	# 2 heavy strikes + 0 banked = 0 levels at 3 per level; 1 strike also banks.
 	assert_array(ra.level_ups()).is_empty()
 

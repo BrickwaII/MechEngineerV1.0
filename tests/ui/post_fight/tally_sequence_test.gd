@@ -28,29 +28,42 @@ func test_bots_play_one_after_another_with_the_payoffs_last() -> void:
 	for step in tally.steps:
 		assert_int(step.bot).is_greater_equal(last)
 		last = step.bot
-	# Each bot: counters and skills, then its personality shifts.
+	# Each bot: counters and skills, then its personality growth last.
 	for b in report.bots.size():
 		var mine := tally.steps.filter(func(s: TallySequence.Step) -> bool: return s.bot == b and s.kind != "gap")
-		var seen_shift := false
+		var seen_grow := false
 		for step: TallySequence.Step in mine:
-			if step.kind == "shift":
-				seen_shift = true
+			if step.kind == "grow":
+				seen_grow = true
 			else:
-				assert_bool(seen_shift).override_failure_message("%s after a shift" % step.kind).is_false()
+				assert_bool(seen_grow).override_failure_message("%s after the growth" % step.kind).is_false()
 
 
-func test_level_ups_and_active_shifts_get_their_own_step() -> void:
+func test_level_ups_and_personality_growth_get_their_own_step() -> void:
 	var tally := TallySequence.new(report, settings)
 	var level_ups := 0
-	var shifts := 0
+	var grew := 0
 	for r in report.bots:
 		level_ups += r.level_ups().size()
-		for scale in Personality.SCALE_COUNT:
-			if r.is_scale_active(scale) and not is_zero_approx(r.shift(scale)):
-				shifts += 1
+		if r.personality_grew():
+			grew += 1
 	assert_int(level_ups).is_greater(0)
 	assert_int(_kinds(tally).count("level_up")).is_equal(level_ups)
-	assert_int(_kinds(tally).count("shift")).is_equal(shifts)
+	assert_int(_kinds(tally).count("grow")).is_equal(grew)
+
+
+func test_a_tier_shift_holds_longer_than_a_rank_step() -> void:
+	var tally := TallySequence.new(report, settings)
+	var rank_ms := 0.0
+	var tier_ms := 0.0
+	for step in tally.steps:
+		if step.kind == "level_up":
+			if step.change.is_tier_shift():
+				tier_ms = step.duration
+			else:
+				rank_ms = step.duration
+	assert_float(rank_ms).is_greater(0.0)
+	assert_float(tier_ms).is_greater(rank_ms)
 
 
 func test_counts_tick_up_and_every_step_starts_once() -> void:

@@ -17,7 +17,8 @@ func test_ui_responses_stay_within_100_to_250_ms() -> void:
 
 func test_the_post_fight_payoffs_hold_longer_than_a_row() -> void:
 	assert_float(ScreenFeel.number("readout.level_up_ms")).is_greater(ScreenFeel.number("readout.row_in_ms"))
-	assert_float(ScreenFeel.number("readout.shift_ms")).is_greater(ScreenFeel.number("readout.row_in_ms"))
+	assert_float(ScreenFeel.number("readout.grow_ms")).is_greater(ScreenFeel.number("readout.row_in_ms"))
+	assert_float(ScreenFeel.number("readout.tier_up_ms")).is_greater(ScreenFeel.number("readout.rank_up_ms"))
 
 
 func test_seconds_follow_the_animation_speed() -> void:

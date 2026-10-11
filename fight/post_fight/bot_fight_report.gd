@@ -10,21 +10,26 @@ var decisions := 0
 var tags: Array[ActionTag] = []
 ## ActionTag label -> how many of the bot's decisions carried it.
 var label_counts: Dictionary[String, int] = {}
-## Personality pole -> pushes toward it.
-var pole_pushes: Dictionary[String, int] = {}
+## Personality end -> weighted pushes toward it.
+var pole_pushes: Dictionary[String, float] = {}
 var generation := Personality.MIN_GENERATION
-## Raw scale values in Scale order, before and after the drift.
+## Every personality end in Personality.ENDS order, before and after the drift.
 var personality_before: Array[float] = []
 var personality_after: Array[float] = []
 var skill_changes: Array[SkillChange] = []
 
 
-func is_scale_active(scale: int) -> bool:
-	return scale < mini(generation, Personality.SCALE_COUNT)
+## How much end `index` (Personality.ENDS order) grew. Never negative.
+func growth(index: int) -> float:
+	return personality_after[index] - personality_before[index]
 
 
-func shift(scale: int) -> float:
-	return personality_after[scale] - personality_before[scale]
+## True when any end grew.
+func personality_grew() -> bool:
+	for i in personality_after.size():
+		if not is_zero_approx(growth(i)):
+			return true
+	return false
 
 
 func level_ups() -> Array[SkillChange]:

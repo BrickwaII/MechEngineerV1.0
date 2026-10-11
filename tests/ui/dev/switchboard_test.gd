@@ -22,7 +22,7 @@ func test_lists_every_decision_of_the_build_plan() -> void:
 	var ids := board.decisions.map(func(d: Dictionary) -> String: return d.id)
 	for id in ["d-wait", "d-wait-length", "d-elasticity", "d-personality-map", "hp-carryover", "draft-rule",
 			"act-maps/act1", "act-maps/act2", "act-maps/act3", "energy-grid", "grid-cost-owner", "squad-size",
-			"act-pacing", "auto-expansion", "tier-rule"]:
+			"act-pacing", "auto-expansion", "tier-rule", "skill-progression", "tag-weight"]:
 		assert_array(ids).contains([id])
 
 

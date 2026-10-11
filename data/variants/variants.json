@@ -50,6 +50,28 @@
 			]
 		},
 		{
+			"id": "tag-weight",
+			"name": "Personality tag weight",
+			"layer": "fight",
+			"applies": "next_fight",
+			"default": "per_action",
+			"options": [
+				{"id": "per_action", "name": "Per action (current)", "description": "Every tagged decision pushes its personality end once, so a bot that acts more often grows more."},
+				{"id": "per_energy", "name": "Per energy spent", "description": "A tagged decision pushes energy spent / energy_per_push times, at least min_weight times (a free action or a wait counts min_weight). Slow bots act less but spend more per action, so growth follows energy, not turn count.", "params": {"energy_per_push": 3.0, "min_weight": 0.25}}
+			]
+		},
+		{
+			"id": "skill-progression",
+			"name": "Skill progression",
+			"layer": "fight",
+			"applies": "next_fight",
+			"default": "ranks",
+			"options": [
+				{"id": "ranks", "name": "Named ranks (current)", "description": "Beam, Beam +1 to +5, Mega Beam, Mega Beam +1 to +5, Ultra Beam: data/combat/skill_ranks.json. Uses per rank rise; tier shifts add a power jump and a bonus effect."},
+				{"id": "flat_levels", "name": "Flat levels", "description": "Levels 1 to skill_levels.max_level every skill_levels.uses_per_level uses (data/post_fight/post_fight.json), each adding power_percent_per_level (data/combat/combat_tuning.json). No bonus effects."}
+			]
+		},
+		{
 			"id": "hp-carryover",
 			"name": "HP between fights",
 			"layer": "fight",

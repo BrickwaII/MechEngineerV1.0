@@ -60,3 +60,41 @@ func test_a_missing_or_foreign_file_loads_as_null() -> void:
 	assert_object(RunSave.load_file("user://no_such_run.tres")).is_null()
 	ResourceSaver.save(SkillUseLedger.new(), PATH)
 	assert_object(RunSave.load_file(PATH)).is_null()
+
+
+func test_a_new_save_is_format_two() -> void:
+	var save := _save()
+	assert_int(save.version).is_equal(2)
+	assert_int(save.save_file(PATH)).is_equal(OK)
+	assert_int(RunSave.load_file(PATH).version).is_equal(2)
+
+
+## A format-1 save (no version written, one signed value per personality
+## spectrum, flat skill levels) converts as it loads: v splits into max(-v, 0)
+## and max(v, 0), and flat level 10 becomes the highest rank no stronger.
+func test_a_format_one_save_converts_as_it_loads() -> void:
+	var path := "user://run_save_v1_test.tres"
+	var save := _save()
+	var bot := save.squad.bots[0]
+	bot.personality = Personality.new(2)
+	bot.skills[0].level = 10
+	assert_int(ResourceSaver.save(save, path)).is_equal(OK)
+	var text := FileAccess.get_file_as_string(path)
+	assert_str(text).contains("version = 2")
+	text = text.replace("version = 2\n", "").replace("generation = 2",
+		"generation = 2\naggressive_defensive = -0.5\nreactive_methodical = 0.25")
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
+	var loaded := RunSave.load_file(path)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	assert_object(loaded).is_not_null()
+	assert_int(loaded.version).is_equal(2)
+	var p := loaded.squad.bots[0].personality
+	assert_array(p.get_ends()).is_equal([0.5, 0.0, 0.0, 0.0, 0.0, 0.25])
+	var ranks := SkillRanks.load_default()
+	var rank := loaded.squad.bots[0].skills[0].level
+	assert_int(rank).is_equal(ranks.rank_for_flat_level(10, CombatTuning.load_default().power_percent_per_level))
+	assert_int(rank).is_greater(1)
+	# Other skills were at flat level 1 and stay at the base rank.
+	assert_int(loaded.squad.bots[1].skills[0].level).is_equal(1)

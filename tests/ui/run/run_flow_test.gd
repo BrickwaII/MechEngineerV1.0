@@ -350,7 +350,7 @@ func test_a_fight_in_the_run_levels_up_the_bot_skills_it_used() -> void:
 	var levels := {}
 	for bot in _flow.squad.get_fielded():
 		for skill in bot.skills:
-			_flow.ledger.set_banked(bot.id, skill.display_name, tuning.uses_per_level - 1)
+			_flow.ledger.set_banked(bot.id, skill.display_name, tuning.uses_to_next(skill.level) - 1)
 			levels["%s/%s" % [bot.id, skill.display_name]] = skill.level
 	_flow.overworld._on_attack(_adjacent_target())
 	await _frames(1)
@@ -373,7 +373,7 @@ func test_a_fight_in_the_run_levels_up_the_bot_skills_it_used() -> void:
 	# The readout shows the level-up, not "no skill to train".
 	_flow.readout.skip()
 	var text := _texts(_flow.readout)
-	assert_str(text).contains("LEVEL UP")
+	assert_bool(text.contains("RANK UP") or text.contains("TIER UP")).override_failure_message(text).is_true()
 	assert_str(text).not_contains("no skill to train")
 	assert_bool(fight.is_over()).is_true()
 
