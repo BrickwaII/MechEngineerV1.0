@@ -238,7 +238,7 @@ func _reveal(started: Array[int]) -> void:
 			"level_up":
 				_level_up(i)
 			"grow":
-				_fade_in(_step_rows[i])
+				pass
 	if ticked:
 		SoundPlayer.fire(&"tally_tick")
 
@@ -412,10 +412,10 @@ func _bot_panel(index: int, r: BotFightReport) -> Control:
 		box.add_child(row)
 
 	box.add_child(_heading("PERSONALITY"))
+	# The old shape shows with the panel; the grow step then draws the new one.
 	var hex_box := _hexagon_box(r)
 	box.add_child(hex_box)
-	if not r.personality_grew():
-		_panel_rows[index].append(hex_box)
+	_panel_rows[index].append(hex_box)
 	return panel
 
 

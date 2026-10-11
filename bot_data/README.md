@@ -4,8 +4,8 @@ Layer 1. Pure bot state: stats, personality, skills, augment slots. No behavior.
 
 State (Resources, saved to disk):
 - `bot.gd` (Bot): id, name, current HP, six stats (contracts/UnitStats), personality, skills, augment slots.
-- `personality.gd` (Personality): three scales from -1 to 1, clamped; the generation decides how many are active.
-- `skill.gd` (Skill): name, effect id, flat energy cost, per-bot level.
+- `personality.gd` (Personality): three spectrums, each with two ends that never go below 0 and have no cap; the lean is the larger end. The generation decides how many spectrums the intent planner weighs. Format-1 signed values split onto the ends as a file loads.
+- `skill.gd` (Skill): name, effect id, flat energy cost, per-bot level (a named rank with skill-progression = ranks).
 - `augment_slot.gd` (AugmentSlot): an empty slot. Structure only.
 - `bot_squad.gd` (BotSquad): the drafted bots and which are fielded.
 

@@ -1,5 +1,5 @@
 class_name LevelUpCallout
-extends PanelContainer
+extends Control
 ## The big moment when a skill ranks up: a panel over the readout with the
 ## skill's name, its rank before and after, and what it does before and after
 ## for this bot ("6 > 8 dmg"), all from the SkillChange (numbers computed by
@@ -10,7 +10,8 @@ extends PanelContainer
 ## panel that pops larger, a heavy hit pause, its own sound, and the new
 ## bonus effect ("now pierces 50% of armor").
 ## The readout shows it for its step (data/feel/screens.json "readout") and
-## frees it when the step ends or the count-up is skipped.
+## frees it when the step ends or the count-up is skipped. It covers the
+## readout with a dim backdrop and centres the panel on it.
 
 const PANEL := Color("#16212e")
 const RANK_BORDER := Color("#f2b84b")
@@ -20,9 +21,12 @@ const TEXT := Color("#dbe6f0")
 const TEXT_DIM := Color("#8aa0b4")
 const GOLD := Color("#f2b84b")
 const BONUS := Color("#7be7a8")
+const BACKDROP := Color(0.02, 0.04, 0.07, 0.6)
 
 var change: SkillChange
 var settings: GameSettings
+## The centred panel.
+var panel: PanelContainer
 
 
 ## The headline: "OVERCHARGE SHOT", or "MEGA OVERCHARGE SHOT!" on a tier shift.
@@ -83,35 +87,45 @@ func setup(p_change: SkillChange, p_settings: GameSettings = null) -> void:
 	settings = p_settings
 	name = "LevelUpCallout"
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()
+	dim.color = BACKDROP
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(dim)
+	panel = PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(panel)
 	var tier := change.is_tier_shift()
 	var style := StyleBoxFlat.new()
 	style.bg_color = TIER_PANEL if tier else PANEL
 	style.border_color = TIER_BORDER if tier else RANK_BORDER
 	style.set_border_width_all(4 if tier else 3)
-	style.set_content_margin_all(26 if tier else 18)
+	style.set_content_margin_all(40 if tier else 30)
 	style.shadow_color = Color(0, 0, 0, 0.6)
-	style.shadow_size = 12
-	add_theme_stylebox_override("panel", style)
+	style.shadow_size = 16
+	panel.add_theme_stylebox_override("panel", style)
 	var box := VBoxContainer.new()
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", 8 if tier else 6)
+	box.add_theme_constant_override("separation", 14 if tier else 10)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(box)
-	box.add_child(_line("TIER UP" if tier else "RANK UP", 10, GOLD, "Kicker"))
-	box.add_child(_line(title_for(change), 34 if tier else 24, TIER_BORDER if tier else TEXT, "Title"))
-	box.add_child(_line(rank_line(change), 20 if tier else 16, GOLD, "Rank"))
+	panel.add_child(box)
+	box.add_child(_line("TIER UP" if tier else "RANK UP", 16 if tier else 12, GOLD, "Kicker"))
+	box.add_child(_line(title_for(change), 48 if tier else 34, TIER_BORDER if tier else TEXT, "Title"))
+	box.add_child(_line(rank_line(change), 30 if tier else 24, GOLD, "Rank"))
 	if not numbers_line(change).is_empty():
-		box.add_child(_line(numbers_line(change), 26 if tier else 20, TEXT, "Numbers"))
+		box.add_child(_line(numbers_line(change), 40 if tier else 30, TEXT, "Numbers"))
 	if not bonus_line(change).is_empty():
-		box.add_child(_line(bonus_line(change), 16, BONUS, "Bonus"))
+		box.add_child(_line(bonus_line(change), 22, BONUS, "Bonus"))
 
 
 ## Centres the panel in `area` and plays the entrance: the pop, the sound, a
 ## hit pause, and the new number rising out of the panel.
 func play(area: Vector2, popups: Control) -> void:
-	reset_size()
-	position = (area - size) * 0.5
-	pivot_offset = size * 0.5
+	size = area
+	panel.reset_size()
+	panel.position = (area - panel.size) * 0.5
+	panel.pivot_offset = panel.size * 0.5
 	var tier := change.is_tier_shift()
 	SoundPlayer.fire(&"skill_tier_up" if tier else &"skill_rank_up")
 	if is_inside_tree():
@@ -121,14 +135,14 @@ func play(area: Vector2, popups: Control) -> void:
 		popup.setup(roundi(change.value_after), "crit", settings)
 		popup.text = "%s!" % SkillNumbers.format(change.value_after)
 		popup.icon = null
-		popup.position = position + Vector2(size.x - 30.0, 10.0)
+		popup.position = panel.position + Vector2(panel.size.x - 40.0, 10.0)
 		popups.add_child(popup)
 	var s := settings if settings else GameSettings.shared()
 	if s.reduced_motion or FeelTween.seconds("ui_pop", settings) <= 0.0:
 		return
-	scale = Vector2.ONE * ScreenFeel.number("readout.tier_pop_scale" if tier else "readout.callout_pop_scale", 1.2)
+	panel.scale = Vector2.ONE * ScreenFeel.number("readout.tier_pop_scale" if tier else "readout.callout_pop_scale", 1.2)
 	modulate.a = 0.0
-	FeelTween.to(self, "scale", Vector2.ONE, "ui_pop", settings)
+	FeelTween.to(panel, "scale", Vector2.ONE, "ui_pop", settings)
 	FeelTween.to(self, "modulate:a", 1.0, "ui", settings)
 
 

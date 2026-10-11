@@ -13,8 +13,12 @@ Combat core (M2), pure logic with no scenes:
   target's next hit; `"target": "all_opponents"` (Arc Sweep) hits every enemy.
 - `SquadSkills`: a squad member fights with its own skills. Each bot skill's
   effect_id picks a combat skill (`bot_skill_effects` in combat_tuning.json);
-  the bot's name and level carry over, and each level above 1 adds
-  `power_percent_per_level`. Every bot keeps the basic attack (Strike).
+  the bot's name and level carry over. With named ranks (skill-progression =
+  ranks, the default; `SkillRanks`, data/combat/skill_ranks.json) a level is a
+  rank: Beam, Beam +1..+5, Mega Beam, Mega Beam +1..+5, Ultra Beam; tiers add
+  a power jump and a bonus (pierce, weakest bonus, heal guard, reflect). With
+  flat_levels each level above 1 adds `power_percent_per_level`. Every bot
+  keeps the basic attack (Strike).
   Enemies keep their enemy-table skills. Read a unit's skills with
   `Combatant.skill(id)`, not `CombatTuning.skill(id)`.
 - `variants/`: the fight side of the variant switchboard. `FightVariants`
@@ -22,7 +26,8 @@ Combat core (M2), pure logic with no scenes:
   player's choices in `user://variants.json`); `CombatTuning.variants` holds
   them for a fight. `WaitRules` (d-wait, d-wait-length), `ElasticityRules`
   (d-elasticity) and `HpCarryover` (hp-carryover) implement the options;
-  d-personality-map picks a drift rule set in `PostFightTuning`.
+  d-personality-map picks a drift rule set and tag-weight and
+  skill-progression their options in `PostFightTuning`.
 - `FactionTable`: enemy factions (data/combat/factions.json, M7 P4). Which
   faction holds each region, by act; the tier enemies field by act and
   defense level; which unit types join at which level. `EnemyTable.pick_for()`
