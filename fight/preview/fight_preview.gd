@@ -10,6 +10,8 @@ extends RefCounted
 
 var planner: IntentPlanner
 var rules: PreviewRules
+## How many upcoming actions a preview's order_after lists.
+var order_length := 8
 
 
 func _init(p_planner: IntentPlanner = null, p_rules: PreviewRules = null) -> void:
@@ -61,7 +63,16 @@ func preview_choice(fight: Fight, action: FightAction) -> ChoicePreview:
 				c.id, c.display_name, c.hp, PreviewValue.of(c.hp - after.hp), PreviewValue.of(after.hp)))
 		if after.guard_percent != c.guard_percent:
 			out.guard_changes[c.id] = after.guard_percent
+		if after.energy_milli != c.energy_milli:
+			out.energy_after[c.id] = after.energy()
+	# Intents and order as the screen shows them next: once time has run to
+	# the next decision, the state the next unit acts from.
+	copy.advance()
+	out.fight_after = copy
 	var after_plan := planner.plan_all(copy)
+	out.intents_after = after_plan
+	if not copy.is_over():
+		out.order_after = copy.upcoming(order_length)
 	var reason := "if %s uses %s" % [fight.pending_actor.display_name, action]
 	for id: String in before:
 		var old: UnitIntent = before[id]

@@ -37,3 +37,13 @@ Combat core (M2), pure logic with no scenes:
   the wait options show.
 - `HeadlessFightRunner`: plays a fight from a seed and policies, with a text log.
 - `AutoFightService`: a contracts FightService built on the runner.
+
+Preview readouts (R1-B), in preview/:
+- `ChoicePreview` also carries `energy_after` (the cost paid), and, once time
+  runs to the next decision on the copy, `intents_after`, `order_after` and
+  `fight_after`: what the screen will telegraph next. `intent_changes` compare
+  against that next decision.
+- `BattleReadout` / `ArrowBadge`: the number on each arrow (enemy intents per
+  target, the pending unit's own choice), KO marks, the energy after a skill,
+  and the turn order a choice would leave. Damage is the hp that leaves the
+  bar (capped at the target's hp).

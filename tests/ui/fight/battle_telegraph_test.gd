@@ -92,8 +92,11 @@ func test_a_revision_marks_the_panel_for_one_turn() -> void:
 	Helpers.click(_screen.unit_panels["warden_mech#1"])
 	assert_bool(_screen.telegraph.is_marked("warden_mech#2")).is_true()
 	assert_bool(medic.intent_changed).is_true()
-	assert_bool(medic.change_label.visible).is_true()
+	# The reason is in the detail card, not under the sprite; the status row says CHANGED.
+	assert_bool(medic.change_label.visible).is_false()
+	assert_str(medic.status_text()).contains("CHANGED")
 	assert_str(medic.change_label.text).starts_with("changed: Warden Mech 1 hp 40 -> ")
+	assert_str(medic.detail_text()).contains("changed: Warden Mech 1 hp 40 -> ")
 	assert_str(medic.intent_label.text).starts_with("Intent: Repair -> Warden Mech 1 (+")
 	assert_that(medic._style.border_color).is_equal(FeelData.color("changed"))
 	# The mark goes once the next bot action resolves, unless that revises it again.
@@ -137,7 +140,9 @@ func test_pointing_at_a_target_shows_the_preview_in_the_box_and_on_the_panels() 
 	var effect := choice.effect_on("warden_mech#1")
 	assert_object(effect).is_not_null()
 	var target = _screen.unit_panels["warden_mech#1"]
-	assert_bool(target.preview_label.visible).is_true()
+	# Held for the panel, but drawn on the arrows and meters, not under the sprite.
+	assert_bool(target.has_preview()).is_true()
+	assert_bool(target.preview_label.visible).is_false()
 	# The target's own line first; a Warden hit also means to repair itself.
 	assert_str(target.preview_label.text).starts_with(FightTelegraph.effect_text(effect))
 	assert_str(_screen.preview_label.text).contains("Warden Mech 1 " + FightTelegraph.effect_text(effect))
@@ -147,7 +152,7 @@ func test_pointing_at_a_target_shows_the_preview_in_the_box_and_on_the_panels() 
 	# Pointing away clears it.
 	target.hovered.emit("warden_mech#1", false)
 	assert_object(_screen.shown_preview).is_null()
-	assert_bool(target.preview_label.visible).is_false()
+	assert_bool(target.has_preview()).is_false()
 
 
 func test_a_downing_choice_says_who_goes_down() -> void:

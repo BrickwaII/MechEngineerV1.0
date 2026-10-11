@@ -1,0 +1,57 @@
+{
+	"_comment": "Battle readability (R1-B): sizes and colors of the numbers on the battle screen. Arrow damage badges, KO marks, the player's own arrow, stat chips on unit cards, the unit detail card, and the NEXT bar's hover and order preview. Colors name data/feel/palette.json entries. Every value is a first guess, not balance. Read by ui/fight/readout_style.gd.",
+
+	"badge": {
+		"_comment": "The number on an arrow. at is how far along the arrow it sits (0 = the actor, 1 = the target). font_size stays a multiple of 10 (pixel font). ko_icon_px is the skull's drawn size. dim_alpha is a badge on a background arrow, ghost_alpha an arrow the previewed choice would replace.",
+		"at": 0.62,
+		"font_size": 20,
+		"pad_x": 6,
+		"pad_y": 2,
+		"border_px": 1,
+		"ko_border_px": 2,
+		"ko_icon_px": 24,
+		"dim_alpha": 0.8,
+		"ghost_alpha": 0.14,
+		"background": "background",
+		"text": "text_bright",
+		"old_text": "text_dim",
+		"attack": "danger",
+		"heal": "hp",
+		"guard": "selected",
+		"wait": "energy",
+		"ko": "danger",
+		"changed": "changed"
+	},
+	"player_arrow": {
+		"_comment": "The player's own arrow while a skill is selected and a target hovered.",
+		"color": "preview",
+		"badge_border": "preview",
+		"width_px": 3
+	},
+	"energy_preview": {
+		"_comment": "The cost of the selected skill blinking on the energy bar.",
+		"color": "energy_ghost"
+	},
+	"stats": {
+		"_comment": "The stat chips on every unit card: icon size in px, gap between chips, and the colors.",
+		"icon_px": 12,
+		"gap_px": 6,
+		"text": "text",
+		"guarded_text": "selected"
+	},
+	"detail": {
+		"_comment": "The hover card with a unit's full stats, skills and statuses.",
+		"width_px": 300,
+		"border": "panel_border_light",
+		"title": "text_bright",
+		"heading": "text_dim"
+	},
+	"timeline": {
+		"_comment": "NEXT bar: hovering a unit lights its upcoming slots and dims the rest; a choice that changes the order shows the order it would leave, titled in the preview color.",
+		"hover_color": "focus",
+		"hover_border_px": 3,
+		"dim_alpha": 0.35,
+		"preview_color": "preview",
+		"preview_title": "AFTER"
+	}
+}

@@ -123,9 +123,12 @@ func intent_change_text(fight: Fight, revision: IntentRevision) -> String:
 func describe_choice(fight: Fight, action: FightAction, choice: ChoicePreview) -> String:
 	var lines := PackedStringArray()
 	var actor := fight.pending_actor
-	lines.append("%s: %s -> %s" % [
-		actor.display_name if actor != null else "?", skill_name(fight, action.skill_id, actor.id if actor != null else ""),
-		unit_name(fight, action.target_id)])
+	var actor_name := actor.display_name if actor != null else "?"
+	var skill := skill_name(fight, action.skill_id, actor.id if actor != null else "")
+	if action.kind == FightAction.Kind.WAIT:
+		lines.append("%s: wait for %s" % [actor_name, skill])
+	else:
+		lines.append("%s: %s -> %s" % [actor_name, skill, unit_name(fight, action.target_id)])
 	if not choice.is_allowed():
 		lines.append("not allowed: %s" % choice.problem)
 		return "\n".join(lines)

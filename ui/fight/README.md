@@ -74,3 +74,28 @@ data/ui/battle_presentation.json. The whole screen uses `PixelTheme`.
 - Screenshots: `demo/capture_battle.gd` (needs a display) writes
   screenshots/battle_preview.png, battle_mid_fight.png,
   attack_strip_lv1_vs_max.png, ally_tiers.png, status_icons.png, victory.png.
+
+Readability (R1-B, Playtest 1 follow-up). Sizes and colors:
+data/feel/battle_readout.json (`ReadoutStyle`). The numbers come from
+fight/preview (`BattleReadout`, `ArrowBadge`), so they are what the fight
+resolves: tests/fight/preview/preview_matches_resolution_test.gd plays many
+seeded fights and checks every previewed number against the resolution.
+- `IntentArrows` draws a badge on every arrow: damage, `+heal` or `guard%`,
+  with a skull when the hit would down its target. With a skill selected and
+  a target under the pointer, the bot's own arrow (preview color) carries its
+  badge; enemy arrows show their plan after the choice (changed ones bright,
+  in the "changed" color, the old number struck out when only the number
+  changes) and the arrows it replaces fade to ghosts.
+- `PreviewBar`: the hp slice a hit would take blinks on the target's bar
+  (green past the fill for a heal); the selected skill's cost blinks on the
+  bot's energy bar as soon as the skill is picked.
+- `UnitPanel`: ATK, DEF (plus guard), SPD and BAT as icon chips on every
+  card; resting the pointer shows `UnitDetail`, the full stats, skills with
+  level, energy cost and effect, statuses, and an enemy's next move and why it
+  changed. The intent and preview words no longer sit under the sprite (the
+  labels keep their text for the detail card and tests); the log stays.
+- `TimelineBar`: hovering a unit lights its slots and dims the rest; a choice
+  that would change the order (pointing at WAIT previews a wait) shows the
+  order it would leave, titled AFTER.
+- Screenshots: `demo/capture_readability.gd` (needs a display) writes
+  screenshots/readability_*.png. Icons: tools/asset_gen/gen_readability_icons.py.
