@@ -50,6 +50,28 @@
 			]
 		},
 		{
+			"id": "tag-weight",
+			"name": "Personality tag weight",
+			"layer": "fight",
+			"applies": "next_fight",
+			"default": "per_action",
+			"options": [
+				{"id": "per_action", "name": "Per action (current)", "description": "Every tagged decision pushes its personality end once, so a bot that acts more often grows more."},
+				{"id": "per_energy", "name": "Per energy spent", "description": "A tagged decision pushes energy spent / energy_per_push times, at least min_weight times (a free action or a wait counts min_weight). Slow bots act less but spend more per action, so growth follows energy, not turn count.", "params": {"energy_per_push": 3.0, "min_weight": 0.25}}
+			]
+		},
+		{
+			"id": "skill-progression",
+			"name": "Skill progression",
+			"layer": "fight",
+			"applies": "next_fight",
+			"default": "ranks",
+			"options": [
+				{"id": "ranks", "name": "Named ranks (current)", "description": "Beam, Beam +1 to +5, Mega Beam, Mega Beam +1 to +5, Ultra Beam: data/combat/skill_ranks.json. Uses per rank rise; tier shifts add a power jump and a bonus effect."},
+				{"id": "flat_levels", "name": "Flat levels", "description": "Levels 1 to skill_levels.max_level every skill_levels.uses_per_level uses (data/post_fight/post_fight.json), each adding power_percent_per_level (data/combat/combat_tuning.json). No bonus effects."}
+			]
+		},
+		{
 			"id": "hp-carryover",
 			"name": "HP between fights",
 			"layer": "fight",
@@ -71,6 +93,17 @@
 				{"id": "by_act", "name": "By act table", "description": "Each region's faction from regions in data/combat/factions.json (act 1 human resistance, act 2 enhanced humans and the rival AI, act 3 aliens and the rival AI); tier by act and defense level."},
 				{"id": "mixed", "name": "Mixed random per region", "description": "Each region gets a faction from mixed_pool in data/combat/factions.json, fixed by its id; tier by act and defense level."},
 				{"id": "generic", "name": "Generic", "description": "No factions: the generic pools in data/combat/enemy_tables.json (scrap drones, rust hounds, sentry turrets, warden mechs)."}
+			]
+		},
+		{
+			"id": "odds-model",
+			"name": "Map odds",
+			"layer": "fight",
+			"applies": "live",
+			"default": "simulated",
+			"options": [
+				{"id": "simulated", "name": "Simulated auto-fights", "description": "The map's odds label comes from headless auto-fights of the current squad against the region's own enemy draw (fight/odds/); the panel shows the label and the win rate. runs and the label bands are in data/combat/odds.json."},
+				{"id": "formula", "name": "Stat formula", "description": "The old placeholder: squad attack plus defense against the region's defense level (odds in data/tuning/overworld.json); no percentage."}
 			]
 		},
 		{

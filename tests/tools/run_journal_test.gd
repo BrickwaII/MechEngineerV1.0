@@ -53,7 +53,10 @@ func test_a_bot_snapshot_holds_stats_skills_and_every_personality_field() -> voi
 	assert_str(str(snap.id)).is_equal(bot.id)
 	assert_int(int(snap.stats.attack)).is_equal(bot.stats.attack)
 	assert_int(int(snap.skills[0].level)).is_equal(4)
-	for field in ["generation", "aggressive_defensive", "solitary_supportive", "reactive_methodical"]:
+	# Every stored field, whatever the personality model holds.
+	assert_array((snap.personality as Dictionary).keys()).contains_exactly_in_any_order(
+		RunJournal.stored_fields(bot.personality).keys())
+	for field in ["generation", "aggressive", "defensive"]:
 		assert_bool((snap.personality as Dictionary).has(field)).is_true()
 
 
@@ -62,12 +65,17 @@ func test_bot_changes_list_only_what_changed() -> void:
 	var before: Dictionary = RunJournal.normalize(RunJournal.squad_snapshot(squad, null))
 	var bot := squad.get_fielded()[0]
 	bot.skills[0].level += 1
-	bot.personality.aggressive_defensive += 0.25
+	bot.personality.aggressive += 0.25
 	var changes := RunJournal.bot_changes(before, RunJournal.normalize(RunJournal.squad_snapshot(squad, null)))
 	assert_array(changes.keys()).is_equal([bot.id])
 	var mine: Dictionary = changes[bot.id]
 	assert_array(mine.keys()).contains_exactly_in_any_order(
-		["skill:%s" % bot.skills[0].display_name, "personality:aggressive_defensive"])
+		["skill:%s" % bot.skills[0].display_name, "personality:aggressive"])
+	var ledger := SkillUseLedger.new()
+	var with_ledger: Dictionary = RunJournal.normalize(RunJournal.squad_snapshot(squad, ledger))
+	ledger.set_banked(bot.id, bot.skills[0].display_name, 2)
+	var banked := RunJournal.bot_changes(with_ledger, RunJournal.normalize(RunJournal.squad_snapshot(squad, ledger)))
+	assert_array(banked[bot.id]["banked:%s" % bot.skills[0].display_name]).is_equal([0, 2])
 
 
 func test_differences_name_the_path_and_allow_rounding() -> void:

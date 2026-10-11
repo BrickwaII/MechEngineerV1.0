@@ -5,10 +5,13 @@ extends RefCounted
 ##
 ##   {"id": "b1", "name": "Bolt", "hp": 30,
 ##    "stats": {"hp": 30, "attack": 6, "defense": 4, "speed": 5, "elasticity": 2, "battery_capacity": 10},
-##    "skills": [{"name": "Strike", "level": 1}]}
+##    "skills": [{"name": "Strike", "level": 1}],
+##    "personality": {"generation": 1, "aggressive": 0.4, "defensive": 0.1}}
 ##
 ## "hp" (current hp) defaults to stats.hp. Skills are looked up by name in the
-## BotTuning skill catalog. Personality is not stored and comes back neutral.
+## BotTuning skill catalog. "personality" holds the generation and any of the
+## six ends (Personality.ENDS); left out, it comes back neutral at the
+## tuning's starting generation.
 
 
 static func to_dict(bot: Bot) -> Dictionary:
@@ -18,7 +21,12 @@ static func to_dict(bot: Bot) -> Dictionary:
 	var skills := []
 	for skill in bot.skills:
 		skills.append({"name": skill.display_name, "level": skill.level})
-	return {"id": bot.id, "name": bot.display_name, "hp": bot.hp, "stats": stats, "skills": skills}
+	var personality := {"generation": bot.personality.generation}
+	for pole in Personality.ENDS:
+		if bot.personality.get_end(pole) > 0.0:
+			personality[pole] = bot.personality.get_end(pole)
+	return {"id": bot.id, "name": bot.display_name, "hp": bot.hp, "stats": stats, "skills": skills,
+		"personality": personality}
 
 
 ## The bot `d` describes, or null with the reasons appended to `problems`.
@@ -47,7 +55,11 @@ static func from_dict(d: Dictionary, tuning: BotTuning, problems: Array[String])
 	var slots: Array[AugmentSlot] = []
 	for i in tuning.augment_slot_count:
 		slots.append(AugmentSlot.new())
-	var bot := Bot.new(str(d.get("id", "")), str(d.get("name", "")), stats, Personality.new(tuning.starting_generation), skills, slots)
+	var p_dict: Dictionary = d.get("personality", {}) if d.get("personality") is Dictionary else {}
+	var personality := Personality.new(int(p_dict.get("generation", tuning.starting_generation)))
+	for pole in Personality.ENDS:
+		personality.set(pole, float(p_dict.get(pole, 0.0)))
+	var bot := Bot.new(str(d.get("id", "")), str(d.get("name", "")), stats, personality, skills, slots)
 	bot.hp = int(d.get("hp", stats.hp))
 	for error in bot.validation_errors():
 		problems.append(error)

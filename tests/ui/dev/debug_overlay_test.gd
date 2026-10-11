@@ -122,3 +122,26 @@ func test_the_demo_plays_a_fight_with_the_overlay_attached() -> void:
 	demo.step()
 	assert_object(demo.sim.fight).is_not_same(finished)
 	assert_object(demo.overlay.fight).is_same(demo.sim.fight)
+
+
+func test_the_snapshot_shows_each_units_personality() -> void:
+	var sim := _fight()
+	var planner := IntentPlanner.new()
+	var source := func(f: Fight, unit: Combatant) -> String: return DebugOverlay.unit_personality(planner, f, unit)
+	var snap := DebugOverlay.snapshot(sim.fight, 5, Callable(), source)
+	for i in sim.fight.combatants.size():
+		var c := sim.fight.combatants[i]
+		var u: Dictionary = snap.units[i]
+		if c.side == Combatant.Side.ENEMY:
+			assert_str(u.personality).is_equal(
+				DebugOverlay.personality_text(planner.personality_of(c), planner.weights.lean_floor))
+		else:
+			assert_str(u.personality).is_not_empty()
+
+
+func test_personality_text_names_the_larger_end_and_its_lean() -> void:
+	var p := Personality.new(2, -0.6, 0.4)
+	p.reactive = 3.0
+	p.methodical = 1.0
+	assert_str(DebugOverlay.personality_text(p, 1.0)).is_equal("agg .60 sup .40 [rea .50]")
+	assert_str(DebugOverlay.personality_text(Personality.new(3), 1.0)).is_equal("bal .00 bal .00 bal .00")

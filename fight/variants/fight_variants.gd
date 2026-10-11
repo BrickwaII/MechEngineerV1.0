@@ -36,6 +36,16 @@ const PERSONALITY_CURRENT := "current"
 const PERSONALITY_BY_TARGET := "by_target"
 const PERSONALITY_OFF := "off"
 
+## How bot skills grow. TODO(decision: skill-ranks).
+const SKILL_PROGRESSION := "skill-progression"
+const PROGRESSION_RANKS := "ranks"
+const PROGRESSION_FLAT := "flat_levels"
+
+## What one tagged decision counts for in personality drift.
+const TAG_WEIGHT := "tag-weight"
+const TAG_WEIGHT_PER_ACTION := "per_action"
+const TAG_WEIGHT_PER_ENERGY := "per_energy"
+
 const HP_CARRYOVER := "hp-carryover"
 const HP_FULL_HEAL := "full_heal"
 const HP_CARRY := "carry"
@@ -46,14 +56,22 @@ const FACTIONS_BY_ACT := "by_act"
 const FACTIONS_MIXED := "mixed"
 const FACTIONS_GENERIC := "generic"
 
+## How the map judges odds (read by the overworld through OddsEstimator).
+const ODDS_MODEL := "odds-model"
+const ODDS_SIMULATED := "simulated"
+const ODDS_FORMULA := "formula"
+
 ## Every fight decision this class knows, with the options code implements.
 const KNOWN := {
 	WAIT_FORM: [WAIT_BANKED, WAIT_EXTRA_ENERGY, WAIT_BONUS_DAMAGE],
 	WAIT_LENGTH: [WAIT_LENGTH_SNAP, WAIT_LENGTH_EXACT],
 	ELASTICITY: [ELASTICITY_NONE, ELASTICITY_BIG_HITS, ELASTICITY_KNOCKBACK, ELASTICITY_ENERGY],
 	PERSONALITY_MAP: [PERSONALITY_CURRENT, PERSONALITY_BY_TARGET, PERSONALITY_OFF],
+	SKILL_PROGRESSION: [PROGRESSION_RANKS, PROGRESSION_FLAT],
+	TAG_WEIGHT: [TAG_WEIGHT_PER_ACTION, TAG_WEIGHT_PER_ENERGY],
 	HP_CARRYOVER: [HP_FULL_HEAL, HP_CARRY, HP_PARTIAL_HEAL],
 	ENEMY_FACTIONS: [FACTIONS_BY_ACT, FACTIONS_MIXED, FACTIONS_GENERIC],
+	ODDS_MODEL: [ODDS_SIMULATED, ODDS_FORMULA],
 }
 
 ## Decision id -> its default option id.
@@ -140,6 +158,10 @@ func is_chosen(decision: String, p_option: String) -> bool:
 ## A number from the chosen option's params, or `fallback` if it has none.
 func param_int(decision: String, key: String, fallback := 0) -> int:
 	return int(_params(decision).get(key, fallback))
+
+
+func param_float(decision: String, key: String, fallback := 0.0) -> float:
+	return float(_params(decision).get(key, fallback))
 
 
 func param_string(decision: String, key: String, fallback := "") -> String:

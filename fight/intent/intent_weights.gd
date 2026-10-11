@@ -3,8 +3,10 @@ extends RefCounted
 ## The hand-authored weights enemies score their options with, loaded from
 ## data/combat/intent/intent_weights.json.
 ##
-## Each weight is base + sum(lean x personality value) over the three
-## Personality scales, so a personality leans every choice it makes.
+## Each weight is base + sum(lean x personality lean) over the spectrums the
+## unit's generation weighs (Personality.is_active), so a personality leans
+## every choice it makes. A spectrum's lean is Personality.get_lean(): its two
+## ends' difference scaled to -1..1 by lean_floor, so the larger end wins.
 ## TODO(decision: d-personality-map): the weights are first guesses.
 
 const DEFAULT_PATH := "res://data/combat/intent/intent_weights.json"
@@ -28,6 +30,9 @@ const SCALE_KEYS: Array[String] = ["aggressive_defensive", "solitary_supportive"
 var _weights: Dictionary = {}
 ## Skill id -> role. Skills not listed are attacks.
 var _roles: Dictionary[String, String] = {}
+## Personality.get_lean()'s floor: below this many points across a spectrum's
+## two ends, the lean is the plain difference.
+var lean_floor := 1.0
 
 
 static func load_default() -> IntentWeights:
@@ -51,6 +56,7 @@ static func from_dict(d: Dictionary) -> IntentWeights:
 		for key in SCALE_KEYS:
 			leans.append(float(entry.get(key, 0.0)))
 		w._weights[name] = {"base": float(entry.get("base", 0.0)), "leans": leans}
+	w.lean_floor = float(d.get("lean_floor", 1.0))
 	var roles: Dictionary = d.get("skill_roles", {})
 	for id: String in roles:
 		if not id.begins_with("_"):
@@ -67,7 +73,8 @@ func weight(name: String, personality: Personality) -> float:
 	if personality != null:
 		var leans: Array[float] = entry.leans
 		for scale in Personality.SCALE_COUNT:
-			value += leans[scale] * personality.get_value(scale)
+			if personality.is_active(scale):
+				value += leans[scale] * personality.get_lean(scale, lean_floor)
 	return value
 
 
@@ -82,6 +89,8 @@ func validate() -> Array[String]:
 	for name in NAMES:
 		if not _weights.has(name):
 			problems.append("missing weight %s" % name)
+	if lean_floor <= 0.0:
+		problems.append("lean_floor must be above 0")
 	for id in _roles:
 		if not _roles[id] in [ROLE_ATTACK, ROLE_HEAL]:
 			problems.append("skill %s has unknown role %s" % [id, _roles[id]])

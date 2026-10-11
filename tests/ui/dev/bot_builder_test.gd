@@ -87,3 +87,32 @@ func test_stats_outside_the_tuning_warn_but_still_save() -> void:
 	_builder._stat_spins["speed"].value = 60
 	assert_str(_builder._problems.text).contains("Outside the draft tuning")
 	assert_int(_builder.save()).is_equal(OK)
+
+
+## Personality: six ends edited on the form, saved and loaded with the bot.
+func test_personality_ends_save_and_load() -> void:
+	_fill_form()
+	_builder._end_spins["aggressive"].value = 1.25
+	_builder._end_spins["defensive"].value = 0.5
+	_builder._end_spins["methodical"].value = 0.75
+	_builder._generation_spin.value = 2
+	var made: Bot = _builder.bot_from_form()
+	assert_array(made.personality.get_ends()).is_equal([1.25, 0.5, 0.0, 0.0, 0.0, 0.75])
+	assert_int(_builder.save()).is_equal(OK)
+	var loaded := BotLibrary.load_bot(BotLibrary.path_for(_builder.bot_dir, "hammer"))
+	assert_array(loaded.personality.get_ends()).is_equal([1.25, 0.5, 0.0, 0.0, 0.0, 0.75])
+	assert_int(loaded.personality.generation).is_equal(2)
+	_builder.show_bot(loaded)
+	assert_float(_builder._end_spins["aggressive"].value).is_equal(1.25)
+	assert_array(_builder._hexagon.after).is_equal(loaded.personality.get_ends())
+
+
+func test_bot_json_keeps_the_personality() -> void:
+	var tuning := BotTuning.load_default()
+	var bot := BotLibrary.new_bot(tuning, "j", "J")
+	bot.personality.supportive = 0.8
+	bot.personality.solitary = 0.3
+	var problems: Array[String] = []
+	var back := BotJson.from_dict(BotJson.to_dict(bot), tuning, problems)
+	assert_array(problems).is_empty()
+	assert_array(back.personality.get_ends()).is_equal(bot.personality.get_ends())

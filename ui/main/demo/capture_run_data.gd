@@ -116,7 +116,8 @@ func _battle_run() -> void:
 	await _settle(2)
 
 
-## Each bot turn: the first affordable damage skill on the first living enemy.
+## Each bot turn: the last affordable damage skill (a bot's own before Strike)
+## on the first living enemy.
 func _play(screen: BattleScreen) -> void:
 	var fight := screen.fight
 	var frames := 0
@@ -129,7 +130,9 @@ func _play(screen: BattleScreen) -> void:
 			continue
 		var actor := screen.handler.actor()
 		var acted := false
-		for skill in actor.skills():
+		var skills := actor.skills()
+		skills.reverse()
+		for skill in skills:
 			if not skill.is_damage() or not screen.handler.skill_problem(skill.id).is_empty():
 				continue
 			screen.send(FightCommand.select_skill(skill.id))

@@ -35,7 +35,7 @@ func test_the_timeline_reads_the_run_in_order() -> void:
 	assert_str(text).contains("── ACT 1 (lw12) ──")
 	assert_str(text).contains("A1 D2     attack Bothell")
 	assert_str(text).contains("-> VICTORY, 12 actions, 1m 20s real, 2 commands (1 refused)")
-	assert_str(text).contains("Ash: Strike 1→2")
+	assert_str(text).contains("Ash: Strike level 1→2")
 	assert_str(text).contains("END     LOST: every region lost")
 
 

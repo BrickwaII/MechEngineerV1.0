@@ -59,3 +59,21 @@ func test_command_line() -> void:
 	assert_int(main.main(PackedStringArray([]))).is_equal(1)
 	assert_int(main.main(PackedStringArray(["--decision", "nope", "--runs", "2"]))).is_equal(1)
 	assert_int(main.main(PackedStringArray(["--bogus", "1"]))).is_equal(1)
+
+
+## The growth decisions chain fights, carrying banked skill uses.
+func test_skill_progression_chains_fights_and_ranks_climb_slower() -> void:
+	var cmp := VariantComparison.run(FightVariants.SKILL_PROGRESSION, RUNS, 1, -1, "", "", 4)
+	assert_int(cmp.chain_fights).is_equal(4)
+	var options := cmp.results.map(func(r: VariantComparison.OptionResult) -> String: return r.option)
+	assert_array(options).is_equal([FightVariants.PROGRESSION_RANKS, FightVariants.PROGRESSION_FLAT])
+	assert_float(cmp.results[1].levels_per_bot).is_greater(cmp.results[0].levels_per_bot)
+	assert_str(cmp.format_text()).contains("lvl/fight")
+
+
+func test_tag_weight_reports_slow_and_fast_growth() -> void:
+	var cmp := VariantComparison.run(FightVariants.TAG_WEIGHT, RUNS, 1, -1, "", "", 2)
+	assert_int(cmp.results.size()).is_equal(2)
+	for r in cmp.results:
+		assert_float(r.drift_slow).is_greater(0.0)
+		assert_float(r.drift_fast).is_greater(0.0)

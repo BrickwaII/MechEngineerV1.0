@@ -48,7 +48,7 @@ setting; sounds and the three act loops are in `data/feel/audio.json`
 - Map (`ui/overworld/`): `MapFx` (hover, selection pop, captures, ring fill
   and pulse, pending-cost march), `MapChanges` (captures and resource moves
   held until the map is in view), `MeterBar.animate_to()` (trailing ghost),
-  `ActMusic` (crossfaded act loops), `FactionLookup` (P4's faction, or
+  `MusicDirector` (ui/common: one loop per act, crossfaded), `FactionLookup` (P4's faction, or
   nothing), the act title card during the zoom, and the shared-pool meter
   for the energy-grid variant.
 - Draft (`ui/draft/`): `DraftCard` flips in, lifts on hover and shows the

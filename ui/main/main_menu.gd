@@ -41,6 +41,8 @@ func _ready() -> void:
 	theme = ScreenTheme.theme()
 	_build()
 	refresh()
+	if MusicDirector.current != null:
+		MusicDirector.current.play_context(MusicDirector.MENU)
 
 
 func runs_folder() -> String:

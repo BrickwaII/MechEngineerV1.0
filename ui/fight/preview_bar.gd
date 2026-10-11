@@ -1,7 +1,8 @@
 extends GhostBar
 ## A GhostBar that can also show the choice preview: the hp a choice would
-## take blinks on the fill (or the hp it would restore, past the fill), and an
-## unknown amount hatches the bar. The caption ("HP 12/20") is drawn on top.
+## take blinks on the fill (or the hp it would restore, past the fill, in
+## green), and an unknown amount hatches the bar. On an energy bar the slice
+## is the selected skill's cost. The caption ("HP 12/20") is drawn on top.
 
 var caption := ""
 ## The value the previewed choice would leave, or -1 for no preview.
@@ -60,6 +61,8 @@ func _draw() -> void:
 			if width > 0.0:
 				var gain := x_to > x_now
 				var c := FeelData.color("popup_heal" if gain else "hp_ghost")
+				if kind == "energy" and not gain:
+					c = ReadoutStyle.color("energy_preview.color", "energy_ghost")
 				draw_rect(Rect2(inner.position + Vector2(from, 0), Vector2(width, inner.size.y)), Color(c, alpha))
 				# A notch at the predicted end, so the change reads without color.
 				draw_rect(Rect2(inner.position + Vector2(x_to - (1 if not gain else 0), -1), Vector2(1, inner.size.y + 2)),

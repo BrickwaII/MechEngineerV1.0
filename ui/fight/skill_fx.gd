@@ -61,7 +61,7 @@ static func step(level: int) -> Dictionary:
 ## The full fx for a skill at its level: the skill's look merged with its
 ## level step, plus fx_id, level and projectiles.
 static func for_skill(skill: CombatSkill) -> Dictionary:
-	return for_fx(fx_id_for(skill), skill.level if skill != null else 1)
+	return for_fx(fx_id_for(skill), skill.fx_level if skill != null else 1)
 
 
 static func for_fx(fx_id: String, level: int) -> Dictionary:

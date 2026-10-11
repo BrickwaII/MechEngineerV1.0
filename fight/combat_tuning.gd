@@ -41,6 +41,9 @@ var power_percent_per_level: int
 ## The most of one hit a guard may block, in percent.
 var max_guard_percent: int
 var skills: Dictionary[String, CombatSkill] = {}
+## Named ranks (data/combat/skill_ranks.json), used when the skill-progression
+## switch is "ranks".
+var skill_ranks: SkillRanks
 ## The fight-side switches of the variant switchboard. from_dict() gives the
 ## data file's defaults; the game sets the player's choices before a fight.
 var variants: FightVariants
@@ -61,6 +64,7 @@ static func load_file(path: String) -> CombatTuning:
 static func from_dict(d: Dictionary) -> CombatTuning:
 	var t := CombatTuning.new()
 	t.variants = FightVariants.defaults()
+	t.skill_ranks = SkillRanks.load_default()
 	t.action_threshold = int(d.timeline.action_threshold)
 	t.min_charge_per_tick = int(d.timeline.min_charge_per_tick)
 	t.recharge_milli_per_battery_per_tick = int(d.energy.recharge_milli_per_battery_per_tick)
@@ -153,3 +157,20 @@ func combat_skill_for_effect(effect_id: String) -> String:
 
 func skill(id: String) -> CombatSkill:
 	return skills.get(id)
+
+
+## True when bot skills grow by named ranks rather than flat levels.
+func uses_ranks() -> bool:
+	return variants.is_chosen(FightVariants.SKILL_PROGRESSION, FightVariants.PROGRESSION_RANKS) and skill_ranks != null
+
+
+## Skill `id` as a unit with `level` in it holds it, named `p_name` ("" keeps
+## the tuning's name): by rank or by flat level, as the skill-progression
+## switch says. Null for an unknown id.
+func skill_at(id: String, level: int, p_name := "") -> CombatSkill:
+	var base := skill(id)
+	if base == null:
+		return null
+	if uses_ranks():
+		return skill_ranks.apply(base, level, p_name, max_guard_percent)
+	return base.at_level(level, p_name, power_percent_per_level, max_guard_percent)

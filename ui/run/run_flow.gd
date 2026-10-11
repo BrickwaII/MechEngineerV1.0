@@ -129,6 +129,7 @@ func _ready() -> void:
 	variant_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, int(LABEL_MARGIN))
 	variant_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	get_tree().node_added.connect(_on_node_added)
+	stage_changed.connect(func(s: Stage) -> void: MusicDirector.follow_stage(Stage.keys()[s]))
 	if start_dir.is_empty() or not continue_run(start_dir):
 		new_run()
 
@@ -330,8 +331,8 @@ func load_run(path := "") -> bool:
 
 func _load_save(save: RunSave) -> bool:
 	if overworld == null:
-		_open_map(save.squad, save.ledger)
 		current_seed = save.run_seed
+		_open_map(save.squad, save.ledger)
 		if overworld.load_state(save.run_state()):
 			return true
 		new_run()
@@ -346,6 +347,7 @@ func _load_save(save: RunSave) -> bool:
 		overworld.fight_service = kept[4]
 		return false
 	current_seed = save.run_seed
+	overworld.odds.run_seed = current_seed
 	_close_readout_and_show_map()
 	return true
 
@@ -408,6 +410,7 @@ func _open_overworld() -> void:
 		overworld.start_picker = seeded_start
 	overworld.campaign_started.connect(_on_campaign_started)
 	add_child(overworld)
+	overworld.odds.run_seed = current_seed
 	_add_folder_button()
 
 

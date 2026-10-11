@@ -10,8 +10,9 @@ holds a tunable number.
 | `pixel_theme.gd`, `pixel_theme.tres` | `PixelTheme.theme()`: font, boxes, colors. Rebuild the .tres with `build_theme.gd` |
 | `game_settings.gd` | `GameSettings.shared()`: volumes, shake, reduced motion, animation speed; saved to `user://settings.cfg` |
 | `settings/settings_screen.tscn` | The settings screen. F10 (`open_settings`) opens it anywhere, or `SettingsScreen.open_overlay(get_tree().root)` |
-| `presentation.gd` | Autoload `Presentation`: applies settings to buses, owns the sound player, handles F10 |
+| `presentation.gd` | Autoload `Presentation`: applies settings to buses, owns the sound player and the music director, handles F10 |
 | `sound_player.gd`, `sound_throttle.gd` | `SoundPlayer.fire(&"hit_light")`: pitch and sample variation, throttled repeats |
+| `music_director.gd` | `MusicDirector.current`: the one music player, owned by `Presentation`. Crossfades between contexts (menu, map per act, battle and boss, readout, victory and defeat stings) from `data/feel/audio.json` "music_director"; RunFlow's stage changes drive it |
 | `feel_tween.gd` | `FeelTween.to(node, "position", v, "ui")`: named presets |
 | `hit_pause.gd` | `HitPause.trigger(get_tree(), "heavy")` on a landed hit |
 | `screen_shake.gd` | `ScreenShake.new(root).shake("big")`, big and small hits only |

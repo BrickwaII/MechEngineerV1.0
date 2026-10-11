@@ -14,14 +14,24 @@ extends RefCounted
 ## draft rule under test for draft-rule) and fights enemies drawn with that
 ## seed, so every option meets the same squads and enemies. Decisions that act
 ## between fights (hp-carryover) play `chain_fights` fights in a row per run,
-## stopping at the first defeat. Everything else plays one fight per run.
+## stopping at the first defeat; so do the decisions whose effect builds up
+## over fights (skill-progression, tag-weight), with banked skill uses carried
+## between them. Everything else plays one fight per run.
+##
+## Growth columns: grow/bot is the personality growth per bot per fight (summed
+## over the six ends); slow/fast splits it between the slowest and the fastest
+## bot of each squad, so tag-weight's fairness shows; lvl/fight is skill levels
+## (ranks) gained per bot per fight, and top lvl the highest level reached.
 ## Every other switch stays at its default.
 
 ## Decisions this tool can compare.
 const FIGHT_DECISIONS: Array[String] = [
 	FightVariants.WAIT_FORM, FightVariants.WAIT_LENGTH, FightVariants.ELASTICITY,
 	FightVariants.PERSONALITY_MAP, FightVariants.HP_CARRYOVER,
+	FightVariants.SKILL_PROGRESSION, FightVariants.TAG_WEIGHT,
 ]
+## Decisions whose runs chain fights.
+const CHAINED: Array[String] = [FightVariants.HP_CARRYOVER, FightVariants.SKILL_PROGRESSION, FightVariants.TAG_WEIGHT]
 const DRAFT_RULE := "draft-rule"
 ## Fight k of run i plays seed (base_seed + i) * CHAIN_SEED_STRIDE + k, so
 ## chained fights never repeat a seed. A seed layout, not a tunable.
@@ -35,8 +45,14 @@ class OptionResult:
 	var report: BatchReport
 	## Runs that won every fight they played.
 	var full_runs := 0
-	## Personality change per bot per fight, summed over the scales.
+	## Personality growth per bot per fight, summed over the ends.
 	var drift_per_bot := 0.0
+	## The same for the slowest and the fastest bot of each squad.
+	var drift_slow := 0.0
+	var drift_fast := 0.0
+	## Skill levels gained per bot per fight, and the highest level reached.
+	var levels_per_bot := 0.0
+	var top_level := 0
 	## Squad hp at the end of each run, in percent of max (0 when wiped).
 	var end_hp_percent := 0.0
 
@@ -72,7 +88,7 @@ static func run(
 	cmp.player_policy = p_player_policy if not p_player_policy.is_empty() else settings.compare_player_policy
 	cmp.enemy_policy = p_enemy_policy if not p_enemy_policy.is_empty() else settings.compare_enemy_policy
 	var chain := p_chain_fights if p_chain_fights > 0 else settings.compare_chain_fights
-	cmp.chain_fights = chain if p_decision == FightVariants.HP_CARRYOVER else 1
+	cmp.chain_fights = chain if p_decision in CHAINED else 1
 	FightScenario.make_policy(cmp.player_policy, cmp.problems)
 	FightScenario.make_policy(cmp.enemy_policy, cmp.problems)
 	var options := cmp.options_of(p_decision)
@@ -129,11 +145,23 @@ func _play_option(option: String) -> OptionResult:
 	var factory := BotFactory.new(bot_tuning)
 	var records: Array[Dictionary] = []
 	var drift_total := 0.0
+	var slow_total := 0.0
+	var fast_total := 0.0
+	var squad_fights := 0
+	var levels_total := 0
 	var bot_fights := 0
 	var hp_percent_total := 0.0
 	for i in runs:
 		var run_seed := base_seed + i
 		var bots := factory.build_squad(run_seed).get_fielded()
+		var ledger := SkillUseLedger.new()
+		var slowest := bots[0]
+		var fastest := bots[0]
+		for bot in bots:
+			if bot.stats.speed < slowest.stats.speed:
+				slowest = bot
+			if bot.stats.speed > fastest.stats.speed:
+				fastest = bot
 		var won_all := true
 		for k in chain_fights:
 			var squad: Array[SquadMemberSummary] = []
@@ -149,12 +177,24 @@ func _play_option(option: String) -> OptionResult:
 			var before := {}
 			for bot in bots:
 				before[bot.id] = PersonalityDrift.values_of(bot.personality)
-			PostFight.apply(sim.fight, bots, null, post_tuning)
+			var post := PostFight.apply(sim.fight, bots, ledger, post_tuning)
 			for bot in bots:
 				var after := PersonalityDrift.values_of(bot.personality)
+				var grown := 0.0
 				for s in after.size():
-					drift_total += absf(after[s] - before[bot.id][s])
+					grown += absf(after[s] - before[bot.id][s])
+				drift_total += grown
+				if bot == slowest:
+					slow_total += grown
+				if bot == fastest:
+					fast_total += grown
 				bot_fights += 1
+				for skill in bot.skills:
+					r.top_level = maxi(r.top_level, skill.level)
+			squad_fights += 1
+			for br in post.bots:
+				for change in br.skill_changes:
+					levels_total += maxi(0, change.levels_gained())
 			var end_hp := HpCarryover.end_hp_by_id(sim.fight)
 			for bot in bots:
 				bot.hp = HpCarryover.hp_after(end_hp.get(bot.id, bot.hp), bot.get_max_hp(), variants)
@@ -167,6 +207,9 @@ func _play_option(option: String) -> OptionResult:
 			r.full_runs += 1
 	r.report = BatchReport.from_records("%s=%s" % [decision, option], base_seed, records)
 	r.drift_per_bot = drift_total / bot_fights if bot_fights > 0 else 0.0
+	r.drift_slow = slow_total / squad_fights if squad_fights > 0 else 0.0
+	r.drift_fast = fast_total / squad_fights if squad_fights > 0 else 0.0
+	r.levels_per_bot = float(levels_total) / bot_fights if bot_fights > 0 else 0.0
 	r.end_hp_percent = hp_percent_total / runs if runs > 0 else 0.0
 	return r
 
@@ -193,17 +236,18 @@ func format_text() -> String:
 	lines.append("Each run drafts a fresh squad from its seed; enemies are drawn with the same seed. * marks the default.")
 	if chain_fights > 1:
 		lines.append("Each run plays up to %d fights in a row with the same squad, stopping at the first defeat." % chain_fights)
-	var header := "%-22s %8s %16s %18s %18s %18s %10s" % [
-		"option", "win rate", "actions", "ticks", "squad energy", "enemy energy", "drift/bot"]
+	var header := "%-22s %8s %16s %18s %18s %18s %10s %8s %8s %9s %7s" % [
+		"option", "win rate", "actions", "ticks", "squad energy", "enemy energy", "grow/bot", "slow", "fast",
+		"lvl/fight", "top lvl"]
 	if chain_fights > 1:
 		header += " %10s %10s" % ["full runs", "end hp%"]
 	lines.append(header)
 	for r in results:
 		var b := r.report
-		var line := "%-22s %7.1f%% %16s %18s %18s %18s %10.3f" % [
+		var line := "%-22s %7.1f%% %16s %18s %18s %18s %10.3f %8.3f %8.3f %9.3f %7d" % [
 			r.option + ("*" if r.is_default else ""), b.win_rate * 100.0,
 			b.actions.short_text(), b.ticks.short_text(), b.squad_energy.short_text(), b.enemy_energy.short_text(),
-			r.drift_per_bot]
+			r.drift_per_bot, r.drift_slow, r.drift_fast, r.levels_per_bot, r.top_level]
 		if chain_fights > 1:
 			line += " %9.1f%% %9.1f%%" % [100.0 * r.full_runs / maxi(1, runs), r.end_hp_percent]
 		lines.append(line)

@@ -13,9 +13,14 @@ extends PanelContainer
 ## Intents: each enemy's current plan from IntentPlanner (fight/intent/). A
 ## scene that already tracks intents can set `intent_source` to a
 ## Callable(fight: Fight, unit: Combatant) -> String to show its own instead.
+##
+## Personality: each enemy's leans as the intent planner weighs them (the
+## larger end of each spectrum and its lean, -1..1 scaled to 0..1, for
+## example "agg .60 sol .40 rea .60"; a spectrum its generation does not weigh
+## is in brackets), and each squad bot's tag.
 
 const Palette := preload("res://ui/dev/dev_palette.gd")
-const COLUMNS: Array[String] = ["Unit", "HP", "ATK", "DEF", "SPD", "ELA", "BAT", "Energy", "Gauge", "State", "Intent"]
+const COLUMNS: Array[String] = ["Unit", "HP", "ATK", "DEF", "SPD", "ELA", "BAT", "Energy", "Gauge", "State", "Personality", "Intent"]
 const NO_INTENT := "—"
 
 var fight: Fight:
@@ -25,6 +30,9 @@ var fight: Fight:
 		refresh()
 ## Callable(fight, unit) -> String. Defaults to planned_intent() with an IntentPlanner.
 var intent_source: Callable
+## Callable(fight, unit) -> String. Defaults to the planner's personality for
+## enemies (personality_text()) and the squad member's tag for bots.
+var personality_source: Callable
 var toggle_key := KEY_F3
 var timeline_count: int
 var refresh_seconds: float
@@ -46,6 +54,7 @@ func _init() -> void:
 	name = "DebugOverlay"
 	_planner = IntentPlanner.new()
 	intent_source = func(f: Fight, unit: Combatant) -> String: return planned_intent(_planner, f, unit)
+	personality_source = func(f: Fight, unit: Combatant) -> String: return unit_personality(_planner, f, unit)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style := StyleBoxFlat.new()
 	style.bg_color = Palette.OVERLAY
@@ -90,7 +99,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func refresh() -> void:
 	if _header == null:
 		return
-	var snap := snapshot(fight, timeline_count, intent_source)
+	var snap := snapshot(fight, timeline_count, intent_source, personality_source)
 	_header.text = snap.header
 	var ids: Array = snap.units.map(func(u: Dictionary) -> String: return u.id)
 	if ids != _built_for:
@@ -99,7 +108,7 @@ func refresh() -> void:
 	for u: Dictionary in snap.units:
 		var row: Array = _cells[u.id]
 		var values: Array = [u.name, u.hp_text, u.attack, u.defense, u.speed, u.elasticity, u.battery,
-			u.energy_text, u.gauge_text, u.state, u.intent]
+			u.energy_text, u.gauge_text, u.state, u.personality, u.intent]
 		var color: Color = Palette.DOWN if not u.alive else (Palette.PLAYER if u.side == "player" else Palette.ENEMY)
 		for i in values.size():
 			var cell: Label = row[i]
@@ -109,7 +118,8 @@ func refresh() -> void:
 
 
 ## Everything the overlay shows, as plain data. Pure: reads the fight only.
-static func snapshot(p_fight: Fight, count: int, p_intent_source: Callable = Callable()) -> Dictionary:
+static func snapshot(p_fight: Fight, count: int, p_intent_source: Callable = Callable(),
+		p_personality_source: Callable = Callable()) -> Dictionary:
 	if p_fight == null:
 		return {"header": "Debug · no fight", "units": [], "timeline": []}
 	var threshold := p_fight.tuning.action_threshold
@@ -143,6 +153,7 @@ static func snapshot(p_fight: Fight, count: int, p_intent_source: Callable = Cal
 			"gauge_text": "%d/%d" % [c.gauge, threshold],
 			"state": state,
 			"intent": intent,
+			"personality": str(p_personality_source.call(p_fight, c)) if p_personality_source.is_valid() else "",
 		})
 	var timeline := []
 	if not p_fight.is_over():
@@ -164,6 +175,32 @@ static func planned_intent(planner: IntentPlanner, p_fight: Fight, unit: Combata
 	var target := p_fight.combatant(intent.target_id())
 	return "%s %s → %s (%d)" % [intent.kind_name(), skill.display_name if skill != null else intent.skill_id(),
 		target.display_name if target != null else intent.target_id(), intent.amount]
+
+
+## `unit`'s personality as the overlay shows it: the planner's leans for an
+## enemy, the squad summary's tag for a bot.
+static func unit_personality(planner: IntentPlanner, p_fight: Fight, unit: Combatant) -> String:
+	if unit.side == Combatant.Side.ENEMY:
+		return personality_text(planner.personality_of(unit), planner.weights.lean_floor)
+	for m in p_fight.request.squad:
+		if m.id == unit.id:
+			return m.personality_tag
+	return ""
+
+
+## "agg .60 sol .40 [rea .60]": per spectrum, the larger end's first three
+## letters and its lean (Personality.get_lean, as a size); brackets mark a
+## spectrum the planner does not weigh for this generation; "bal" a tie.
+static func personality_text(p: Personality, lean_floor: float) -> String:
+	if p == null:
+		return ""
+	var parts := PackedStringArray()
+	for scale in Personality.SCALE_COUNT:
+		var lean := p.get_lean(scale, lean_floor)
+		var end: String = "bal" if is_zero_approx(lean) else Personality.POLES[scale][0 if lean < 0.0 else 1].substr(0, 3)
+		var text := "%s %s" % [end, ("%.2f" % absf(lean)).trim_prefix("0")]
+		parts.append(text if p.is_active(scale) else "[%s]" % text)
+	return " ".join(parts)
 
 
 func _rebuild_rows(units: Array) -> void:

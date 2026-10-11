@@ -1,5 +1,6 @@
 {
-	"_comment": "How enemies pick their intent. Every candidate action gets a score; the highest wins. Each weight is base + sum of (lean x personality value), where a personality value runs from -1 (aggressive, solitary, reactive) to +1 (defensive, supportive, methodical). Every number here is a first guess. TODO(decision: d-personality-map).",
+	"_comment": "How enemies pick their intent. Every candidate action gets a score; the highest wins. Each weight is base + sum of (lean x personality value), where a personality value is the spectrum's lean from -1 (aggressive, solitary, reactive) to +1 (defensive, supportive, methodical): (second end - first end) / max(first end + second end, lean_floor). Each spectrum has two ends that only grow, so past lean_floor the lean is the share by which the larger end wins. Every number here is a first guess. TODO(decision: d-personality-map).",
+	"lean_floor": 1.0,
 	"weights": {
 		"damage": {"_doc": "per point of damage dealt", "base": 1.0, "aggressive_defensive": -0.5},
 		"energy_cost": {"_doc": "subtracted per energy point the action spends", "base": 0.5, "aggressive_defensive": 0.5},

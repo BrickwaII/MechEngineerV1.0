@@ -4,16 +4,13 @@ extends GdUnitTestSuite
 
 const P := preload("res://tests/fight/post_fight/post_fight_test_helpers.gd")
 
-const AD := Personality.Scale.AGGRESSIVE_DEFENSIVE
 const SS := Personality.Scale.SOLITARY_SUPPORTIVE
-const RM := Personality.Scale.REACTIVE_METHODICAL
 
 
-func _pushes(values: Dictionary) -> Dictionary[String, int]:
-	var out: Dictionary[String, int] = {}
-	for scale: int in Personality.POLES:
-		for pole: String in Personality.POLES[scale]:
-			out[pole] = values.get(pole, 0)
+func _pushes(values: Dictionary) -> Dictionary[String, float]:
+	var out: Dictionary[String, float] = {}
+	for pole in Personality.ENDS:
+		out[pole] = float(values.get(pole, 0.0))
 	return out
 
 
@@ -30,13 +27,15 @@ func test_sample_fight_against_the_mapping() -> void:
 	# b: one wait, one hit, one solo.
 	assert_dict(report.bot("b").pole_pushes).is_equal(_pushes({"methodical": 1, "aggressive": 1, "solitary": 1}))
 
-	assert_float(a.personality.aggressive_defensive).is_equal_approx(-0.06, 0.0001)
-	assert_float(a.personality.solitary_supportive).is_equal_approx(-0.02, 0.0001)
-	assert_float(a.personality.reactive_methodical).is_equal_approx(-0.02, 0.0001)
-	# b is generation 1: only aggressive/defensive is active.
-	assert_float(b.personality.aggressive_defensive).is_equal_approx(-0.02, 0.0001)
-	assert_float(b.personality.solitary_supportive).is_equal(0.0)
-	assert_float(b.personality.reactive_methodical).is_equal(0.0)
+	assert_float(a.personality.aggressive).is_equal_approx(0.06, 0.0001)
+	assert_float(a.personality.solitary).is_equal_approx(0.02, 0.0001)
+	assert_float(a.personality.reactive).is_equal_approx(0.02, 0.0001)
+	# b is generation 1, and every spectrum still grows: the lock is gone.
+	assert_float(b.personality.aggressive).is_equal_approx(0.02, 0.0001)
+	assert_float(b.personality.solitary).is_equal_approx(0.02, 0.0001)
+	assert_float(b.personality.methodical).is_equal_approx(0.02, 0.0001)
+	for pole in ["defensive", "supportive"]:
+		assert_float(b.personality.get_end(pole)).is_equal(0.0)
 
 
 func test_no_personality_changes_mid_fight() -> void:
@@ -69,30 +68,100 @@ func test_drift_applies_only_once_per_fight() -> void:
 	assert_array(PersonalityDrift.values_of(a.personality)).is_equal(after)
 
 
-func test_opposite_pushes_cancel() -> void:
-	var shifts := PersonalityDrift.shifts(_pushes({"aggressive": 2, "defensive": 2, "solitary": 1, "supportive": 3}), Personality.new(3), P.tuning())
-	assert_float(shifts[AD]).is_equal(0.0)
-	assert_float(shifts[SS]).is_equal_approx(0.04, 0.0001)
+## The playtest ask: a zigzag does not cancel out. Both ends grow; the larger
+## one wins out.
+func test_opposite_pushes_both_grow() -> void:
+	var grow := PersonalityDrift.growth(_pushes({"aggressive": 2, "defensive": 2, "solitary": 1, "supportive": 3}), P.tuning())
+	assert_float(grow[Personality.ENDS.find("aggressive")]).is_equal_approx(0.04, 0.0001)
+	assert_float(grow[Personality.ENDS.find("defensive")]).is_equal_approx(0.04, 0.0001)
+	assert_float(grow[Personality.ENDS.find("solitary")]).is_equal_approx(0.02, 0.0001)
+	assert_float(grow[Personality.ENDS.find("supportive")]).is_equal_approx(0.06, 0.0001)
+	var p := Personality.new(3)
+	PersonalityDrift.apply(p, grow)
+	assert_str(p.get_tag()).is_equal("supportive")
 
 
-func test_net_drift_is_capped_per_fight() -> void:
-	var shifts := PersonalityDrift.shifts(_pushes({"aggressive": 50, "methodical": 50}), Personality.new(3), P.tuning())
-	assert_float(shifts[AD]).is_equal_approx(-0.1, 0.0001)
-	assert_float(shifts[RM]).is_equal_approx(0.1, 0.0001)
+func test_growth_per_end_is_capped_per_fight() -> void:
+	var grow := PersonalityDrift.growth(_pushes({"aggressive": 50, "methodical": 50}), P.tuning())
+	assert_float(grow[Personality.ENDS.find("aggressive")]).is_equal_approx(0.1, 0.0001)
+	assert_float(grow[Personality.ENDS.find("methodical")]).is_equal_approx(0.1, 0.0001)
 
 
-func test_inactive_scales_do_not_move() -> void:
-	var pushes := _pushes({"aggressive": 1, "supportive": 1, "methodical": 1})
-	var gen2 := PersonalityDrift.shifts(pushes, Personality.new(2), P.tuning())
-	assert_float(gen2[AD]).is_not_equal(0.0)
-	assert_float(gen2[SS]).is_not_equal(0.0)
-	assert_float(gen2[RM]).is_equal(0.0)
+func test_every_spectrum_grows_at_generation_one() -> void:
+	var p := Personality.new(1)
+	PersonalityDrift.apply(p, PersonalityDrift.growth(_pushes({"aggressive": 1, "supportive": 1, "methodical": 1}), P.tuning()))
+	assert_float(p.aggressive).is_greater(0.0)
+	assert_float(p.supportive).is_greater(0.0)
+	assert_float(p.methodical).is_greater(0.0)
 
 
-func test_values_stay_within_the_scale() -> void:
-	var p := Personality.new(1, -0.99)
-	PersonalityDrift.apply(p, [-0.1, 0.0, 0.0] as Array[float])
-	assert_float(p.aggressive_defensive).is_equal(-1.0)
+## The old -1 cap is gone: ends keep growing.
+func test_ends_have_no_cap() -> void:
+	var p := Personality.new(1, -1.0)
+	for i in 20:
+		PersonalityDrift.apply(p, PersonalityDrift.growth(_pushes({"aggressive": 5}), P.tuning()))
+	assert_float(p.aggressive).is_equal_approx(3.0, 0.0001)
+	assert_float(p.get_lean(Personality.Scale.AGGRESSIVE_DEFENSIVE, 1.0)).is_equal(-1.0)
+
+
+func test_growth_never_shrinks_an_end() -> void:
+	var p := Personality.new(3, 0.5)
+	PersonalityDrift.apply(p, [-1.0, -1.0, 0.0, 0.0, 0.0, 0.0] as Array[float])
+	assert_float(p.defensive).is_equal_approx(0.5, 1e-6)
+	assert_float(p.aggressive).is_equal(0.0)
+
+
+func _tag(actor: String, kind: int, cost_points: int, labels: Array) -> ActionTag:
+	var t := ActionTag.new()
+	t.actor_id = actor
+	t.kind = kind
+	t.skill_id = "x"
+	t.energy_cost_milli = cost_points * Combatant.MILLI
+	t.labels.assign(labels)
+	return t
+
+
+## tag-weight per_energy: a decision counts energy spent / energy_per_push,
+## at least min_weight.
+func test_per_energy_weights_tags_by_energy_spent() -> void:
+	var t := P.tuning()
+	var v := FightVariants.defaults()
+	v.choose(FightVariants.TAG_WEIGHT, FightVariants.TAG_WEIGHT_PER_ENERGY)
+	t.apply_variants(v)
+	t.energy_per_push = 3.0
+	t.min_weight = 0.25
+	var tags: Array[ActionTag] = [
+		_tag("a", FightAction.Kind.SKILL, 6, ["hit_enemy"]),
+		_tag("a", FightAction.Kind.SKILL, 0, ["hit_enemy"]),
+		_tag("a", FightAction.Kind.WAIT, 6, ["wait"]),
+	]
+	var pushes := PersonalityDrift.tally(tags, "a", t)
+	assert_float(pushes["aggressive"]).is_equal_approx(2.25, 1e-6)
+	assert_float(pushes["methodical"]).is_equal_approx(0.25, 1e-6)
+	t.tag_weight = FightVariants.TAG_WEIGHT_PER_ACTION
+	pushes = PersonalityDrift.tally(tags, "a", t)
+	assert_float(pushes["aggressive"]).is_equal(2.0)
+	assert_float(pushes["methodical"]).is_equal(1.0)
+
+
+## The fairness the switch is for: a slow bot that acts half as often but
+## spends twice the energy per action grows as much under per_energy.
+func test_per_energy_evens_out_a_slow_bot() -> void:
+	var t := P.tuning()
+	t.tag_weight = FightVariants.TAG_WEIGHT_PER_ENERGY
+	t.energy_per_push = 3.0
+	t.min_weight = 0.25
+	var fast: Array[ActionTag] = []
+	for i in 6:
+		fast.append(_tag("fast", FightAction.Kind.SKILL, 2, ["hit_enemy"]))
+	var slow: Array[ActionTag] = []
+	for i in 3:
+		slow.append(_tag("slow", FightAction.Kind.SKILL, 4, ["hit_enemy"]))
+	assert_float(PersonalityDrift.tally(fast, "fast", t)["aggressive"]).is_equal_approx(
+		PersonalityDrift.tally(slow, "slow", t)["aggressive"], 1e-6)
+	t.tag_weight = FightVariants.TAG_WEIGHT_PER_ACTION
+	assert_float(PersonalityDrift.tally(fast, "fast", t)["aggressive"]).is_equal(6.0)
+	assert_float(PersonalityDrift.tally(slow, "slow", t)["aggressive"]).is_equal(3.0)
 
 
 func test_guard_on_self_pushes_defensive_and_ally_skills_push_supportive() -> void:
@@ -109,8 +178,8 @@ func test_guard_on_self_pushes_defensive_and_ally_skills_push_supportive() -> vo
 	help.skill_id = "patch_up"
 	help.labels.assign(["ally_target"])
 	var pushes := PersonalityDrift.tally([guard, other_self, help] as Array[ActionTag], "a", P.tuning())
-	assert_int(pushes["defensive"]).is_equal(1)
-	assert_int(pushes["supportive"]).is_equal(1)
+	assert_float(pushes["defensive"]).is_equal(1.0)
+	assert_float(pushes["supportive"]).is_equal(1.0)
 
 
 func test_tally_counts_only_the_bot_itself() -> void:
@@ -120,7 +189,7 @@ func test_tally_counts_only_the_bot_itself() -> void:
 	var theirs := ActionTag.new()
 	theirs.actor_id = "b"
 	theirs.labels.assign(["wait"])
-	assert_int(PersonalityDrift.tally([mine, theirs] as Array[ActionTag], "a", P.tuning())["methodical"]).is_equal(1)
+	assert_float(PersonalityDrift.tally([mine, theirs] as Array[ActionTag], "a", P.tuning())["methodical"]).is_equal(1.0)
 
 
 func test_pole_lookup() -> void:

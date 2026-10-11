@@ -78,6 +78,7 @@ dealt, energy spent and hp left.
 | `fight_stats_log.gd` | The JSON-lines log |
 | `variant_comparison.gd`, `compare_variants.gd` | Every option of one decision on the same seeded fights |
 | `faction_win_rates.gd`, `check_factions.gd` | Win rates per enemy faction, act tier and defense level |
+| `odds_calibration.gd`, `odds_calibration_cli.gd` | The map's simulated odds labels next to real auto-fight outcomes, per defense level |
 | `bot_library.gd`, `bot_json.gd` | Saved bots (one BotSquadStorage file each) and inline bots |
 
 The scenario format is in `data/scenarios/README.md`. The screens that use

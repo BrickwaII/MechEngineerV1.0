@@ -33,11 +33,13 @@ replacing the file (same size and layout) and updating its row here.
 | Extra ally bot parts (hover and spider legs, angular and barrel bodies, antenna and cyclops heads, cannon and drill arms; 3 tiers each) | `assets/fight/units/ally_frame/*.png` | `tools/asset_gen/gen_battle.py` | CC0 1.0 |
 | Fallback enemy walker (key colors, recolored per enemy type), 3 tiers | `assets/fight/units/enemy_fallback/*.png` | `tools/asset_gen/gen_battle.py` | CC0 1.0 |
 | Skill effects and projectiles (slash, impact ring, bolt, orb, arc wave, shield dome, wrench, gear, blast, charge, cross) | `assets/fight/effects/*.png` | `tools/asset_gen/gen_battle.py` | CC0 1.0 |
-| Intent icons and target reticle | `assets/fight/icons/*.png` | `tools/asset_gen/gen_battle.py` | CC0 1.0 |
+| Intent icons and target reticle | `assets/fight/icons/intent_*.png`, `assets/fight/icons/target_reticle.png` | `tools/asset_gen/gen_battle.py` | CC0 1.0 |
+| Stat icons (attack, defense, speed, battery) and the KO skull | `assets/fight/icons/stat_*.png`, `assets/fight/icons/ko_skull.png` | `tools/asset_gen/gen_readability_icons.py` | CC0 1.0 |
 | Tier plates and glow | `assets/fight/tiers/*.png` | `tools/asset_gen/gen_battle.py` | CC0 1.0 |
 | Skill sounds, level layers, victory and defeat stingers | `assets/fight/audio/*.wav` | `tools/asset_gen/gen_battle.py` (synthesized) | CC0 1.0 |
 | Map and between-fight sounds (region select, capture, resource gain and loss, card flip and snap, tally tick, level-up, personality shift, screen and zoom whooshes) | `assets/map/audio/sfx/*.wav` | `tools/asset_gen/gen_map_audio.py` (synthesized) | CC0 1.0 |
 | Act music loops (Lake Washington metro, North America, globe) | `assets/map/audio/music/*.wav` | `tools/asset_gen/gen_map_audio.py` (synthesized) | CC0 1.0 |
+| Context music (menu loop, battle loop and boss variant, post-fight readout loop, victory and defeat stings) | `assets/music/*.wav` | `tools/asset_gen/gen_music.py` (synthesized) | CC0 1.0 |
 | Audio bus layout (Music, Effects, Interface) | `assets/audio/default_bus_layout.tres` | hand-written | CC0 1.0 |
 | Asset license text | `assets/LICENSE.md` | hand-written | CC0 1.0 |
 

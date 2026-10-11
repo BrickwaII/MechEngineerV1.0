@@ -1,8 +1,13 @@
 class_name SkillProgress
 extends RefCounted
-## Turns skill uses in a fight into skill levels. Every uses_per_level uses
-## (banked uses from earlier fights included) raise the bot's matching skill by
-## levels_per_step, up to max_level; the remainder stays banked in the ledger.
+## Turns skill uses in a fight into skill levels; banked uses from earlier
+## fights count too, and the remainder stays banked in the ledger.
+##
+## Named ranks (skill-progression = ranks, the default): each rank takes its
+## own number of uses (uses_to_next in data/combat/skill_ranks.json), rising
+## rank by rank, up to the top rank.
+## Flat levels: every uses_per_level uses raise the skill by levels_per_step,
+## up to max_level.
 ##
 ## A combat skill counts toward the bot skill whose effect_id it maps to in
 ## combat_skill_effects. A use with no matching bot skill is counted in the
@@ -31,7 +36,9 @@ static func bot_skill_for(bot: Bot, combat_skill_id: String, tuning: PostFightTu
 
 
 ## Applies `uses` to `bot`'s skills and returns one change per combat skill used.
-static func apply(bot: Bot, uses: Dictionary[String, int], ledger: SkillUseLedger, tuning: PostFightTuning) -> Array[SkillChange]:
+## `combat` (the fight's tuning) gives the before and after numbers; null
+## leaves them out.
+static func apply(bot: Bot, uses: Dictionary[String, int], ledger: SkillUseLedger, tuning: PostFightTuning, combat: CombatTuning = null) -> Array[SkillChange]:
 	var changes: Array[SkillChange] = []
 	for combat_id: String in uses:
 		var change := SkillChange.new()
@@ -40,17 +47,24 @@ static func apply(bot: Bot, uses: Dictionary[String, int], ledger: SkillUseLedge
 		var skill := bot_skill_for(bot, combat_id, tuning)
 		if skill != null:
 			change.skill_name = skill.display_name
-			change.uses_per_level = tuning.uses_per_level
-			change.max_level = tuning.max_level
+			change.max_level = tuning.top_level()
 			change.level_before = skill.level
 			change.banked_before = ledger.get_banked(bot.id, skill.display_name)
 			var total := change.banked_before + change.uses
-			@warning_ignore("integer_division")
-			var steps := total / tuning.uses_per_level
-			if steps > 0:
-				skill.level = maxi(skill.level, mini(tuning.max_level, skill.level + steps * tuning.levels_per_step))
-			change.banked_after = total % tuning.uses_per_level
+			if tuning.uses_ranks():
+				while tuning.uses_to_next(skill.level) > 0 and total >= tuning.uses_to_next(skill.level):
+					total -= tuning.uses_to_next(skill.level)
+					skill.level += 1
+				change.banked_after = total if tuning.uses_to_next(skill.level) > 0 else 0
+			else:
+				@warning_ignore("integer_division")
+				var steps := total / tuning.uses_per_level
+				if steps > 0:
+					skill.level = maxi(skill.level, mini(tuning.max_level, skill.level + steps * tuning.levels_per_step))
+				change.banked_after = total % tuning.uses_per_level
 			ledger.set_banked(bot.id, skill.display_name, change.banked_after)
 			change.level_after = skill.level
+			change.uses_per_level = tuning.uses_to_next(skill.level) if tuning.uses_ranks() else tuning.uses_per_level
+			SkillNumbers.fill(change, bot.stats, combat, tuning)
 		changes.append(change)
 	return changes

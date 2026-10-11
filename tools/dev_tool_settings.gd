@@ -19,6 +19,8 @@ var demo_seconds_per_action: float
 ## Upper bounds for the builder's spin boxes.
 var builder_max_stat: int
 var builder_max_skill_level: int
+## The highest value the bot builder offers for one personality end.
+var builder_max_personality_end: float
 ## Variant comparison defaults: enemy level, each side's policy, and fights
 ## per run for decisions that act between fights.
 var compare_defense_level: int
@@ -55,6 +57,7 @@ static func load_file(path: String) -> DevToolSettings:
 	s.demo_seconds_per_action = float(d.demo_seconds_per_action)
 	s.builder_max_stat = int(d.builder_max_stat)
 	s.builder_max_skill_level = int(d.builder_max_skill_level)
+	s.builder_max_personality_end = float(d.get("builder_max_personality_end", 5.0))
 	s.compare_defense_level = int(d.compare_defense_level)
 	s.compare_player_policy = str(d.compare_player_policy)
 	s.compare_enemy_policy = str(d.compare_enemy_policy)

@@ -201,16 +201,17 @@ static func stored_fields(resource: Resource) -> Dictionary:
 
 
 ## Per bot, every field that differs between two squad snapshots' bots:
-## {bot id: {"hp": [before, after], "skill:Strike": [1, 2],
+## {bot id: {"hp": [before, after], "skill:Strike": [1, 2], "banked:Strike":
+## [0, 3] (uses banked toward the next level),
 ## "personality:aggressive_defensive": [0.1, 0.2]}}. Bots with no change are
 ## left out.
 static func bot_changes(before: Dictionary, after: Dictionary) -> Dictionary:
 	var old := {}
 	for b: Dictionary in before.get("bots", []):
-		old[b.id] = _flat_bot(b)
+		old[b.id] = _flat_bot(b, before.get("banked", {}))
 	var out := {}
 	for b: Dictionary in after.get("bots", []):
-		var now := _flat_bot(b)
+		var now := _flat_bot(b, after.get("banked", {}))
 		var was: Dictionary = old.get(b.id, {})
 		var changed := {}
 		for key: String in now:
@@ -221,10 +222,11 @@ static func bot_changes(before: Dictionary, after: Dictionary) -> Dictionary:
 	return out
 
 
-static func _flat_bot(b: Dictionary) -> Dictionary:
+static func _flat_bot(b: Dictionary, banked: Dictionary) -> Dictionary:
 	var flat := {"hp": b.get("hp")}
 	for s: Dictionary in b.get("skills", []):
 		flat["skill:%s" % s.name] = s.level
+		flat["banked:%s" % s.name] = int(banked.get(SkillUseLedger.key(str(b.id), str(s.name)), 0))
 	var p: Dictionary = b.get("personality", {})
 	for key: String in p:
 		flat["personality:%s" % key] = p[key]

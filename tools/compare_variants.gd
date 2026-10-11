@@ -9,7 +9,7 @@ extends SceneTree
 ##
 ## Options (defaults in data/scenarios/_dev_tools.json):
 ##   --decision ID   d-wait, d-wait-length, d-elasticity, d-personality-map,
-##                   hp-carryover or draft-rule; or a campaign decision:
+##                   hp-carryover, skill-progression, tag-weight or draft-rule; or a campaign decision:
 ##                   energy-grid, grid-cost-owner, squad-size, act-pacing,
 ##                   auto-expansion (required)
 ##   --runs N        runs per option (campaigns: campaign_compare_runs)
@@ -17,7 +17,7 @@ extends SceneTree
 ##   --level N       enemy defense level, 0 to 5
 ##   --policy NAME   the squad's policy: simple, random, intent or patient
 ##   --enemy-policy NAME  the enemies' policy
-##   --chain N       fights per run for hp-carryover
+##   --chain N       fights per run for hp-carryover, skill-progression, tag-weight
 ## --level, --policy, --enemy-policy and --chain apply to fight decisions only.
 ## Exits 0 on success, 1 on a bad option or decision.
 

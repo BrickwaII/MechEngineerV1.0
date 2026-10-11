@@ -1,7 +1,8 @@
 class_name DraftCard
 extends Button
 ## One bot in the draft: its sprite from the manifest (an ally frame with a
-## look picked from the bot's id), name, personality, stats and skills. It
+## look picked from the bot's id), name, personality (its tag and hexagon),
+## stats and skills. It
 ## flips in when the draft opens, lifts under the cursor and glows in the ally
 ## color when picked. Timings: data/feel/screens.json "draft".
 ##
@@ -147,6 +148,15 @@ func _build() -> void:
 
 	DraftScreen._label(col, bot.display_name, 20, Palette.TEXT_BRIGHT)
 	DraftScreen._label(col, bot.personality.get_tag().to_upper(), 10, Palette.ACTIVE)
+	var hex := PersonalityHexagon.new()
+	hex.name = "Hexagon"
+	var hex_size: Array = ScreenFeel.value("readout.draft_hex_size", [150, 118])
+	hex.custom_minimum_size = Vector2(hex_size[0], hex_size[1])
+	hex.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	hex.min_extent = ScreenFeel.number("readout.hex_min_extent", 0.5)
+	hex.font_size = 8
+	hex.show_ends(bot.personality.get_ends())
+	col.add_child(hex)
 	var s := bot.stats
 	DraftScreen._label(col, "HP %d\nATK %d   DEF %d\nSPD %d   ELA %d\nBATTERY %d" % [
 		s.hp, s.attack, s.defense, s.speed, s.elasticity, s.battery_capacity], 10, Palette.TEXT)

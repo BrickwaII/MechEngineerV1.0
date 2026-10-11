@@ -68,9 +68,9 @@ class _Timeline:
 			RunJournal.KIND_RUN_START:
 				var variants: Dictionary = line.get("variants", {})
 				var v := ", ".join(variants.keys().map(func(k: Variant) -> String: return "%s=%s" % [k, variants[k]]))
-				out.append("RUN seed %s · started %s · squad %s of %s · variants: %s" % [
-					line.get("seed"), str(line.get("ts", "")).left(16), line.get("squad_size", "?"),
-					line.get("draft_size", "?"), v if not v.is_empty() else "defaults"])
+				out.append("RUN seed %d · started %s · squad %d of %d · variants: %s" % [
+					int(line.get("seed", 0)), str(line.get("ts", "")).left(16), int(line.get("squad_size", 0)),
+					int(line.get("draft_size", 0)), v if not v.is_empty() else "defaults"])
 			RunJournal.KIND_SESSION:
 				out.append("%s  %s session %s (%s)" % [stamp, where, line.get("event"), str(line.get("ts", "")).left(16)])
 			RunJournal.KIND_DRAFT_OPEN:
@@ -88,8 +88,9 @@ class _Timeline:
 			RunJournal.KIND_FIGHT_START:
 				commands = 0
 				refused = 0
-				fight_line = "%s  %s   fight %s: %s %s (level %s, seed %s)" % [stamp, where, line.get("fight"),
-					line.get("fight_kind"), line.get("territory_name", line.get("territory")), line.get("level"), line.get("seed")]
+				fight_line = "%s  %s   fight %d: %s %s (level %d, seed %d)" % [stamp, where, int(line.get("fight", 0)),
+					line.get("fight_kind"), line.get("territory_name", line.get("territory")), int(line.get("level", 0)),
+					int(line.get("seed", 0))]
 				if detail:
 					out.append(fight_line)
 			RunJournal.KIND_COMMAND:
@@ -101,13 +102,13 @@ class _Timeline:
 						"" if str(line.get("problem", "")).is_empty() else "  (refused: %s)" % line.problem])
 			RunJournal.KIND_RESOLVED:
 				if detail:
-					out.append("%s             = #%s %s %s%s" % [stamp, line.get("index"), line.get("side"), line.get("tag"), _events_text(line)])
+					out.append("%s             = #%d %s %s%s" % [stamp, int(line.get("index", 0)), line.get("side"), line.get("tag"), _events_text(line)])
 			RunJournal.KIND_FIGHT_END:
 				var won := str(line.get("outcome")) == "victory"
 				act_won += 1 if won else 0
 				act_lost += 0 if won else 1
-				out.append("%s  %s   -> %s, %s actions, %s real, %d commands (%d refused), grid -%s" % [
-					stamp, where, str(line.get("outcome")).to_upper(), line.get("actions"),
+				out.append("%s  %s   -> %s, %d actions, %s real, %d commands (%d refused), grid -%s" % [
+					stamp, where, str(line.get("outcome")).to_upper(), int(line.get("actions", -1)),
 					RunTimeline.span_text(float(line.get("seconds", 0.0))), commands, refused,
 					snappedf(float(line.get("grid_cost", 0.0)), 0.1)])
 			RunJournal.KIND_POST_FIGHT:
@@ -119,7 +120,7 @@ class _Timeline:
 			RunJournal.KIND_EXPANDED:
 				out.append("%s  %s   %s went over to your side" % [stamp, where, line.get("region_name", line.get("region"))])
 			RunJournal.KIND_FEEDBACK:
-				out.append("%s  %s F8 report: %s, mood %s (%s)" % [stamp, where, line.get("category"), line.get("rating"), line.get("folder")])
+				out.append("%s  %s F8 report: %s, mood %d (%s)" % [stamp, where, line.get("category"), int(line.get("rating", 0)), line.get("folder")])
 			RunJournal.KIND_RUN_END:
 				_close_act(line)
 				ended = true
@@ -180,7 +181,7 @@ class _Timeline:
 		var parts := PackedStringArray()
 		for e: Dictionary in line.get("events", []):
 			if e.kind in ["hit", "heal"]:
-				parts.append("%s %s %s" % [e.kind, e.target, e.amount])
+				parts.append("%s %s %d" % [e.kind, e.target, int(e.amount)])
 			elif e.kind == "down":
 				parts.append("%s down" % e.target)
 		return "" if parts.is_empty() else ": " + ", ".join(parts)
@@ -190,7 +191,9 @@ class _Timeline:
 		for key: String in changed:
 			var pair: Array = changed[key]
 			if key.begins_with("skill:"):
-				parts.append("%s %s→%s" % [key.trim_prefix("skill:"), pair[0], pair[1]])
+				parts.append("%s level %d→%d" % [key.trim_prefix("skill:"), int(pair[0]), int(pair[1])])
+			elif key.begins_with("banked:"):
+				parts.append("%s %+d uses" % [key.trim_prefix("banked:"), int(pair[1]) - int(pair[0])])
 			elif key.begins_with("personality:") and pair[0] is float and pair[1] is float:
 				parts.append("%s %+.3f" % [key.trim_prefix("personality:"), float(pair[1]) - float(pair[0])])
 		return ", ".join(parts)
