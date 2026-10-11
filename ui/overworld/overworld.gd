@@ -8,7 +8,7 @@ extends Control
 ## (captures, energy, material, grid) are held while the map is out of sight
 ## or under a message, then shown at once as a capture sweep, number popups
 ## and bars that slide with a trailing ghost (MapChanges); the act zoom plays
-## a whoosh, an act title card and a music crossfade (ActMusic); the
+## a whoosh, an act title card and a music crossfade (MusicDirector); the
 ## territory panel names the enemy faction holding a hostile region, with
 ## its icon (FactionLookup over P4's FactionTable).
 ##
@@ -67,7 +67,7 @@ var _zoom_from := [Vector2(0.5, 0.5), 1.0]
 var _events: PackedStringArray = []
 var _hover_wait := false
 ## The map's music, one loop per act.
-var music: ActMusic
+var music: MusicDirector
 ## The odds the panel shows for attacking a region.
 var odds: MapOdds
 ## Which enemy faction holds each region, from data/combat/.
@@ -107,9 +107,11 @@ var _status: Label
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	theme = ScreenTheme.theme()
-	music = ActMusic.new()
-	music.name = "ActMusic"
-	add_child(music)
+	music = MusicDirector.current
+	if music == null:
+		music = MusicDirector.new()
+		music.name = "Music"
+		add_child(music)
 	odds = MapOdds.new()
 	odds.name = "MapOdds"
 	odds.estimated.connect(_on_odds_estimated)
@@ -255,12 +257,13 @@ func _use_campaign(c: Campaign) -> void:
 	campaign = c
 	campaign.changed.connect(_refresh)
 	campaign.event_logged.connect(_event)
+	campaign.fight_started.connect(_on_fight_started)
 	_use_view_for(campaign.map)
 	map_view.campaign = campaign
 	map_view.selected_id = ""
 	_seen = {}
 	_unshown = null
-	music.play_act(campaign.state.act)
+	music.play_map(campaign.state.act)
 	_hide_modal()
 	_refresh()
 
@@ -796,6 +799,11 @@ func odds_text(region_id: String) -> String:
 	return "%s · %d%%" % [e.label.to_upper(), e.percent()]
 
 
+## The boss fight plays the boss variant of the battle music.
+func _on_fight_started(request: FightRequest) -> void:
+	music.boss_battle = request.territory_id == Campaign.BOSS_ID
+
+
 func _on_odds_estimated(region_id: String) -> void:
 	if campaign != null and region_id == map_view.selected_id:
 		_refresh_panel()
@@ -904,7 +912,7 @@ func _on_attack(region_id: String) -> void:
 ## Shows whatever the run now demands: the end, or a forced defense.
 func _check_forced() -> void:
 	if campaign.is_lost():
-		_show_end("Your network is gone", "Every territory has fallen. The run ends here.")
+		_show_end("Your network is gone", "Every territory has fallen. The run ends here.", false)
 		return
 	if campaign.is_payload_due():
 		# TODO(decision: boss-fight): the boss fight is a stub. The last act's
@@ -945,7 +953,8 @@ func _on_defend() -> void:
 		_show_message("DEFENSE · DEFEAT", "Lost %s" % region.name, "It is hostile again.", _check_forced)
 
 
-func _show_end(title: String, body: String) -> void:
+func _show_end(title: String, body: String, won: bool) -> void:
+	music.play_context(MusicDirector.VICTORY if won else MusicDirector.DEFEAT)
 	_show_modal("RUN OVER", title, body, [["NEW RUN", _on_new_run]])
 
 
@@ -962,9 +971,9 @@ func _on_boss() -> void:
 	if result == null:
 		return
 	if result.is_victory():
-		_show_end("The boss falls", "The squad beat the boss. The run is won.")
+		_show_end("The boss falls", "The squad beat the boss. The run is won.", true)
 	else:
-		_show_end("The boss holds", "The squad could not break the boss. The run ends here.")
+		_show_end("The boss holds", "The squad could not break the boss. The run ends here.", false)
 
 
 func _show_payload_zoom() -> void:

@@ -21,9 +21,9 @@ extends RefCounted
 ## The switchboard's odds-model decision picks this ("simulated", default) or
 ## the map's old stat formula ("formula", Campaign.odds_label()).
 
-const ODDS_MODEL := "odds-model"
-const MODEL_SIMULATED := "simulated"
-const MODEL_FORMULA := "formula"
+const ODDS_MODEL := FightVariants.ODDS_MODEL
+const MODEL_SIMULATED := FightVariants.ODDS_SIMULATED
+const MODEL_FORMULA := FightVariants.ODDS_FORMULA
 
 
 ## One estimate.

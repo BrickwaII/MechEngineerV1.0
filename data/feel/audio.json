@@ -430,6 +430,50 @@
 		"act3_globe": {
 			"file": "res://assets/map/audio/music/act3_globe.wav",
 			"volume_db": -7.0
+		},
+		"menu_loop": {
+			"file": "res://assets/music/menu_loop.wav",
+			"volume_db": -7.0
+		},
+		"battle_loop": {
+			"file": "res://assets/music/battle_loop.wav",
+			"volume_db": -6.0
+		},
+		"battle_boss_loop": {
+			"file": "res://assets/music/battle_boss_loop.wav",
+			"volume_db": -6.0
+		},
+		"readout_loop": {
+			"file": "res://assets/music/readout_loop.wav",
+			"volume_db": -7.0
+		},
+		"sting_victory": {
+			"file": "res://assets/music/sting_victory.wav",
+			"volume_db": -4.0
+		},
+		"sting_defeat": {
+			"file": "res://assets/music/sting_defeat.wav",
+			"volume_db": -4.0
+		}
+	},
+	"music_director": {
+		"_comment": "MusicDirector (ui/common): which track plays in each context, crossfaded over crossfade_ms (act changes on the map use screens.json music.crossfade_ms). stages maps RunFlow stage names to contexts. A sting plays once after fading the music out over sting_fade_ms, then leaves silence. The map's per-act loops are screens.json music.acts. Players use `bus`, so the music volume setting applies.",
+		"bus": "Music",
+		"crossfade_ms": 900,
+		"sting_fade_ms": 250,
+		"silent_db": -60,
+		"stages": {
+			"DRAFT": "menu",
+			"MAP": "map",
+			"FIGHT": "battle",
+			"POST_FIGHT": "readout"
+		},
+		"contexts": {
+			"menu": {"track": "menu_loop"},
+			"battle": {"track": "battle_loop", "boss_track": "battle_boss_loop"},
+			"readout": {"track": "readout_loop"},
+			"victory": {"track": "sting_victory", "sting": true},
+			"defeat": {"track": "sting_defeat", "sting": true}
 		}
 	},
 	"music_fade_ms": 400
