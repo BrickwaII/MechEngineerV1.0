@@ -43,6 +43,9 @@ static func direction_of_pole(pole: String) -> int:
 
 
 ## What one decision counts for: 1, or by energy spent with per_energy.
+## TODO(decision: tag-weight): per_energy counts energy *spent*; a free action
+## or a wait counts min_weight. compare_variants shows it does not close the
+## slow/fast gap (see the PR); energy gained between turns would.
 static func weight_of(tag: ActionTag, tuning: PostFightTuning) -> float:
 	if tuning.tag_weight != FightVariants.TAG_WEIGHT_PER_ENERGY:
 		return 1.0

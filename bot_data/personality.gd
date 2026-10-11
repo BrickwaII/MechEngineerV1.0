@@ -16,6 +16,9 @@ extends Resource
 ##
 ## Every spectrum can grow at every generation. The generation only decides
 ## how many spectrums the intent planner weighs (1, 2, then 3); see is_active().
+## TODO(decision: personality-generation): default until decided: generation
+## still gates what the planner weighs (today only enemies are planned), so
+## enemy behaviour is unchanged; it no longer locks growth.
 
 enum Scale { AGGRESSIVE_DEFENSIVE, SOLITARY_SUPPORTIVE, REACTIVE_METHODICAL }
 
