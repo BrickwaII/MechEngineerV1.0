@@ -10,6 +10,7 @@ python3 tools/asset_gen/gen_sprites.py   # sprites, effects, interface, icons (n
 python3 tools/asset_gen/gen_enemies.py   # enemy faction sprites in enemies/ (needs Pillow)
 python3 tools/asset_gen/gen_font.py      # Mech Pixel font (needs Pillow)
 python3 tools/asset_gen/gen_sfx.py       # sound effects and music loop
+python3 tools/asset_gen/gen_music.py     # context music in music/: menu, battle, boss, readout, stings
 godot --headless --import --path .       # reimport
 godot --headless --path . -s res://ui/common/build_theme.gd   # rebuild the theme
 ```
