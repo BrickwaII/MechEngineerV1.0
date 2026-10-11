@@ -1,14 +1,21 @@
 extends PanelContainer
 ## One unit on the battle screen: its animated sprite on a stage (tier plate,
-## glow, target reticle), name and personality tag, health and energy meters
-## (GhostBars that show every change and the choice preview), status icons,
-## and for enemies the intent telegraph with its icon. Emits clicked with the
-## mouse button and hovered when the pointer enters or leaves; the battle
-## screen turns those into FightCommands and previews.
+## glow, target reticle), name and personality tag, its stats as icon chips
+## (ATK, DEF, SPD, BAT), health and energy meters (GhostBars that show every
+## change and the choice preview: the hp slice a hit would take, the energy a
+## skill would cost), and status icons. Resting the pointer on the card shows
+## the full readout (UnitDetail). Emits clicked with the mouse button and
+## hovered when the pointer enters or leaves; the battle screen turns those
+## into FightCommands and previews.
+##
+## Enemy intents and preview numbers are drawn on the arrows (IntentArrows),
+## not under the sprite: the intent and preview labels still hold their words
+## (for the detail card and tests) but stay hidden.
 
 const UnitView := preload("res://ui/fight/unit_view.gd")
 const PreviewBar := preload("res://ui/fight/preview_bar.gd")
 const StatusRow := preload("res://ui/fight/status_row.gd")
+const UnitDetail := preload("res://ui/fight/unit_detail.gd")
 
 enum Highlight { NONE, ACTIVE, SELECTED, TARGETABLE }
 
@@ -19,6 +26,13 @@ const INTENT_ICONS := {
 	"guard": preload("res://assets/fight/icons/intent_guard.png"),
 }
 const CARD_WIDTH := 320
+## Stat id -> icon, in chip order.
+const STAT_ICONS := {
+	"atk": preload("res://assets/fight/icons/stat_attack.png"),
+	"def": preload("res://assets/fight/icons/stat_defense.png"),
+	"spd": preload("res://assets/fight/icons/stat_speed.png"),
+	"bat": preload("res://assets/fight/icons/stat_battery.png"),
+}
 
 signal clicked(unit_id: String, button_index: MouseButton)
 signal hovered(unit_id: String, inside: bool)
@@ -49,6 +63,12 @@ var intent_changed := false
 var intent_kind := ""
 ## True while the previewed choice would change this enemy's intent.
 var intent_would_change := false
+## Stat id ("atk", "def", "spd", "bat") -> its number label.
+var stat_labels: Dictionary[String, Label] = {}
+## The row holding the intent icon and words. Hidden: arrows carry intents.
+var intent_row: HBoxContainer
+## The enemy's intent in words, for the detail card.
+var intent_text := ""
 
 var _style := StyleBoxFlat.new()
 var _unit: Combatant
@@ -91,6 +111,26 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 	name_label.add_theme_color_override("font_color", FeelData.color("text_bright"))
 	name_label.clip_text = true
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var stat_row := HBoxContainer.new()
+	stat_row.name = "StatRow"
+	stat_row.add_theme_constant_override("separation", int(ReadoutStyle.number("stats.gap_px", 6)))
+	stat_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(stat_row)
+	for id: String in STAT_ICONS:
+		var icon := TextureRect.new()
+		icon.texture = STAT_ICONS[id]
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		var icon_px := ReadoutStyle.number("stats.icon_px", 12)
+		icon.custom_minimum_size = Vector2(icon_px, icon_px)
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		stat_row.add_child(icon)
+		var value := _label(stat_row, "", "SmallLabel")
+		value.name = "Stat_%s" % id
+		value.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		value.add_theme_color_override("font_color", ReadoutStyle.color("stats.text"))
+		stat_labels[id] = value
 	hp_bar = PreviewBar.new()
 	hp_bar.name = "HpBar"
 	hp_bar.kind = "hp"
@@ -122,7 +162,9 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 	tag_label.name = "TagLabel"
 	tag_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	if is_enemy:
-		var intent_row := HBoxContainer.new()
+		intent_row = HBoxContainer.new()
+		intent_row.name = "IntentRow"
+		intent_row.visible = false
 		intent_row.add_theme_constant_override("separation", 4)
 		intent_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		col.add_child(intent_row)
@@ -147,6 +189,7 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 	preview_label.add_theme_color_override("font_color", FeelData.color("preview"))
 	preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	preview_label.visible = false
+	tooltip_text = " "
 	mouse_entered.connect(func() -> void: hovered.emit(unit_id, true))
 	mouse_exited.connect(func() -> void: hovered.emit(unit_id, false))
 	refresh(unit, Highlight.NONE)
@@ -162,6 +205,7 @@ func refresh(unit: Combatant, p_highlight: Highlight, hp := -1, energy := -1) ->
 	view.set_state(unit.guard_percent > 0, not unit.is_alive())
 	view.set_targeted(p_highlight == Highlight.TARGETABLE, FeelData.color("enemy" if is_enemy else "ally"))
 	status_label.text = _prompt(unit, p_highlight)
+	_update_stats(unit)
 	_update_statuses()
 	_apply_style()
 	modulate = Color(1, 1, 1, BattleArt.number("downed_alpha", 0.55)) if not unit.is_alive() else Color.WHITE
@@ -193,6 +237,7 @@ func show_intent(tag: String, intent: String, change: String, kind := "") -> voi
 	tag_label.visible = not tag.is_empty()
 	intent_changed = not change.is_empty()
 	intent_kind = kind if not intent.is_empty() else ""
+	intent_text = intent
 	if intent_label != null:
 		intent_label.text = "Intent: %s" % (intent if not intent.is_empty() else "-")
 		intent_label.add_theme_color_override(
@@ -200,16 +245,23 @@ func show_intent(tag: String, intent: String, change: String, kind := "") -> voi
 		intent_icon.texture = INTENT_ICONS.get(intent_kind)
 		intent_icon.visible = intent_icon.texture != null
 		change_label.text = change
-		change_label.visible = intent_changed
+		# The reason shows in the detail card; the status row says CHANGED.
+		change_label.visible = false
 	_update_statuses()
 	_apply_style()
 
 
-## Shows what the previewed choice would do to this unit; "" hides it.
+## Holds what the previewed choice would do to this unit in words ("" for
+## nothing). Not drawn under the sprite: the arrows and meters show it.
 func show_preview(text: String) -> void:
 	preview_label.text = text
-	preview_label.visible = not text.is_empty()
+	preview_label.visible = false
 	_apply_style()
+
+
+## True while a previewed choice touches this unit.
+func has_preview() -> bool:
+	return not preview_label.text.is_empty()
 
 
 ## Draws the previewed choice on the meters: the hp it would leave (blinking),
@@ -222,6 +274,28 @@ func show_meter_preview(effect: UnitEffect, would_change := false) -> void:
 	else:
 		hp_bar.show_preview(effect.hp_after.value if effect.hp_after.known else 0.0, effect.hp_after.known)
 	_update_statuses()
+
+
+## Draws the energy the unit would have after the selected skill: the cost
+## blinks on the energy bar. -1 clears it.
+func show_energy_preview(energy_after: int) -> void:
+	if energy_after < 0:
+		energy_bar.clear_preview()
+	else:
+		energy_bar.show_preview(energy_after)
+
+
+## The full readout, as the detail card shows it.
+func detail_text() -> String:
+	if _unit == null:
+		return ""
+	return "\n".join(UnitDetail.lines(_unit, status_text(), intent_text, change_label.text if change_label != null else "", tag_label.text))
+
+
+func _make_custom_tooltip(_for_text: String) -> Object:
+	if _unit == null:
+		return null
+	return UnitDetail.card(_unit, status_text(), intent_text, change_label.text if change_label != null else "", tag_label.text)
 
 
 ## The statuses shown, as words: "GUARD 40% · CHARGE >6".
@@ -275,8 +349,25 @@ func _apply_style() -> void:
 		_:
 			_style.border_color = FeelData.color("panel_border")
 	_style.bg_color = FeelData.color("panel_raised") if highlight != Highlight.NONE else FeelData.color("panel")
-	if preview_label != null and preview_label.visible:
+	if preview_label != null and has_preview():
 		_style.bg_color = FeelData.color("panel_raised")
+
+
+## The stat chips: ATK, DEF (with the guard on top, while guarded), SPD, BAT.
+func _update_stats(unit: Combatant) -> void:
+	var s := unit.stats
+	stat_labels["atk"].text = str(s.attack)
+	stat_labels["def"].text = str(s.defense) if unit.guard_percent <= 0 else "%d+%d%%" % [s.defense, unit.guard_percent]
+	stat_labels["def"].add_theme_color_override("font_color",
+		ReadoutStyle.color("stats.guarded_text" if unit.guard_percent > 0 else "stats.text"))
+	stat_labels["spd"].text = str(s.speed)
+	stat_labels["bat"].text = str(s.battery_capacity)
+
+
+## The stat chips as words: "ATK 8 DEF 3 SPD 7 BAT 10".
+func stats_text() -> String:
+	return "ATK %s DEF %s SPD %s BAT %s" % [
+		stat_labels["atk"].text, stat_labels["def"].text, stat_labels["spd"].text, stat_labels["bat"].text]
 
 
 func _prompt(unit: Combatant, p_highlight: Highlight) -> String:

@@ -1,0 +1,10 @@
+{
+	"_comment": "Simulated odds (fight/odds/, odds-model 'simulated'): before an attack, `runs` headless auto-fights of the current squad against enemies drawn by the region's own rules (faction, act tier, defense level) give a win rate. The label is the first band whose min_win_percent the rate reaches, best first; the bands' order also picks the map's odds colors. Every number is a first guess; see the calibration table in the PR that added this file.",
+	"runs": 32,
+	"bands": [
+		{"min_win_percent": 70, "label": "Favored"},
+		{"min_win_percent": 40, "label": "Even"},
+		{"min_win_percent": 15, "label": "Risky"},
+		{"min_win_percent": 0, "label": "Outmatched"}
+	]
+}

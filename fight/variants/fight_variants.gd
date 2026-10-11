@@ -56,6 +56,11 @@ const FACTIONS_BY_ACT := "by_act"
 const FACTIONS_MIXED := "mixed"
 const FACTIONS_GENERIC := "generic"
 
+## How the map judges odds (read by the overworld through OddsEstimator).
+const ODDS_MODEL := "odds-model"
+const ODDS_SIMULATED := "simulated"
+const ODDS_FORMULA := "formula"
+
 ## Every fight decision this class knows, with the options code implements.
 const KNOWN := {
 	WAIT_FORM: [WAIT_BANKED, WAIT_EXTRA_ENERGY, WAIT_BONUS_DAMAGE],
@@ -66,6 +71,7 @@ const KNOWN := {
 	TAG_WEIGHT: [TAG_WEIGHT_PER_ACTION, TAG_WEIGHT_PER_ENERGY],
 	HP_CARRYOVER: [HP_FULL_HEAL, HP_CARRY, HP_PARTIAL_HEAL],
 	ENEMY_FACTIONS: [FACTIONS_BY_ACT, FACTIONS_MIXED, FACTIONS_GENERIC],
+	ODDS_MODEL: [ODDS_SIMULATED, ODDS_FORMULA],
 }
 
 ## Decision id -> its default option id.

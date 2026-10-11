@@ -13,13 +13,26 @@ extends Control
 ##                         exactly this many ticks (0 waits until affordable)
 ##   Cancel / right-click  cancel
 ##   point at an enemy     preview the selected skill on it (changes nothing)
+##   point at WAIT         preview the wait (order and intents after it)
+##   point at any unit     light its slots on the NEXT bar; rest for its
+##                         full stats, skills and statuses (detail card)
 ##
 ## Enemies telegraph their intent and act by it (IntentFightPolicy), so what
-## each enemy panel says is what that enemy does next: an icon and words on
-## the enemy, and an arrow to its target. FightTelegraph holds the intents,
-## the revision marks and the choice preview; the preview is also drawn on the
-## units (targets marked, the predicted hp loss blinking on their meters,
-## enemies whose plan would change marked).
+## each enemy's arrow says is what that enemy does next. FightTelegraph holds
+## the intents, the revision marks and the choice preview; the preview is
+## also drawn on the units (targets marked, the predicted hp loss blinking on
+## their meters, enemies whose plan would change marked).
+##
+## Readability (R1-B): the numbers ride on the arrows. Each enemy arrow
+## carries a badge with what it would do (damage, heal, guard) and a skull when
+## it would down its target; with a skill selected and a target under the
+## pointer, the bot's own arrow is drawn with its badge, and enemy arrows show
+## what they would become after the choice (changed ones struck through to
+## the new value). The selected skill's energy cost blinks on the bot's energy
+## bar; a choice that changes the turn order previews the new order on the
+## NEXT bar. Every number comes from fight/preview (BattleReadout), which
+## tests/fight/preview/preview_matches_resolution_test.gd holds to what the
+## fight resolves. Unit cards show ATK, DEF, SPD and BAT as icon chips.
 ##
 ## Presentation (M7): every unit is an animated sprite (BattleArt picks the
 ## look and tier), and BattlePresenter plays each action as it resolves. The
@@ -64,6 +77,8 @@ var preview_area: PanelContainer
 var preview_label: Label
 ## The unit under the pointer, or "".
 var hovered_id := ""
+## True while the pointer rests on the WAIT button (the wait is previewed).
+var wait_hovered := false
 ## The preview shown now, or null. Read-only; for tests.
 var shown_preview: ChoicePreview
 var header_label: Label
@@ -106,6 +121,7 @@ func setup(request: FightRequest, fight_seed: int, p_tuning: FightScreenTuning =
 	handler = FightCommandHandler.new(fight, IntentFightPolicy.new(planner), false)
 	# Planned once time has run to the first decision, as after every action.
 	telegraph = FightTelegraph.new(fight, planner)
+	telegraph.preview.order_length = tuning.timeline_length
 	_planned_at = fight.action_count
 	handler.changed.connect(refresh)
 	handler.action_resolved.connect(_on_action_resolved)
@@ -176,7 +192,14 @@ func on_skill_pressed(skill_id: String) -> void:
 
 
 func on_wait_pressed() -> void:
+	wait_hovered = false
 	send(FightCommand.wait("", exact_wait_ticks()))
+
+
+## Pointing at WAIT previews the wait: the order and intents after it.
+func on_wait_hovered(inside: bool) -> void:
+	wait_hovered = inside
+	refresh()
 
 
 ## The exact wait the ticks box asks for, or 0 to wait until affordable.
@@ -205,6 +228,12 @@ func on_unit_hovered(unit_id: String, inside: bool) -> void:
 ## The action being previewed: the selected skill on the unit under the
 ## pointer. Null when there is none or it is not allowed.
 func previewed_action() -> FightAction:
+	if wait_hovered and handler.is_player_turn() and handler.selected_bot_id == handler.actor().id:
+		var wait_skill := handler.default_wait_skill()
+		var ticks := exact_wait_ticks()
+		if ticks > 0:
+			return FightAction.wait_exact(wait_skill if not wait_skill.is_empty() else handler.actor().skill_ids[0], ticks)
+		return FightAction.wait_for(wait_skill) if not wait_skill.is_empty() else null
 	if not handler.is_player_turn() or not handler.is_choosing_target() or hovered_id.is_empty():
 		return null
 	if handler.selected_bot_id != handler.actor().id or not handler.target_problem(hovered_id).is_empty():
@@ -219,7 +248,6 @@ func refresh() -> void:
 	var actor := handler.actor()
 	var action := previewed_action()
 	shown_preview = telegraph.preview_choice(fight, action) if action != null else null
-	var arrow_list: Array[Dictionary] = []
 	for c in fight.combatants:
 		var panel := unit_panels[c.id]
 		panel.refresh(c, _highlight_for(c), presenter.shown_hp(c.id, c.hp), presenter.shown_energy(c.id, c.energy()))
@@ -229,15 +257,16 @@ func refresh() -> void:
 		panel.show_preview(_panel_preview(c.id))
 		panel.show_meter_preview(shown_preview.effect_on(c.id) if shown_preview != null else null,
 			shown_preview != null and shown_preview.change_for(c.id) != null and not _goes_down(c.id))
-		if intent != null and c.side == Combatant.Side.ENEMY and fight.combatant(intent.target_id()) != null:
-			arrow_list.append({"from": c.id, "to": intent.target_id(), "kind": _intent_kind(intent),
-				"changed": telegraph.is_marked(c.id)})
-	arrows.set_arrows(arrow_list, _arrow_focus())
+		panel.show_energy_preview(_energy_preview_for(c))
+	arrows.set_arrows(arrow_list(action), _arrow_focus())
 	_refresh_preview_box(action)
 	var upcoming: Array[TimelineEntry] = []
 	if not fight.is_over():
 		upcoming = fight.upcoming(tuning.timeline_length)
-	timeline_bar.refresh(upcoming)
+	var order := BattleReadout.order_with_choice(upcoming, shown_preview)
+	var order_changes := not order.is_empty() and not BattleReadout.same_order(order, upcoming)
+	timeline_bar.refresh(order if order_changes else upcoming, order_changes)
+	timeline_bar.set_highlight(hovered_id if fight.combatant(hovered_id) != null else "")
 	_refresh_commands()
 	var lines := fight.log_lines
 	log_label.text = "\n".join(lines.slice(maxi(0, lines.size() - LOG_LINES_SHOWN)))
@@ -256,6 +285,56 @@ func refresh() -> void:
 	else:
 		prompt_label.text = "%s is ready. Choose a skill, or Wait." % actor.display_name
 	_announce_turn(actor)
+
+
+## Every arrow to draw, with its badge: the enemy intents (as they would
+## stand after the previewed choice, if there is one, with the ones it
+## replaces as ghosts) and the pending bot's own arrows for that choice.
+## TODO(decision: d-telegraph-timing): enemy arrows show each enemy's plan
+## at the current decision (as the M4 telegraph always did), not the plan it
+## will make at its own turn, which time and other actions may change. The
+## next enemy to act is exact; while a choice is previewed, every arrow shows
+## the plan at the next decision. Default kept: plan at the current decision.
+func arrow_list(action: FightAction) -> Array[Dictionary]:
+	var rules := telegraph.preview.rules
+	var now := BattleReadout.intent_badges(fight, telegraph.tracker.current, rules)
+	var out: Array[Dictionary] = []
+	var p := shown_preview if shown_preview != null and shown_preview.is_allowed() else null
+	if p == null or not p.intent_changes_known or p.fight_after == null:
+		for b in now:
+			out.append(_arrow(b, telegraph.is_marked(b.from_id)))
+	else:
+		var after := BattleReadout.compare(now, BattleReadout.intent_badges(p.fight_after, p.intents_after, rules))
+		for b in now:
+			if not after.any(func(x: ArrowBadge) -> bool: return x.same_arrow(b)):
+				var ghost := _arrow(b, false)
+				ghost.ghost = true
+				out.append(ghost)
+		for b in after:
+			out.append(_arrow(b, b.changed or telegraph.is_marked(b.from_id)))
+	if p != null:
+		for b in BattleReadout.choice_badges(fight, action, p):
+			var mine := _arrow(b, false)
+			mine.player = true
+			out.append(mine)
+	return out
+
+
+static func _arrow(badge: ArrowBadge, changed: bool) -> Dictionary:
+	return {"from": badge.from_id, "to": badge.to_id, "kind": badge.kind, "changed": changed,
+		"badge": badge, "player": false, "ghost": false}
+
+
+## The energy `c` would have after the selected skill or the previewed choice,
+## or -1 for no energy preview.
+func _energy_preview_for(c: Combatant) -> int:
+	if shown_preview != null and shown_preview.energy_after.has(c.id):
+		return shown_preview.energy_after[c.id]
+	if handler.is_player_turn() and handler.is_choosing_target() and c == handler.actor() and handler.selected_bot_id == c.id:
+		var skill := c.skill(handler.selected_skill_id)
+		if skill != null and skill.energy_cost > 0:
+			return BattleReadout.energy_after(c, skill)
+	return -1
 
 
 ## "attack", "heal" or "wait" for an intent (a guard skill reads "guard"), or "".
@@ -518,6 +597,8 @@ func _build_layout() -> void:
 	wait_button = _button(buttons, "WAIT")
 	wait_button.name = "WaitButton"
 	wait_button.pressed.connect(on_wait_pressed)
+	wait_button.mouse_entered.connect(on_wait_hovered.bind(true))
+	wait_button.mouse_exited.connect(on_wait_hovered.bind(false))
 	wait_ticks_box = SpinBox.new()
 	wait_ticks_box.name = "WaitTicksBox"
 	wait_ticks_box.min_value = 0
