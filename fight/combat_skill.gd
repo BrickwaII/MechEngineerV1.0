@@ -37,7 +37,23 @@ var effect: String
 ## One of TARGETS.
 var target: String
 ## The user's level in the skill. 1 for every skill not tied to a bot skill.
+## With skill-progression = ranks this is the rank (SkillRanks).
 var level := 1
+## The effect step the battle screen draws, 1 to 10 (ui/fight SkillFx). The
+## level itself with flat levels; with ranks, SkillRanks.fx_level().
+var fx_level := 1
+## True when display_name already names the rank ("Mega Strike +2"), so
+## screens should not add a level of their own.
+var names_rank := false
+## Rank bonuses (data/combat/skill_ranks.json); 0 when the skill has none.
+## Share of the target's defense a damage skill ignores, in percent.
+var pierce_percent := 0
+## An all-opponent skill's extra damage to the living opponent with least hp.
+var weakest_bonus_percent := 0
+## A heal also guards its target for this share of the next hit.
+var heal_guard_percent := 0
+## A guard also deals this share of the damage it blocks back to the attacker.
+var reflect_percent := 0
 
 
 func _init(
@@ -93,6 +109,7 @@ func at_level(p_level: int, p_name: String, percent_per_level: int, max_guard_pe
 	var c := CombatSkill.new(
 		id, p_name if not p_name.is_empty() else display_name, energy_cost, power_percent, effect, target)
 	c.level = maxi(1, p_level)
+	c.fx_level = c.level
 	c.power_percent = power_percent * (100 + (c.level - 1) * percent_per_level) / 100
 	if c.is_guard():
 		c.power_percent = mini(c.power_percent, max_guard_percent)

@@ -4,7 +4,7 @@ extends RefCounted
 ##
 ##   var report := PostFight.apply(fight, squad.get_fielded(), ledger)
 ##
-## Reads the finished fight's decision tags, tallies personality drift and
+## Reads the finished fight's decision tags, tallies personality growth and
 ## applies it once, counts skill uses toward skill levels (banking the rest in
 ## `ledger`), and returns the report the readout scene shows. A bot is matched
 ## to the fight by id; bots that did not fight are left alone. A fight is
@@ -36,11 +36,11 @@ static func apply(
 			continue
 		var bot := _find(bots, c.id)
 		if bot != null:
-			report.bots.append(_apply_to_bot(bot, fight.decision_tags, ledger, tuning))
+			report.bots.append(_apply_to_bot(bot, fight.decision_tags, ledger, tuning, fight.tuning))
 	return report
 
 
-static func _apply_to_bot(bot: Bot, all_tags: Array[ActionTag], ledger: SkillUseLedger, tuning: PostFightTuning) -> BotFightReport:
+static func _apply_to_bot(bot: Bot, all_tags: Array[ActionTag], ledger: SkillUseLedger, tuning: PostFightTuning, combat: CombatTuning) -> BotFightReport:
 	var r := BotFightReport.new()
 	r.bot_id = bot.id
 	r.display_name = bot.display_name
@@ -53,9 +53,9 @@ static func _apply_to_bot(bot: Bot, all_tags: Array[ActionTag], ledger: SkillUse
 	r.generation = bot.personality.generation
 	r.personality_before = PersonalityDrift.values_of(bot.personality)
 	r.pole_pushes = PersonalityDrift.tally(all_tags, bot.id, tuning)
-	PersonalityDrift.apply(bot.personality, PersonalityDrift.shifts(r.pole_pushes, bot.personality, tuning))
+	PersonalityDrift.apply(bot.personality, PersonalityDrift.growth(r.pole_pushes, tuning))
 	r.personality_after = PersonalityDrift.values_of(bot.personality)
-	r.skill_changes = SkillProgress.apply(bot, SkillProgress.count_uses(all_tags, bot.id), ledger, tuning)
+	r.skill_changes = SkillProgress.apply(bot, SkillProgress.count_uses(all_tags, bot.id), ledger, tuning, combat)
 	return r
 
 

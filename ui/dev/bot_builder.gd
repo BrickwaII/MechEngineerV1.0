@@ -22,6 +22,11 @@ var _id_edit: LineEdit
 var _name_edit: LineEdit
 var _hp_spin: SpinBox
 var _stat_spins: Dictionary = {}
+## Personality end name (Personality.ENDS) -> SpinBox.
+var _end_spins := {}
+var _generation_spin: SpinBox
+## Preview of the personality the end spin boxes describe.
+var _hexagon: PersonalityHexagon
 ## Catalog skill name -> [CheckBox, SpinBox level].
 var _skill_rows: Dictionary = {}
 var _problems: Label
@@ -81,11 +86,14 @@ func show_bot(bot: Bot) -> void:
 		var row: Array = _skill_rows[skill_name]
 		(row[0] as CheckBox).set_pressed_no_signal(held != null)
 		(row[1] as SpinBox).set_value_no_signal(held.level if held != null else tuning.starting_skill_level)
+	_generation_spin.set_value_no_signal(bot.personality.generation)
+	for pole: String in _end_spins:
+		(_end_spins[pole] as SpinBox).set_value_no_signal(bot.personality.get_end(pole))
 	_update_problems()
 
 
-## The bot the form describes. Personality and augment slots come from the bot
-## that was loaded or created.
+## The bot the form describes. Augment slots come from the bot that was loaded
+## or created; the personality is the form's six ends and generation.
 func bot_from_form() -> Bot:
 	var stats := UnitStats.new()
 	for stat in Bot.STAT_NAMES:
@@ -97,7 +105,9 @@ func bot_from_form() -> Bot:
 			var skill: Skill = BotJson.catalog_skill(tuning, skill_name).duplicate()
 			skill.level = int((row[1] as SpinBox).value)
 			skills.append(skill)
-	var personality: Personality = _editing.personality.duplicate() if _editing != null else Personality.new(tuning.starting_generation)
+	var personality := Personality.new(int(_generation_spin.value))
+	for pole: String in _end_spins:
+		personality.set(pole, (_end_spins[pole] as SpinBox).value)
 	var slots: Array[AugmentSlot] = []
 	if _editing != null:
 		for slot in _editing.augment_slots:
@@ -227,6 +237,31 @@ func _build() -> void:
 		skills.add_child(level)
 	form.add_child(skills)
 
+	form.add_child(Ui.label("Personality (each end only grows; the larger end of a spectrum wins)", Palette.TEXT_DIM))
+	var personality_row := HBoxContainer.new()
+	personality_row.add_theme_constant_override("separation", 16)
+	var ends := GridContainer.new()
+	ends.columns = 4
+	ends.add_theme_constant_override("h_separation", 12)
+	for pole in Personality.ENDS:
+		ends.add_child(Ui.label(pole.capitalize()))
+		var spin := SpinBox.new()
+		spin.min_value = Personality.MIN_END
+		spin.max_value = settings.builder_max_personality_end
+		spin.step = 0.01
+		spin.value_changed.connect(func(_v: float) -> void: _update_problems())
+		_end_spins[pole] = spin
+		ends.add_child(spin)
+	ends.add_child(Ui.label("Generation"))
+	_generation_spin = Ui.spin(Personality.MIN_GENERATION, Personality.SCALE_COUNT, tuning.starting_generation)
+	_generation_spin.value_changed.connect(func(_v: float) -> void: _update_problems())
+	ends.add_child(_generation_spin)
+	personality_row.add_child(ends)
+	_hexagon = PersonalityHexagon.new()
+	_hexagon.custom_minimum_size = Vector2(200, 150)
+	personality_row.add_child(_hexagon)
+	form.add_child(personality_row)
+
 	_problems = Ui.label("", Palette.WARNING, 13)
 	_problems.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	form.add_child(_problems)
@@ -247,6 +282,7 @@ func _on_stat_changed() -> void:
 ## Errors block saving; range warnings only say the bot is outside the tuning.
 func _update_problems() -> void:
 	var bot := bot_from_form()
+	_hexagon.show_ends(bot.personality.get_ends())
 	var errors := bot.validation_errors()
 	var warnings := PackedStringArray()
 	for problem in tuning.validation_errors_for(bot):

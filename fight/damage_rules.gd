@@ -6,6 +6,8 @@ extends RefCounted
 ##   damage = max(min_damage, (attack x power% - defense x defense%) / 100)
 ##   heal   = min(attack x power% / 100, hp the target has lost)
 ##
+## A skill with pierce_percent ignores that share of the defense term (a rank
+## bonus, see SkillRanks).
 ## A guarded target takes max(min_damage, damage x (100 - guard%) / 100) from
 ## its next hit; see damage_to(). `bonus_percent` raises the raw damage (the
 ## d-wait "bonus_damage" option); elasticity applies by the d-elasticity
@@ -14,7 +16,8 @@ extends RefCounted
 
 @warning_ignore("integer_division")
 static func damage(attacker: UnitStats, defender: UnitStats, skill: CombatSkill, tuning: CombatTuning, bonus_percent := 0) -> int:
-	var raw := attacker.attack * skill.power_percent * (100 + bonus_percent) / 100 - defender.defense * tuning.defense_percent
+	var raw := (attacker.attack * skill.power_percent * (100 + bonus_percent) / 100
+		- defender.defense * tuning.defense_percent * (100 - clampi(skill.pierce_percent, 0, 100)) / 100)
 	var base := maxi(tuning.min_damage, raw / 100)
 	return apply_elasticity(base, defender, tuning)
 
@@ -46,3 +49,13 @@ static func apply_elasticity(p_damage: int, defender: UnitStats, tuning: CombatT
 static func heal(healer: UnitStats, target_hp: int, target_max_hp: int, skill: CombatSkill) -> int:
 	var power := maxi(0, healer.attack * skill.power_percent / 100)
 	return mini(power, maxi(0, target_max_hp - target_hp))
+
+
+## The living unit in `units` with the least hp; the earlier one wins a tie.
+## A rank bonus (weakest_bonus_percent) hits it harder.
+static func weakest(units: Array[Combatant]) -> Combatant:
+	var best: Combatant = null
+	for u in units:
+		if u.is_alive() and (best == null or u.hp < best.hp):
+			best = u
+	return best

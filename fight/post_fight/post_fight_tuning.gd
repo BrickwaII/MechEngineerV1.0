@@ -21,15 +21,27 @@ class DriftRule:
 var drift_rules: Array[DriftRule] = []
 ## Rule set name -> other drift rules the d-personality-map switch can pick.
 var drift_rule_sets: Dictionary[String, Array] = {}
-## Personality change per push, before the cap.
+## Growth of a personality end per push, before the cap.
 var drift_per_push: float
-## The most one scale may move in one fight, either way.
-var max_drift_per_scale_per_fight: float
-## Uses that make one level step.
+## The most one end may grow in one fight.
+var max_drift_per_end_per_fight: float
+## What one tagged decision counts for: FightVariants.TAG_WEIGHT_PER_ACTION
+## (one push) or TAG_WEIGHT_PER_ENERGY (energy spent / energy_per_push pushes,
+## at least min_weight). Set from the tag-weight switch by for_variants().
+var tag_weight := FightVariants.TAG_WEIGHT_PER_ACTION
+var energy_per_push := 1.0
+var min_weight := 0.0
+## FightVariants.PROGRESSION_RANKS or PROGRESSION_FLAT, from the
+## skill-progression switch. Ranks read `ranks`; flat levels the three below.
+var progression := FightVariants.PROGRESSION_RANKS
+var ranks: SkillRanks
+## Flat levels: uses that make one level step.
 var uses_per_level: int
 ## Levels gained per step.
 var levels_per_step: int
 var max_level: int
+## Defense of the target the level-up callout's damage numbers are against.
+var reference_defense := 0
 ## Combat skill id -> bot Skill.effect_id. "" when no bot skill matches.
 var combat_skill_effects: Dictionary[String, String] = {}
 
@@ -53,10 +65,13 @@ static func from_dict(d: Dictionary) -> PostFightTuning:
 	for set_name: String in sets:
 		t.drift_rule_sets[set_name] = _read_rules(sets[set_name])
 	t.drift_per_push = float(d.drift.per_push)
-	t.max_drift_per_scale_per_fight = float(d.drift.max_per_scale_per_fight)
+	t.max_drift_per_end_per_fight = float(d.drift.max_per_end_per_fight)
+	t.ranks = SkillRanks.load_default()
+	t.apply_variants(FightVariants.defaults())
 	t.uses_per_level = int(d.skill_levels.uses_per_level)
 	t.levels_per_step = int(d.skill_levels.levels_per_step)
 	t.max_level = int(d.skill_levels.max_level)
+	t.reference_defense = int(d.get("level_up_callout", {}).get("reference_defense", 0))
 	for id: String in d.combat_skill_effects:
 		t.combat_skill_effects[id] = String(d.combat_skill_effects[id])
 	return t
@@ -78,13 +93,39 @@ func use_rule_set(set_name: String) -> bool:
 	return true
 
 
-## This file's tuning with the drift rules `variants` picks.
+## This file's tuning with the drift rules, tag weight and skill progression
+## `variants` picks.
 static func for_variants(variants: FightVariants, path := DEFAULT_PATH) -> PostFightTuning:
 	var t := load_file(path)
 	var set_name := variants.param_string(FightVariants.PERSONALITY_MAP, "rule_set", RULE_SET_CURRENT)
 	if not t.use_rule_set(set_name):
 		push_error("PostFightTuning: no drift rule set '%s'" % set_name)
+	t.apply_variants(variants)
 	return t
+
+
+## Takes the tag weight and skill progression from `variants`.
+func apply_variants(variants: FightVariants) -> void:
+	tag_weight = variants.option(FightVariants.TAG_WEIGHT)
+	energy_per_push = variants.param_float(FightVariants.TAG_WEIGHT, "energy_per_push", 1.0)
+	min_weight = variants.param_float(FightVariants.TAG_WEIGHT, "min_weight", 0.0)
+	progression = variants.option(FightVariants.SKILL_PROGRESSION)
+
+
+func uses_ranks() -> bool:
+	return progression == FightVariants.PROGRESSION_RANKS and ranks != null
+
+
+## The highest skill level the progression allows.
+func top_level() -> int:
+	return ranks.max_rank() if uses_ranks() else max_level
+
+
+## Uses that take a skill from `level` to the next; 0 at the top.
+func uses_to_next(level: int) -> int:
+	if uses_ranks():
+		return ranks.uses_to_rank_up(level)
+	return uses_per_level if level < max_level else 0
 
 
 static func _read_rules(list: Array) -> Array[DriftRule]:
@@ -112,8 +153,12 @@ func validate() -> Array[String]:
 			problems.append("drift rule pole %s is not a personality pole" % rule.pole)
 	if drift_per_push < 0.0:
 		problems.append("drift per_push may not be negative")
-	if max_drift_per_scale_per_fight < 0.0:
-		problems.append("drift max_per_scale_per_fight may not be negative")
+	if max_drift_per_end_per_fight < 0.0:
+		problems.append("drift max_per_end_per_fight may not be negative")
+	if tag_weight == FightVariants.TAG_WEIGHT_PER_ENERGY and energy_per_push <= 0.0:
+		problems.append("tag-weight energy_per_push must be above 0")
+	if ranks != null:
+		problems.append_array(ranks.validate())
 	if uses_per_level < 1:
 		problems.append("uses_per_level must be at least 1")
 	if levels_per_step < 0:

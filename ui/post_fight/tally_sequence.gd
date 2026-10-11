@@ -6,8 +6,10 @@ extends RefCounted
 ##   bot      the bot's panel comes in
 ##   count    one "what it did" counter counts up from 0
 ##   skill    a skill's uses count up
-##   level_up the payoff: the skill's new level pops
-##   shift    the payoff: a personality scale slides to its new value
+##   level_up the payoff: the level-up callout (LevelUpCallout) holds the
+##            screen; a tier shift (Mega, Ultra) holds longer
+##   grow     the payoff: the personality hexagon traces its new outline,
+##            then fills from the old shape to the new one
 ##   gap      a short pause before the next bot
 ##
 ## The readout calls advance() every frame, reveals the steps it returns and
@@ -20,7 +22,7 @@ class Step:
 	var kind := ""
 	## Index of the bot in the report.
 	var bot := 0
-	## count: the ActionTag label; shift: the Personality scale.
+	## count: the ActionTag label.
 	var key: Variant
 	## What a count or skill step counts up to.
 	var to := 0
@@ -123,14 +125,12 @@ func _add_bot(index: int, r: BotFightReport) -> void:
 		step.to = change.uses
 		steps.append(step)
 		if change.has_bot_skill() and change.levels_gained() > 0:
-			var payoff := Step.new("level_up", index, _seconds("readout.level_up_ms"))
+			var ms := "readout.tier_up_ms" if change.is_tier_shift() else "readout.rank_up_ms"
+			var payoff := Step.new("level_up", index, _seconds(ms))
 			payoff.change = change
 			steps.append(payoff)
-	for scale in Personality.SCALE_COUNT:
-		if r.is_scale_active(scale) and not is_zero_approx(r.shift(scale)):
-			var step := Step.new("shift", index, _seconds("readout.shift_ms"))
-			step.key = scale
-			steps.append(step)
+	if r.personality_grew():
+		steps.append(Step.new("grow", index, _seconds("readout.grow_ms")))
 	steps.append(Step.new("gap", index, _seconds("readout.between_bots_ms")))
 
 

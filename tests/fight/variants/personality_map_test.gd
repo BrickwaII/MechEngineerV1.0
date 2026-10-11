@@ -34,7 +34,7 @@ func test_off_has_no_rules_and_moves_nothing() -> void:
 	var tags: Array[ActionTag] = [tag]
 	var pushes := PersonalityDrift.tally(tags, "a", t)
 	for pole in pushes:
-		assert_int(pushes[pole]).is_equal(0)
+		assert_float(pushes[pole]).is_equal(0.0)
 
 
 func test_rule_sets_validate() -> void:

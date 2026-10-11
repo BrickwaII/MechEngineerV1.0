@@ -210,9 +210,18 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 		_log("%s uses %s on %s: %d healed, hp %d -> %d, energy %d -> %d" % [
 			actor.display_name, skill.display_name, target.display_name, target.hp - hp_before, hp_before,
 			target.hp, energy_before, actor.energy()])
+		# A Mega or Ultra heal also guards its target.
+		if skill.heal_guard_percent > 0:
+			target.guard_percent = maxi(target.guard_percent, skill.heal_guard_percent)
+			var shielded := _event(FightEvent.Kind.GUARD, actor, target, skill)
+			shielded.amount = target.guard_percent
+			_raise(shielded)
+			_log("%s's %s also guards %s: next hit %d%% blocked" % [
+				actor.display_name, skill.display_name, target.display_name, target.guard_percent])
 		return
 	if skill.is_guard():
 		target.guard_percent = maxi(target.guard_percent, skill.power_percent)
+		target.reflect_percent = maxi(target.reflect_percent, skill.reflect_percent)
 		actor.finish_action(tuning.action_threshold)
 		var guarded := _event(FightEvent.Kind.GUARD, actor, target, skill)
 		guarded.amount = target.guard_percent
@@ -225,17 +234,21 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 	if skill.hits_all():
 		targets = opponents_of(actor)
 	var bonus := WaitRules.damage_bonus_percent(actor.is_waiting(), tuning)
+	var weakest := DamageRules.weakest(targets) if skill.weakest_bonus_percent > 0 else null
 	actor.finish_action(tuning.action_threshold)
 	for t in targets:
-		_hit(actor, t, skill, energy_before, bonus)
+		_hit(actor, t, skill, energy_before, bonus + (skill.weakest_bonus_percent if t == weakest else 0))
 
 
 func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before: int, bonus_percent := 0) -> void:
 	var hp_before := target.hp
 	var guarded := target.guard_percent
+	var reflect := target.reflect_percent
 	var dmg := DamageRules.damage_to(actor, target, skill, tuning, bonus_percent)
+	var unguarded := DamageRules.damage(actor.stats, target.stats, skill, tuning, bonus_percent)
 	target.hp = maxi(0, target.hp - dmg)
 	target.guard_percent = 0
+	target.reflect_percent = 0
 	ElasticityRules.after_hit(target, dmg, tuning)
 	_log("%s uses %s on %s: %d damage%s, hp %d -> %d, energy %d -> %d" % [
 		actor.display_name, skill.display_name, target.display_name, dmg,
@@ -248,6 +261,21 @@ func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before
 	if not target.is_alive():
 		_log("%s is down" % target.display_name)
 		_raise(_event(FightEvent.Kind.DOWN, actor, target, skill))
+	# A Mega or Ultra guard sends part of what it blocked back.
+	@warning_ignore("integer_division")
+	var back := maxi(0, unguarded - dmg) * reflect / 100 if guarded > 0 else 0
+	if back > 0 and actor.is_alive():
+		var actor_hp := actor.hp
+		actor.hp = maxi(0, actor.hp - back)
+		_log("%s reflects %d damage to %s, hp %d -> %d" % [
+			target.display_name, actor_hp - actor.hp, actor.display_name, actor_hp, actor.hp])
+		var reflected := _event(FightEvent.Kind.HIT, target, actor, skill)
+		reflected.amount = actor_hp - actor.hp
+		reflected.hp_before = actor_hp
+		_raise(reflected)
+		if not actor.is_alive():
+			_log("%s is down" % actor.display_name)
+			_raise(_event(FightEvent.Kind.DOWN, target, actor, skill))
 
 
 func _resolve_wait(actor: Combatant, action: FightAction) -> void:

@@ -233,6 +233,27 @@
 				"window_ms": 70
 			}
 		},
+		"skill_rank_up": {
+			"bus": "Effects",
+			"files": ["res://assets/audio/sfx/skill_rank_up.wav"],
+			"volume_db": -4.0,
+			"pitch_variation": 0.0,
+			"throttle": {"max": 1, "window_ms": 250}
+		},
+		"skill_tier_up": {
+			"bus": "Effects",
+			"files": ["res://assets/audio/sfx/skill_tier_up.wav"],
+			"volume_db": -2.0,
+			"pitch_variation": 0.0,
+			"throttle": {"max": 1, "window_ms": 400}
+		},
+		"personality_grow": {
+			"bus": "Effects",
+			"files": ["res://assets/audio/sfx/personality_grow.wav"],
+			"volume_db": -6.0,
+			"pitch_variation": 0.02,
+			"throttle": {"max": 1, "window_ms": 300}
+		},
 		"level_up": {
 			"bus": "Effects",
 			"files": [
