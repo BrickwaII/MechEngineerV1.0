@@ -41,10 +41,11 @@ const MAP_SIZE := Vector2(880, 620)
 const PANEL_WIDTH := 400.0
 const TOP_BAR_HEIGHT := 56.0
 const CHOICE_CARD_WIDTH := 290.0
-## The icon of the campaign's Energy resource (data/ui/icons.json).
-## TODO: "map_energy" (the power cell) once R2-D's #32 is on main; "energy"
-## is the battle lightning for skill costs.
-const ENERGY_ICON := "energy"
+## The icon of the campaign's Energy resource (data/ui/icons.json): the power
+## cell. "energy" is the battle lightning for skill costs.
+const ENERGY_ICON := "map_energy"
+const GRID_TIP := "Grid capacity: how much power your network can still carry. Actions use it; it recovers each day."
+const POOL_TIP := "Power pool: grid capacity and Energy are one pool. Actions and Energy costs both draw on it."
 const RESOURCE_LABELS := {MapRegion.POWER: "Grid power", MapRegion.ENERGY: "Energy", MapRegion.MATERIAL: "Material"}
 
 ## The acts of a run: each act's region and tuning file, and the zoom between.
@@ -106,7 +107,7 @@ var escalation_hud: EscalationHud
 
 var _grid_bar: MeterBar
 var _grid_text: Label
-var _grid_title: Label
+var _grid_title: IconStat
 var _grid_rate: Label
 var _countdown: Label
 var _day_line: Label
@@ -114,7 +115,7 @@ var _income: HBoxContainer
 var _time_day: Label
 var _time_bar: MeterBar
 var _campaign_bar: MeterBar
-var _wait_button: Button
+var _wait_button: ActionButton
 var _panel: VBoxContainer
 var _log: VBoxContainer
 var _modal: Control
@@ -427,6 +428,13 @@ func _build_layout() -> void:
 	escalation_hud.size = MAP_SIZE
 	add_child(escalation_hud)
 	escalation_hud.news.can_show = can_show_changes
+	# News cards toast over the top of the side panel, not over the map.
+	var toast := Control.new()
+	toast.name = "NewsToast"
+	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast.position = Vector2(MAP_SIZE.x, TOP_BAR_HEIGHT)
+	add_child(toast)
+	escalation_hud.dock_news(toast, Vector2(12, 12), PANEL_WIDTH - 24.0)
 	_build_act_title()
 	_build_modal()
 
@@ -483,7 +491,8 @@ func _build_top_bar() -> Control:
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.alignment = BoxContainer.ALIGNMENT_BEGIN
 	row.add_child(grid)
-	_grid_title = _text("GRID CAPACITY", 11, Palette.TEXT_DIM)
+	_grid_title = IconStat.make("grid_power", null, GRID_TIP)
+	_grid_title.name = "GridTitle"
 	grid.add_child(_grid_title)
 	_grid_bar = MeterBar.new()
 	_grid_bar.custom_minimum_size = Vector2(260, 16)
@@ -539,7 +548,9 @@ func _build_time_strip() -> Control:
 	_status = _text("", 11, Palette.DEFENSE_TEXT)
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(_status)
-	_wait_button = _button("WAIT", Color("#16283a"), Palette.TEXT, _on_wait)
+	_wait_button = _action("action_wait", "Wait", "", null, _on_wait, true, "Let time pass. Regions you hold pay out; pressure rises.")
+	_wait_button.name = "WaitButton"
+	_wait_button.custom_minimum_size.y = 26
 	_wait_button.mouse_entered.connect(_set_hover_wait.bind(true))
 	_wait_button.mouse_exited.connect(_set_hover_wait.bind(false))
 	header.add_child(_wait_button)
@@ -653,7 +664,7 @@ func _refresh() -> void:
 	# With the shared pool (energy-grid variant) the bar is the one pool of
 	# grid and Energy, and there is no separate Energy count.
 	var shared := is_shared_pool()
-	_grid_title.text = "POWER POOL" if shared else "GRID CAPACITY"
+	_grid_title.set_tip_text(POOL_TIP if shared else GRID_TIP)
 	_grid_bar.fill_color = Palette.ENERGY if shared else Color("#f2b84b")
 	if shared:
 		var divisor := campaign.variants.param_float(CampaignVariants.ENERGY_GRID, "pool_regen_divisor", 1.0)
@@ -684,6 +695,8 @@ func _refresh() -> void:
 	_campaign_bar.fill_ratio = float(s.time_points) / t.total_points
 
 	_wait_button.disabled = not campaign.can_act() or zooming
+	if _wait_button.cost != _days_number(t.wait_time):
+		_wait_button.set_cost("time", _days_number(t.wait_time))
 	_ff_button.visible = campaign.can_fast_forward() and not zooming
 	_refresh_stakes()
 	_status.text = "FIGHT IN PROGRESS" if campaign.fighting else ""
@@ -722,22 +735,19 @@ func _refresh_panel() -> void:
 	head.add_child(_pill(standing))
 	_panel.add_child(head)
 
-	var provides := _rows(6)
-	provides.add_child(_text("PROVIDES", 11, Palette.TEXT_DIM))
+	var provides := HBoxContainer.new()
+	provides.name = "Provides"
+	provides.add_theme_constant_override("separation", 18)
 	var any := false
 	for key in MapRegion.RESOURCE_KEYS:
 		if region.provides[key] > 0:
 			any = true
-			var row := HBoxContainer.new()
-			row.add_theme_constant_override("separation", 10)
-			row.add_child(_swatch(Palette.resource_color(key), Vector2(10, 10)))
-			var label := _text(RESOURCE_LABELS[key], 16, Palette.TEXT)
-			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			row.add_child(label)
-			row.add_child(_text("+%d / day" % region.provides[key], 14, Palette.TEXT))
-			provides.add_child(row)
+			var stat := IconStat.make(_resource_icon(key), "+%d/day" % region.provides[key],
+				"%s this territory adds every day while you hold it." % RESOURCE_LABELS[key])
+			stat.name = "Provides_%s" % key
+			provides.add_child(stat)
 	if not any:
-		provides.add_child(_text("Nothing", 16, Palette.TEXT_DIM))
+		provides.add_child(_text("Provides nothing", 13, Palette.TEXT_DIM))
 	_panel.add_child(provides)
 
 	if standing == Campaign.Standing.OWNED:
@@ -752,25 +762,31 @@ func _refresh_panel() -> void:
 
 	var actions := _rows(8)
 	if standing == Campaign.Standing.OWNED:
-		var reinforce := _big_button("REINFORCE", Palette.ACCENT, Palette.ACCENT_TEXT, campaign.can_reinforce(id))
-		reinforce.pressed.connect(_on_reinforce.bind(id))
-		actions.add_child(reinforce)
 		var stakes := campaign.stakes
-		var note := "Lowers pressure here. Costs a little time and grid power"
+		var note := "Lowers pressure here. Takes %s and a little grid power" % _points_text(campaign.tuning.reinforce_time)
 		if stakes.is_offered(Stakes.USE_REINFORCE):
 			note += ", and %s" % stakes.cost_text(Stakes.USE_REINFORCE)
 		note += "."
 		if campaign.can_act() and not stakes.can_pay(Stakes.USE_REINFORCE, campaign.state):
 			note += " Not enough to pay for it."
-		actions.add_child(_note(note))
+		var c := _use_cost(Stakes.USE_REINFORCE) if stakes.is_offered(Stakes.USE_REINFORCE) else ["time", _days_number(campaign.tuning.reinforce_time)]
+		var reinforce := _action("action_reinforce", "Reinforce", c[0], c[1], _on_reinforce.bind(id),
+			campaign.can_reinforce(id), note)
+		reinforce.name = "ReinforceButton"
+		actions.add_child(reinforce)
 	else:
-		var attack := _big_button("ATTACK", Palette.ATTACK_BUTTON, Palette.ATTACK_TEXT, campaign.can_attack(id))
-		attack.pressed.connect(show_pre_fight.bind(id))
+		var why := "Not next to your network. Take a neighbor first." if standing == Campaign.Standing.OUT_OF_REACH \
+			else "Opens the fight. Takes %s and grid power, more if the assault fails." % _points_text(campaign.tuning.attack_time)
+		var attack := _action("action_attack", "Attack", "time", _days_number(campaign.tuning.attack_time),
+			show_pre_fight.bind(id), campaign.can_attack(id), why)
+		attack.name = "AttackButton"
+		attack.custom_minimum_size.y = 48
+		if not attack.disabled:
+			_style_button(attack, Palette.ATTACK_BUTTON, Palette.ATTACK_TEXT, Color(0, 0, 0, 0))
+			attack.label.add_theme_color_override("font_color", Palette.ATTACK_TEXT)
 		actions.add_child(attack)
 		if standing == Campaign.Standing.OUT_OF_REACH:
-			actions.add_child(_note("Not next to your network. Take a neighbor first."))
-		else:
-			actions.add_child(_note("Opens the fight. Costs time and grid power, more if the assault fails."))
+			actions.add_child(_note("Out of reach.", 12))
 	_panel.add_child(actions)
 
 
@@ -779,8 +795,9 @@ func _panel_intro() -> void:
 	rows.add_child(_text("NO TERRITORY SELECTED", 11, Palette.TEXT_DIM))
 	var title := _text("Pick a territory on the map.", 26, Palette.TEXT)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# The how-to sits behind hover (ui/README.md rule 5).
+	UiTooltip.attach(title, "Territories", "You can only attack territories next to ones you already hold. Rings on your territories show how close each is to an uprising or an attack.")
 	rows.add_child(title)
-	rows.add_child(_note("You can only attack territories next to ones you already hold. Rings on your territories show how close each is to an uprising or an attack.", 15))
 	for entry: Array in [[Palette.OWNED, "Yours"], [Palette.IN_RANGE, "Hostile, in range to attack"], [Palette.OUT_OF_REACH, "Hostile, out of reach"]]:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
@@ -823,9 +840,11 @@ func _panel_faction(region: MapRegion) -> void:
 
 func _panel_defense(region: MapRegion) -> void:
 	var rows := _rows(8)
-	rows.add_child(_text("DEFENSE", 11, Palette.TEXT_DIM))
 	var line := HBoxContainer.new()
+	line.name = "Defense"
 	line.add_theme_constant_override("separation", 12)
+	var opposition := campaign.tuning.opposition(campaign.defense_of(region.id))
+	line.add_child(IconStat.make("defense_level", campaign.defense_of(region.id), opposition))
 	var pips := HBoxContainer.new()
 	pips.add_theme_constant_override("separation", 4)
 	for i in MapRegion.MAX_DEFENSE:
@@ -833,18 +852,18 @@ func _panel_defense(region: MapRegion) -> void:
 	line.add_child(pips)
 	line.add_child(_text(campaign.tuning.defense_label(campaign.defense_of(region.id)).to_upper(), 16, Palette.TEXT))
 	rows.add_child(line)
-	rows.add_child(_note(campaign.tuning.opposition(campaign.defense_of(region.id)), 14))
 	if campaign.escalation.fortify_of(region.id) > 0:
 		rows.add_child(IconStat.make("fortify", "+%d" % campaign.escalation.fortify_of(region.id),
 			"Dug in while left alone on Alert. Attack it to stop the digging."))
 	var line_odds := HBoxContainer.new()
 	line_odds.name = "Odds"
 	line_odds.add_theme_constant_override("separation", 10)
-	line_odds.add_child(_text("YOUR ODDS", 11, Palette.TEXT_DIM))
-	line_odds.add_child(_text(odds_text(region.id), 16, _odds_color(odds.label_for(campaign, region.id))))
+	line_odds.add_child(_text("ODDS", 11, Palette.TEXT_DIM))
+	var odds_label := _text(odds_text(region.id), 16, _odds_color(odds.label_for(campaign, region.id)))
+	line_odds.add_child(odds_label)
 	rows.add_child(line_odds)
 	if odds.is_simulated():
-		rows.add_child(_note("Auto-fights against this territory's enemies, %d of them. The auto-player fights differently from you." % odds.estimator.tuning.runs, 13))
+		UiTooltip.attach(line_odds, "Your odds", "Auto-fights against this territory's enemies, %d of them. The auto-player fights differently from you." % odds.estimator.tuning.runs)
 	_panel.add_child(rows)
 
 
@@ -873,9 +892,10 @@ func _panel_pressure(region_id: String) -> void:
 	var t := campaign.tuning
 	var pressure := campaign.pressure_of(region_id)
 	var rows := _rows(8)
-	rows.add_child(_text("PRESSURE", 11, Palette.TEXT_DIM))
 	var line := HBoxContainer.new()
+	line.name = "Pressure"
 	line.add_theme_constant_override("separation", 12)
+	line.add_child(IconStat.make("pressure"))
 	var bar := MeterBar.new()
 	bar.custom_minimum_size.y = 14
 	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -896,7 +916,8 @@ func _panel_pressure(region_id: String) -> void:
 		else "Uprising building from within", 16, Palette.TEXT))
 	var where := "Border territory, exposed to its neighbors. " if campaign.is_border(region_id) \
 		else "Interior territory, shielded by your other holdings. "
-	rows.add_child(_note(where + "Pressure is rising %s." % t.rate_word(campaign.pressure_rate(region_id)), 14))
+	UiTooltip.attach(line, "Pressure", where + "Pressure is rising %s." % t.rate_word(campaign.pressure_rate(region_id)),
+		"%d%%" % roundi(pressure), "pressure")
 	_panel.add_child(rows)
 
 
@@ -1342,6 +1363,11 @@ func _resource_stat(key: String, stock: int, per_day: int) -> Control:
 	return row
 
 
+## The icon id of a map resource key.
+func _resource_icon(key: String) -> String:
+	return {MapRegion.POWER: "grid_power", MapRegion.ENERGY: ENERGY_ICON, MapRegion.MATERIAL: "material"}.get(key, key)
+
+
 ## What a resource buys, for its tooltip.
 ## TODO(decision: resource-uses): the uses follow the switchboard option.
 func resource_tooltip(key: String) -> String:
@@ -1369,6 +1395,11 @@ func _points_text(points: int) -> String:
 	if points % per_day == 0:
 		return "%d day%s" % [points / per_day, "" if points / per_day == 1 else "s"]
 	return "%s day" % str(snappedf(float(points) / per_day, 0.01))
+
+
+## A number of time points as a bare number of days for a time icon: "1", "0.75".
+func _days_number(points: int) -> String:
+	return str(snappedf(float(points) / campaign.tuning.points_per_day, 0.01)).trim_suffix(".0")
 
 
 ## A row of icon stats in the message, above its buttons.

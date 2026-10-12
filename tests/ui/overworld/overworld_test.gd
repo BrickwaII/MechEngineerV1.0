@@ -73,11 +73,13 @@ func test_selecting_a_region_fills_the_panel() -> void:
 	screen.map_view.select("hydro_dam")
 	await _runner.simulate_frames(1)
 	var texts := _panel_texts(screen)
-	assert_array(texts).contains(["Hydro Dam", "DEFENSE", "YOUR ODDS", "ATTACK"])
+	assert_array(texts).contains(["Hydro Dam", "ODDS", "Attack"])
+	assert_object(screen._panel.find_child("Defense", true, false)).is_not_null()
 	screen.map_view.select("substation_9")
 	await _runner.simulate_frames(1)
 	texts = _panel_texts(screen)
-	assert_array(texts).contains(["Substation 9", "PRESSURE", "REINFORCE", "Attack building from Downtown Exchange"])
+	assert_array(texts).contains(["Substation 9", "Reinforce", "Attack building from Downtown Exchange"])
+	assert_object(screen._panel.find_child("Pressure", true, false)).is_not_null()
 
 
 func test_out_of_reach_attack_button_is_disabled() -> void:
@@ -146,9 +148,10 @@ static func _panel_texts(screen: Node) -> Array:
 	return texts
 
 
+## A Button by its text, or an ActionButton by its label (any case).
 static func _button(root: Node, text: String) -> Button:
 	for node in root.find_children("*", "Button", true, false):
-		if node.text == text:
+		if node.text == text or (node is ActionButton and node.label_text.to_upper() == text.to_upper()):
 			return node
 	return null
 
