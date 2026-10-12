@@ -38,7 +38,7 @@ func _ready() -> void:
 	var run := HBoxContainer.new()
 	run.add_theme_constant_override("separation", 14)
 	col.add_child(run)
-	for pair in [["time", 9], ["energy", 24], ["material", 15], ["grid_power", 4], ["pressure", 3], ["alert", 2], ["losses", 2], ["defense_level", 2]]:
+	for pair in [["time", 9], ["map_energy", 24], ["material", 15], ["grid_power", 4], ["pressure", 3], ["alert", 2], ["losses", 2], ["defense_level", 2]]:
 		run.add_child(IconStat.make(pair[0], pair[1]))
 
 	_title(col, "SKILLS")

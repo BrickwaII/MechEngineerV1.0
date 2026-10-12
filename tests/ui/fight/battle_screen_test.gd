@@ -115,7 +115,7 @@ func test_clicking_an_enemy_without_a_skill_shows_why() -> void:
 func test_wait_button_waits() -> void:
 	var actor := _screen.handler.actor()
 	_screen.skill_buttons["strike"].pressed.emit()
-	assert_str(_screen.wait_button.text).is_equal("WAIT for Strike")
+	assert_str(_screen.wait_button.label.text).is_equal("Wait for Strike")
 	_screen.wait_button.pressed.emit()
 	assert_bool(_screen.fight.action_tags.has("%s:wait" % actor.id)).is_true()
 
@@ -160,8 +160,8 @@ func test_a_support_bot_sees_only_its_own_skills_by_their_names() -> void:
 		if _screen.skill_buttons[skill_id].visible:
 			shown.append(skill_id)
 	assert_array(shown).contains_exactly_in_any_order(spark.skill_ids)
-	assert_str(_screen.skill_buttons["patch_up"].text).contains("PATCH UP")
-	assert_str(_screen.skill_buttons["shield"].text).contains("SHIELD ALLY")
+	assert_str(_screen.skill_buttons["patch_up"].skill_name).is_equal("Patch Up")
+	assert_str(_screen.skill_buttons["shield"].skill_name).is_equal("Shield Ally")
 	# Overcharge Shot belongs to Bolt, not Spark.
 	assert_bool(_screen.skill_buttons["heavy_strike"].visible).is_false()
 
@@ -206,8 +206,42 @@ func test_exact_waits_from_the_ticks_box() -> void:
 		guard += 1
 	assert_bool(screen.wait_ticks_box.visible).is_true()
 	screen.wait_ticks_box.value = 3
-	assert_str(screen.wait_button.text).is_equal("WAIT 3 ticks")
+	assert_str(screen.wait_button.label.text).is_equal("Wait 3 ticks")
 	assert_bool(screen.wait_button.disabled).is_false()
 	screen.wait_button.pressed.emit()
 	assert_int(screen.fight.decision_tags.filter(func(t: ActionTag) -> bool: return t.kind == FightAction.Kind.WAIT).size()).is_equal(1)
 	assert_str(screen.fight.log_text()).contains("waits 3 ticks")
+
+
+func test_the_screen_follows_the_icon_style() -> void:
+	# Skills are cards with cost and effect; stats are icons; the log starts collapsed.
+	var strike: SkillCard = _screen.skill_buttons["strike"]
+	assert_str(strike.cost_label.text).is_equal(str(_screen.fight.tuning.skill("strike").energy_cost))
+	assert_str(strike.effect).starts_with("Deal ")
+	assert_bool(_screen.log_label.visible).is_false()
+	_screen.toggle_log()
+	assert_bool(_screen.log_label.visible).is_true()
+	assert_str(_screen.defense_stat.value_text()).is_equal(str(_screen.fight.request.defense_level))
+	for id: String in _screen.unit_panels:
+		var panel = _screen.unit_panels[id]
+		assert_object(panel.stat_icons["atk"]).is_not_null()
+		assert_str(UiTooltip.spec(panel.stat_icons["atk"])["title"]).is_equal("Attack")
+		if panel.is_enemy and panel.intent_kind != "":
+			assert_bool(panel.intent_chip.visible).override_failure_message(id).is_true()
+
+
+func test_skill_card_face_splits_rank_and_writes_the_effect() -> void:
+	var s := CombatSkill.new("strike", "Mega Strike +2", 0, 150, CombatSkill.EFFECT_DAMAGE)
+	s.names_rank = true
+	s.pierce_percent = 20
+	var face := BattleScreen.skill_card_face(s, 10)
+	assert_str(face.name).is_equal("Mega Strike")
+	assert_str(face.rank).is_equal("+2")
+	assert_str(face.effect).is_equal("Deal 15. Pierce 20%.")
+	var guard := CombatSkill.new("brace", "Brace", 2, 40, CombatSkill.EFFECT_GUARD, CombatSkill.TARGET_SELF)
+	assert_str(BattleScreen.skill_card_face(guard, 10).effect).is_equal("Guard 40% self.")
+	var all := CombatSkill.new("arc", "Arc Sweep", 6, 70, CombatSkill.EFFECT_DAMAGE, CombatSkill.TARGET_ALL_OPPONENTS)
+	all.level = 2
+	var f := BattleScreen.skill_card_face(all, 10)
+	assert_str(f.effect).is_equal("Deal 7 to all.")
+	assert_str(f.rank).is_equal("Lv2")

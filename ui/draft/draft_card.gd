@@ -19,6 +19,10 @@ var face: Control
 var sprite: UnitSprite
 ## The badge with the pick order ("1", "2", ...), hidden when not picked.
 var badge: Label
+## The personality's trait icon; null for a balanced bot.
+var trait_icon: IconStat
+## Stat icon id ("hp", "atk", ...) -> its IconStat.
+var stat_icons: Dictionary[String, IconStat] = {}
 
 var _lift := 0.0
 var _lift_tween: Tween
@@ -147,7 +151,16 @@ func _build() -> void:
 	badge.position = Vector2(8, 4)
 
 	DraftScreen._label(col, bot.display_name, 20, Palette.TEXT_BRIGHT)
-	DraftScreen._label(col, bot.personality.get_tag().to_upper(), 10, Palette.ACTIVE)
+	# The personality as its trait icon (the word is in the tooltip and on the
+	# hexagon); a balanced bot, with no trait icon, keeps the word.
+	var tag := bot.personality.get_tag()
+	if UiIcons.has("trait_%s" % tag):
+		trait_icon = IconStat.make("trait_%s" % tag)
+		trait_icon.name = "Trait"
+		trait_icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		col.add_child(trait_icon)
+	else:
+		DraftScreen._label(col, tag.to_upper(), 10, Palette.ACTIVE)
 	var hex := PersonalityHexagon.new()
 	hex.name = "Hexagon"
 	var hex_size: Array = ScreenFeel.value("readout.draft_hex_size", [150, 118])
@@ -157,14 +170,35 @@ func _build() -> void:
 	hex.font_size = 8
 	hex.show_ends(bot.personality.get_ends())
 	col.add_child(hex)
+	# Stats as icons and numbers (ui/README.md rule 1).
 	var s := bot.stats
-	DraftScreen._label(col, "HP %d\nATK %d   DEF %d\nSPD %d   ELA %d\nBATTERY %d" % [
-		s.hp, s.attack, s.defense, s.speed, s.elasticity, s.battery_capacity], 10, Palette.TEXT)
-	var skill_names := PackedStringArray()
+	var grid := GridContainer.new()
+	grid.name = "Stats"
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 4)
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	col.add_child(grid)
+	for pair in [["hp", s.hp], ["atk", s.attack], ["def", s.defense],
+			["spd", s.speed], ["ela", s.elasticity], ["battery", s.battery_capacity]]:
+		var stat := IconStat.make(pair[0], pair[1])
+		stat_icons[pair[0]] = stat
+		grid.add_child(stat)
+	# Skills: the cost as an Energy icon and number, then the name.
+	var skills := VBoxContainer.new()
+	skills.name = "Skills"
+	skills.add_theme_constant_override("separation", 2)
+	skills.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(skills)
 	for skill in bot.skills:
-		skill_names.append(skill.display_name)
-	DraftScreen._label(col, "SKILLS", 10, Palette.TEXT_DIM)
-	DraftScreen._label(col, "\n".join(skill_names), 10, Palette.TEXT)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		skills.add_child(row)
+		var cost := IconStat.make("energy", skill.energy_cost)
+		cost.custom_minimum_size.x = 40
+		row.add_child(cost)
+		DraftScreen._label(row, skill.display_name, 10, Palette.TEXT).size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
 
 ## Picked cards get the ally border and a raised panel; the rest a plain one.

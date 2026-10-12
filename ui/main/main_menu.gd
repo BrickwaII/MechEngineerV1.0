@@ -33,6 +33,9 @@ var run_over: RunOverScreen
 var menu: Control
 var continue_button: Button
 var continue_label: Label
+## The run to continue as icons and numbers: day, regions held, fights won
+## and lost (ui/README.md rule 1). The full line is in continue_label's tooltip.
+var continue_icons: HBoxContainer
 var load_button: Button
 var new_run_button: Button
 var load_list: Control
@@ -62,10 +65,30 @@ func legacy_path() -> String:
 func refresh() -> void:
 	var latest := RunFolder.latest_continuable(runs_folder())
 	continue_button.disabled = latest.is_empty()
-	continue_label.text = "No run to continue." if latest.is_empty() else (
-		"%s\n%s" % [latest.get_file(), RunFolder.describe(_summary_of(latest))])
+	continue_label.text = "No run to continue." if latest.is_empty() else latest.get_file()
+	_fill_run_icons(continue_icons, {} if latest.is_empty() else _summary_of(latest))
 	load_button.disabled = RunFolder.list(runs_folder(), 1).is_empty()
 	legacy_panel.visible = RunFolder.legacy_pending(runs_folder(), legacy_path())
+
+
+## Fills `row` with a run summary as icons: act, day, regions held, fights
+## won and lost. Hovering any shows the whole summary line.
+static func _fill_run_icons(row: HBoxContainer, summary: Dictionary) -> void:
+	for child in row.get_children():
+		row.remove_child(child)
+		child.queue_free()
+	if summary.is_empty():
+		return
+	var line := RunFolder.describe(summary)
+	var items: Array = []
+	if str(summary.get("stage", "")) != "draft":
+		items.append(["time", "%d" % int(summary.get("day", 1))])
+		items.append(["regions", "%d/%d" % [int(summary.get("regions_held", 0)), int(summary.get("regions_total", 0))]])
+	items.append(["fights_won", int(summary.get("fights_won", 0))])
+	items.append(["fights_lost", int(summary.get("fights_lost", 0))])
+	for item: Array in items:
+		var stat := IconStat.make(item[0], item[1], line)
+		row.add_child(stat)
 
 
 ## Starts a new run on the draft.
@@ -196,6 +219,11 @@ func _build() -> void:
 	continue_label = _label("", "text_dim", 10, true)
 	continue_label.name = "ContinueLabel"
 	menu.add_child(continue_label)
+	continue_icons = HBoxContainer.new()
+	continue_icons.name = "ContinueIcons"
+	continue_icons.alignment = BoxContainer.ALIGNMENT_CENTER
+	continue_icons.add_theme_constant_override("separation", 14)
+	menu.add_child(continue_icons)
 	load_button = _button("LOAD", show_load_list)
 	menu.add_child(_centered(load_button))
 	new_run_button = _button("NEW RUN", start_new_run)

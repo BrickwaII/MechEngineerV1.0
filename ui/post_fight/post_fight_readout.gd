@@ -340,7 +340,7 @@ func _apply_step(index: int, p: float) -> void:
 				if hex.fill_progress() > 0.0 and not was_filling and p < 1.0 and not _grow_sounded.has(index):
 					_grow_sounded[index] = true
 					SoundPlayer.fire(&"personality_grow")
-				var growth: Label = row.find_child("Growth", true, false)
+				var growth: Control = row.find_child("Growth", true, false)
 				growth.modulate.a = 1.0 if hex.fill_progress() > 0.0 else 0.0
 
 
@@ -481,23 +481,42 @@ func _hexagon_box(r: BotFightReport) -> Control:
 	hex.before = r.personality_before.duplicate()
 	hex.after = r.personality_after.duplicate()
 	box.add_child(hex)
-	var growth := _label(growth_text(r), 10, ACCENT if r.personality_grew() else TEXT_DIM)
-	growth.name = "Growth"
-	growth.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	growth.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(growth)
+	# What grew as trait icons with their gain (ui/README.md rule 1); the
+	# words stay in each icon's tooltip. No growth keeps the dim words.
+	var grown := growth_items(r)
+	if grown.is_empty():
+		var growth := _label(growth_text(r), 10, TEXT_DIM)
+		growth.name = "Growth"
+		growth.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		box.add_child(growth)
+		return box
+	var row := HBoxContainer.new()
+	row.name = "Growth"
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 12)
+	box.add_child(row)
+	for g: Array in grown:
+		var stat := IconStat.make("trait_%s" % g[1], "+%.2f" % g[0], "Grew this fight.")
+		stat.value_label.add_theme_color_override("font_color", ACCENT)
+		row.add_child(stat)
 	return box
 
 
-## What grew, biggest first: "+0.06 aggressive  +0.02 solitary", or "No change".
-static func growth_text(r: BotFightReport) -> String:
+## What grew, biggest first: [[gain, end], ...].
+static func growth_items(r: BotFightReport) -> Array:
 	var grown: Array = []
 	for i in Personality.ENDS.size():
 		if i < r.personality_after.size() and r.growth(i) > 0.0001:
 			grown.append([r.growth(i), Personality.ENDS[i]])
+	grown.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
+	return grown
+
+
+## What grew, biggest first: "+0.06 aggressive  +0.02 solitary", or "No change".
+static func growth_text(r: BotFightReport) -> String:
+	var grown := growth_items(r)
 	if grown.is_empty():
 		return "No change"
-	grown.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
 	return "  ".join(grown.map(func(g: Array) -> String: return "+%.2f %s" % [g[0], g[1]]))
 
 

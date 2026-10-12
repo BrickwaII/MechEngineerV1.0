@@ -18,8 +18,8 @@ Never write "ATK 12" or "Energy: 24"; write `IconStat.make("atk", 12)`.
 
 | What | Icon ids |
 |---|---|
-| Unit stats | `hp`, `atk`, `def`, `spd`, `battery`, `ela`, `energy` |
-| Run resources | `energy`, `material`, `grid_power`, `time` |
+| Unit stats | `hp`, `atk`, `def`, `spd`, `battery`, `ela`, `energy` (battle Energy, the lightning; also skill costs) |
+| Run resources | `map_energy` (the campaign Energy resource, a power cell), `material`, `grid_power`, `time` |
 | Region and campaign | `defense_level`, `pressure`, `alert`, `losses` |
 | Personality | `trait_aggressive`, `trait_defensive`, `trait_solitary`, `trait_supportive`, `trait_reactive`, `trait_methodical` |
 | Map actions | `action_attack`, `action_reinforce`, `action_wait`, `action_retreat`, `action_fast_forward` |
@@ -53,6 +53,8 @@ plain words, no more than two sentences, numbers as digits.
 - **Map and menu actions** are `ActionButton`s: an icon, the label, and the
   cost as an icon and number, always visible
   (`ActionButton.make("action_reinforce", "Reinforce", "material", 2)`).
+- Text on cards and buttons is never smaller than the body font: a long
+  name wraps onto two lines instead of shrinking.
 
 ### 4. Enemy intents
 

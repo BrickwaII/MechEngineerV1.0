@@ -3,7 +3,7 @@ extends GdUnitTestSuite
 ## ActionButton (ui/common/, style guide in ui/README.md).
 
 const REQUIRED_ICONS: Array[String] = [
-	"atk", "def", "spd", "battery", "hp", "ela", "energy", "grid_power", "material", "time",
+	"atk", "def", "spd", "battery", "hp", "ela", "energy", "map_energy", "grid_power", "material", "time",
 	"defense_level", "pressure", "alert", "losses",
 	"trait_aggressive", "trait_defensive", "trait_solitary", "trait_supportive", "trait_reactive", "trait_methodical",
 	"action_attack", "action_reinforce", "action_wait", "action_retreat", "action_fast_forward",
