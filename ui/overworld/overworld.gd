@@ -1266,7 +1266,7 @@ func _hide_modal() -> void:
 ## The losses stat and the REPAIR button.
 func _refresh_stakes() -> void:
 	var stakes := campaign.stakes
-	_losses.set_value(campaign.losses_left() if stakes.loss_limit > 0 else "-")
+	_losses.set_value(_losses_value())
 	_losses.set_tip_text(_losses_tip())
 	_repair_button.visible = stakes.is_offered(Stakes.USE_REPAIR) and stakes.repair_grid > 0.0
 	_repair_button.label.text = "Repair +%s%%" % _number(stakes.repair_grid)
@@ -1277,15 +1277,21 @@ func _refresh_stakes() -> void:
 
 func _losses_tip() -> String:
 	var stakes := campaign.stakes
-	var text := "Lost battles left this act. Each loss takes %s Energy and %s Material." % [
+	var text := "Battles lost this act. Each loss takes %s Energy and %s Material." % [
 		Stakes._n(stakes.loss_cost[Stakes.ENERGY]), Stakes._n(stakes.loss_cost[Stakes.MATERIAL])]
 	if stakes.loss_limit <= 0:
 		return text + " No limit this run."
-	return text + " Lost %d of %d; the next act starts again. Losing the boss ends the run." % [campaign.state.losses, stakes.loss_limit]
+	return text + " Loss %d ends the run; the next act starts again at 0. Losing the boss ends the run." % stakes.loss_limit
+
+
+## "1/3": battles lost this act over the limit; "1" with no limit.
+func _losses_value() -> String:
+	var limit := campaign.stakes.loss_limit
+	return "%d/%d" % [campaign.state.losses, limit] if limit > 0 else str(campaign.state.losses)
 
 
 func _losses_stat() -> IconStat:
-	var stat := IconStat.make("losses", campaign.losses_left() if campaign.stakes.loss_limit > 0 else "-", _losses_tip())
+	var stat := IconStat.make("losses", _losses_value(), _losses_tip())
 	stat.name = "LossesLeft"
 	return stat
 
@@ -1358,10 +1364,22 @@ func _points_text(points: int) -> String:
 
 ## A row of icon stats in the message, above its buttons.
 func _show_stat_row(stats: Array) -> void:
+	_show_stat_rows([stats])
+
+
+## Rows of icon stats in the message, above its buttons. A row may start
+## with a String, shown as its small label.
+func _show_stat_rows(rows: Array) -> void:
 	_clear(_modal_options)
 	_modal_options.visible = true
-	for stat: Control in stats:
-		_modal_options.add_child(stat)
+	var column := _rows(10)
+	_modal_options.add_child(column)
+	for stats: Array in rows:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 18)
+		column.add_child(row)
+		for stat: Variant in stats:
+			row.add_child(_text(stat, 11, Palette.TEXT_DIM) if stat is String else stat)
 
 
 ## The step between ATTACK and the fight: what the squad faces as icons, and
@@ -1387,8 +1405,15 @@ func show_pre_fight(region_id: String) -> void:
 	var odds_label := _text(odds_text(region_id), 13, _odds_color(odds.label_for(campaign, region_id)))
 	UiTooltip.attach(odds_label, "Your odds", "From auto-fights against this region's enemies." if odds.is_simulated()
 		else "Squad strength against the Defense level.")
-	_show_stat_row([defense, odds_label, IconStat.make("time", _points_text(campaign.tuning.attack_time), "Time the attack takes."),
-		_losses_stat()])
+	var loss := stakes.loss_cost
+	_show_stat_rows([
+		[odds_label, defense, IconStat.make("time", _points_text(campaign.tuning.attack_time), "Time the attack takes."),
+			IconStat.make("grid_power", "-%s%%" % _number(campaign.attack_grid_cost(region_id)),
+				"Grid the attack takes if it wins; a defeat takes %s times that." % _number(campaign.tuning.defeat_grid_multiplier)),
+			_losses_stat()],
+		["DEFEAT COSTS", IconStat.make("energy", "-%s" % _number(loss[Stakes.ENERGY]), "Energy a lost battle takes."),
+			IconStat.make("material", "-%s" % _number(loss[Stakes.MATERIAL]), "Material a lost battle takes.")],
+	])
 
 
 func _on_retreat(region_id: String) -> void:

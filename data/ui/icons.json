@@ -15,7 +15,7 @@
 		"pressure": {"texture": "res://assets/ui/icons/pressure.png", "name": "Pressure", "color": "danger", "text": "How hard the enemy pushes back. Rises over time."},
 		"alert": {"texture": "res://assets/ui/icons/alert.png", "name": "Alert", "color": "warning", "text": "How much the enemy has noticed you. Higher tiers send stronger forces."},
 		"fortify": {"texture": "res://assets/ui/icons/fortify.png", "name": "Fortified", "color": "enemy", "text": "Defense this region built while left alone on Alert. Attack it to stop the digging."},
-		"losses": {"texture": "res://assets/ui/icons/losses.png", "name": "Losses left", "color": "danger", "text": "Lost battles left this act. Losing one more at 1 ends the run."},
+		"losses": {"texture": "res://assets/ui/icons/losses.png", "name": "Losses", "color": "danger", "text": "Battles lost this act, over the limit. At the limit the run ends."},
 		"trait_aggressive": {"texture": "res://assets/ui/icons/trait_aggressive.png", "name": "Aggressive", "color": "danger", "text": "Prefers to attack."},
 		"trait_defensive": {"texture": "res://assets/ui/icons/trait_defensive.png", "name": "Defensive", "color": "selected", "text": "Prefers to Guard."},
 		"trait_solitary": {"texture": "res://assets/ui/icons/trait_solitary.png", "name": "Solitary", "color": "text_dim", "text": "Looks after itself."},
