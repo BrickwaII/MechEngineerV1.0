@@ -19,7 +19,7 @@ var run_dir := ""
 var leave_text := "MAIN MENU"
 
 var title_label: Label
-var reason_label: Label
+var reason_label: RichTextLabel
 var details: VBoxContainer
 var leave_button: Button
 var folder_button: Button
@@ -59,7 +59,8 @@ func _ready() -> void:
 	title_label = _label("", "accent", 30)
 	title_label.name = "TitleLabel"
 	rows.add_child(title_label)
-	reason_label = _label("", "text_bright", 12)
+	reason_label = UiGlossary.rich("", ScreenTheme.size(12), FeelData.color("text_bright"))
+	reason_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	reason_label.name = "ReasonLabel"
 	rows.add_child(reason_label)
 	details = VBoxContainer.new()
@@ -85,7 +86,7 @@ func _fill() -> void:
 	var won := bool(summary.get("won", false))
 	title_label.text = "VICTORY" if won else "DEFEAT"
 	title_label.add_theme_color_override("font_color", FeelData.color("accent" if won else "danger"))
-	reason_label.text = reason_text(str(summary.get("end_reason", "")), won)
+	reason_label.text = UiGlossary.highlight(reason_text(str(summary.get("end_reason", "")), won), UiGlossary.color())
 	for child in details.get_children():
 		child.queue_free()
 	var stats := HBoxContainer.new()

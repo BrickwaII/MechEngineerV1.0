@@ -157,9 +157,10 @@ func describe_choice(fight: Fight, action: FightAction, choice: ChoicePreview) -
 	return "\n".join(lines)
 
 
-## A guard in words: "blocks 50% of its next hit", or "guard used up".
+## A guard as its keyword and number: "Guard 50%", or "Guard used up". The
+## glossary explains Guard.
 static func guard_text(percent: int) -> String:
-	return "blocks %d%% of its next hit" % percent if percent > 0 else "guard used up"
+	return "Guard %d%%" % percent if percent > 0 else "Guard used up"
 
 
 ## Ids of the units `choice` would surely down.

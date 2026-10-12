@@ -3,6 +3,7 @@
 	"icon_scale": 2,
 	"tooltip": {
 		"delay_seconds": 0.35,
+		"grace_seconds": 0.25,
 		"width": 260,
 		"offset": [16, 16],
 		"keyword_color": "preview",

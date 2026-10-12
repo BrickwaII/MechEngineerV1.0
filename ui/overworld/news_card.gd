@@ -19,7 +19,7 @@ var _queue: Array[Dictionary] = []
 var _left := 0.0
 var _icon: TextureRect
 var _headline: Label
-var _body: Label
+var _body: RichTextLabel
 
 
 func _ready() -> void:
@@ -48,7 +48,7 @@ func _ready() -> void:
 	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(rows)
 	_headline = _label(16, Palette.TEXT_BRIGHT)
-	_body = _label(12, Palette.TEXT_BODY)
+	_body = UiGlossary.rich("", 12, Palette.TEXT_BODY)
 	for label in [_headline, _body]:
 		rows.add_child(label)
 	gui_input.connect(func(event: InputEvent) -> void:
@@ -92,7 +92,7 @@ func _show(card: Dictionary) -> void:
 	(get_theme_stylebox("panel") as StyleBoxFlat).border_color = color
 	_icon.texture = UiIcons.texture("fortify" if fortified else "alert")
 	_headline.text = str(card.get("headline", ""))
-	_body.text = str(card.get("body", ""))
+	_body.text = UiGlossary.highlight(str(card.get("body", "")), UiGlossary.color())
 	_left = float(Escalation.load_data().get("ui", {}).get("news_seconds", 6.0))
 	visible = true
 	# A toast: fades in, and fades out over its last moments (see _process).

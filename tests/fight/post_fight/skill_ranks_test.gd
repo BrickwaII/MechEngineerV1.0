@@ -111,7 +111,7 @@ func test_reaching_mega_is_a_tier_shift() -> void:
 	assert_bool(c.is_tier_shift()).is_true()
 	assert_str(c.rank_before).is_equal("+5")
 	assert_str(c.rank_after).is_equal("Mega")
-	assert_array(c.new_bonuses).contains_exactly(["pierces 50% of armor"])
+	assert_array(c.new_bonuses).contains_exactly(["Pierce 50%"])
 
 
 func test_the_top_rank_stops_and_banks_nothing() -> void:

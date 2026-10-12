@@ -106,6 +106,7 @@ func _init() -> void:
 	effect_label.add_theme_font_size_override("normal_font_size", PixelTheme.font_size("body"))
 	effect_label.add_theme_color_override("default_color", FeelData.color("text"))
 	col.add_child(effect_label)
+	UiGlossary.wire(effect_label)
 
 
 func set_skill(p_name: String, p_cost: int, p_effect: String, p_rank := "") -> void:

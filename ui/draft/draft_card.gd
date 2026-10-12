@@ -193,8 +193,9 @@ func _build() -> void:
 	for skill in bot.skills:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.mouse_filter = Control.MOUSE_FILTER_PASS
 		skills.add_child(row)
+		UiTooltip.attach(row, skill.display_name, "Costs %d Energy. Rank %d." % [skill.energy_cost, skill.level])
 		var cost := IconStat.make("energy", skill.energy_cost)
 		cost.custom_minimum_size.x = 40
 		row.add_child(cost)

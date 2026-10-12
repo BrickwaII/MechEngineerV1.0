@@ -59,7 +59,7 @@ func test_the_demo_has_a_tier_shift() -> void:
 				tiers += 1
 				assert_str(LevelUpCallout.title_for(c)).is_equal("MEGA OVERCHARGE SHOT!")
 				assert_str(LevelUpCallout.rank_line(c)).is_equal("+5 -> MEGA")
-				assert_str(LevelUpCallout.bonus_line(c)).is_equal("now pierces 50% of armor")
+				assert_str(LevelUpCallout.bonus_line(c)).is_equal("+ Pierce 50%")
 	assert_int(tiers).is_equal(1)
 	demo.free()
 

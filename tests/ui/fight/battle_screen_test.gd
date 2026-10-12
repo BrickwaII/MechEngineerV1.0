@@ -181,7 +181,7 @@ func test_shield_ally_marks_the_bots_panel() -> void:
 	await _until_turn_of("stub_spark")
 	_screen.skill_buttons["shield"].pressed.emit()
 	_screen.on_unit_hovered("stub_anvil", true)
-	assert_str(_screen.preview_label.text).contains("blocks 40% of its next hit")
+	assert_str(_screen.preview_label.text).contains("Guard 40%")
 	Helpers.click(_screen.unit_panels["stub_anvil"])
 	assert_int(_screen.fight.combatant("stub_anvil").guard_percent).is_equal(40)
 	assert_str(_screen.unit_panels["stub_anvil"].status_text()).contains("GUARD 40%")

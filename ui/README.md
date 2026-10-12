@@ -37,11 +37,29 @@ one or two plain lines, then the numbers. `IconStat` and the other kit
 widgets do this on their own; for any other control call
 `UiTooltip.attach(control, name, lines, numbers, icon_id)`.
 
-Keywords inside tooltip and card text (Guard, Pierce, Charge, Energy, Down,
-Wait, ...) are highlighted and each gets its own small box under the tooltip,
-like Slay the Spire keywords. They come from `data/ui/glossary.json`; write
-the keyword in plain text and the kit finds it. Tooltip lines are short:
-plain words, no more than two sentences, numbers as digits.
+Keywords in any description (Guard, Pierce, Charge, Energy, Fortify, alert
+tiers, traits, ...) are highlighted in one color (`tooltip.keyword_color` in
+`data/ui/ui_kit.json`) and underlined, so they read as links, like Slay the
+Spire keywords:
+
+- **Hover** a keyword to see its box (icon, name, short definition with its
+  numbers) by the cursor.
+- **Click** it to pin the box until a click elsewhere or Esc. Keywords inside
+  a pinned box are links too: hover shows theirs beside it, click pins theirs.
+- Hovering a whole card or tooltip also lists the boxes of every keyword it
+  uses.
+
+Keywords, their aliases (Piercing, Pierces -> Pierce) and definitions live in
+`data/ui/glossary.json`. To show a description, use
+`UiGlossary.rich(text, font_size)` (a wired RichTextLabel), or
+`UiGlossary.highlight()` plus `UiGlossary.wire(label)` on your own
+RichTextLabel; UiTooltip and SkillCard already do this.
+
+**Name the keyword and its number; leave the explanation to the glossary.**
+Write "Pierce 20%", not "ignores 20% of the target's defense"; "Guard 40%",
+not "blocks 40% of its next hit". A new mechanic that shows up in text gets a
+glossary entry. Tooltip lines are short: plain words, no more than two
+sentences, numbers as digits.
 
 ### 3. Actions always show their text
 

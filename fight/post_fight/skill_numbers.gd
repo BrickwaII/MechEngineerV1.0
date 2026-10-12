@@ -58,17 +58,18 @@ static func new_bonuses(before: Dictionary, after: Dictionary) -> Array[String]:
 	return out
 
 
-## One bonus effect in words: "pierces 50% of armor".
+## One bonus effect as its keyword and number: "Pierce 50%". The keywords'
+## meanings are in data/ui/glossary.json.
 static func describe(key: String, percent: int) -> String:
 	match key:
 		"pierce_percent":
-			return "pierces %d%% of armor" % percent
+			return "Pierce %d%%" % percent
 		"weakest_bonus_percent":
-			return "+%d%% damage to the weakest" % percent
+			return "Weakest +%d%%" % percent
 		"heal_guard_percent":
-			return "heals also guard %d%%" % percent
+			return "Guard %d%% on heals" % percent
 		"reflect_percent":
-			return "reflects %d%% of blocked damage" % percent
+			return "Reflect %d%%" % percent
 	return "%s %d%%" % [key, percent]
 
 

@@ -424,7 +424,21 @@ func _skill_name(c: SkillChange) -> String:
 
 
 func _skill_row(c: SkillChange) -> Control:
-	return _row(skill_row_left(c), skill_row_right(c), skill_row_color(c))
+	var row := _row(skill_row_left(c), skill_row_right(c), skill_row_color(c))
+	UiTooltip.attach(row, _skill_name_of(c), skill_row_tip(c))
+	return row
+
+
+## The skill row's tooltip, keywords and numbers: "Rank up to +2. Mega: Pierce 50%."
+static func skill_row_tip(c: SkillChange) -> String:
+	if not c.has_bot_skill():
+		return "The basic attack. It does not Rank up."
+	var parts: Array[String] = ["Used %d times." % c.uses]
+	if c.levels_gained() > 0:
+		parts.append("Rank up to %s." % _rank_or_base(c.rank_after) if c.ranked else "Level %d." % c.level_after)
+	if not c.new_bonuses.is_empty():
+		parts.append("%s: %s." % [c.name_after.split(" ")[0] if c.is_tier_shift() else "Now", ", ".join(c.new_bonuses)])
+	return " ".join(parts)
 
 
 ## "Patch Up ×3", or the combat skill's name for a use with no bot skill.
