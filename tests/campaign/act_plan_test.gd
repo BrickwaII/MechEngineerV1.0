@@ -17,6 +17,15 @@ func _plan() -> ActPlan:
 	return plan
 
 
+## The plan on the larger act 2 and 3 maps, whose region ids the zoom tests
+## name (the defaults are the smaller maps, TODO(decision: act-maps)).
+func _large_plan() -> ActPlan:
+	var plan := _plan()
+	assert_bool(plan.choose_variant(1, "north_america_33")).is_true()
+	assert_bool(plan.choose_variant(2, "world_20")).is_true()
+	return plan
+
+
 func _campaign(plan: ActPlan, act: int, state: RunState = null) -> Campaign:
 	return Campaign.new(plan.load_map(act), plan.load_tuning(act),
 		StubSquadProvider.new(), StubFightService.new(), state)
@@ -40,10 +49,11 @@ func test_shipped_acts_are_seattle_then_north_america_then_the_world() -> void:
 		assert_array(map.errors).is_empty()
 		assert_array(plan.load_tuning(act).errors).is_empty()
 	assert_str(plan.load_map(0).id).is_equal("lake_washington_12")
-	assert_str(plan.load_map(1).id).is_equal("north_america_33")
-	assert_str(plan.load_map(2).id).is_equal("world_20")
-	assert_str(plan.acts[1]["zoom_focus"]).is_equal("washington")
-	assert_str(plan.acts[2]["zoom_focus"]).is_equal("united_states")
+	# TODO(decision: act-maps): acts 2 and 3 default to their smaller maps.
+	assert_str(plan.load_map(1).id).is_equal("north_america_19")
+	assert_str(plan.load_map(2).id).is_equal("world_8")
+	assert_str(plan.acts[1]["zoom_focus"]).is_equal("pacific_northwest")
+	assert_str(plan.acts[2]["zoom_focus"]).is_equal("north_america")
 	for act in [1, 2]:
 		assert_bool(plan.load_map(act).has_region(plan.acts[act]["zoom_focus"])).is_true()
 
@@ -59,7 +69,7 @@ func test_each_act_has_its_own_pacing() -> void:
 		# On its default map an act builds pressure at the tuned scale.
 		assert_float(_campaign(plan, act).pressure_scale()).is_equal(t.pressure_scale)
 	assert_array(days).is_equal([100, 100, 100])
-	assert_array(references).is_equal([12, 33, 20])
+	assert_array(references).is_equal([12, 19, 8])
 	assert_str(plan.load_tuning(1).node_style).is_equal(MapTuning.NODE_COMPACT)
 
 
@@ -81,14 +91,14 @@ func test_each_act_offers_variants_and_plays_the_chosen_one() -> void:
 		["lake_washington_8", "lake_washington_12", "lake_washington_16", "lake_washington_22"],
 		["north_america_19", "north_america_33", "north_america_57"],
 		["world_8", "world_20", "world_39"]])
-	assert_str(plan.chosen_variant(1)).is_equal("north_america_33")
-	assert_bool(plan.choose_variant(1, "north_america_19")).is_true()
-	assert_str(plan.load_map(1).id).is_equal("north_america_19")
-	assert_str(plan.acts[1]["zoom_focus"]).is_equal("pacific_northwest")
-	assert_bool(plan.choose_variant(1, "atlantis")).is_false()
 	assert_str(plan.chosen_variant(1)).is_equal("north_america_19")
-	assert_bool(plan.choose_variant(1, "")).is_true()
+	assert_bool(plan.choose_variant(1, "north_america_33")).is_true()
+	assert_str(plan.load_map(1).id).is_equal("north_america_33")
+	assert_str(plan.acts[1]["zoom_focus"]).is_equal("washington")
+	assert_bool(plan.choose_variant(1, "atlantis")).is_false()
 	assert_str(plan.chosen_variant(1)).is_equal("north_america_33")
+	assert_bool(plan.choose_variant(1, "")).is_true()
+	assert_str(plan.chosen_variant(1)).is_equal("north_america_19")
 	assert_bool(plan.choose_variant(5, "")).is_false()
 
 
@@ -118,7 +128,7 @@ func test_bonus_regions_grow_with_regions_held_up_to_the_cap() -> void:
 
 
 func test_bonus_regions_are_the_focus_neighbors_with_the_lowest_defense() -> void:
-	var plan := _plan()
+	var plan := _large_plan()
 	var act2 := plan.load_map(1)
 	# Washington's neighbors: Oregon 1, the Northern Rockies 3, British Columbia 2.
 	assert_array(Array(plan.zoom_regions(1, act2, 2))).contains_exactly(["washington"])
@@ -132,7 +142,7 @@ func test_bonus_regions_are_the_focus_neighbors_with_the_lowest_defense() -> voi
 
 
 func test_the_zoom_carries_resources_grid_and_the_start_bonus() -> void:
-	var plan := _plan()
+	var plan := _large_plan()
 	var act1 := _campaign(plan, 0, Campaign.new_run_state(plan.load_map(0), plan.load_tuning(0),
 		plan.load_map(0).get_start("renton_works")))
 	act1.state.energy = 33.5
@@ -164,7 +174,7 @@ func test_the_grid_restore_stops_at_full() -> void:
 
 
 func test_a_run_plays_act1_to_the_payload_then_act2_on_the_carried_state() -> void:
-	var plan := _plan()
+	var plan := _large_plan()
 	var act1 := _campaign(plan, 0)
 	assert_bool(await act1.attack("bothell")).is_true()
 	while not act1.is_over():
@@ -186,7 +196,7 @@ func test_a_run_plays_act1_to_the_payload_then_act2_on_the_carried_state() -> vo
 
 
 func test_act2_zooms_out_to_the_world_on_the_carried_state() -> void:
-	var plan := _plan()
+	var plan := _large_plan()
 	var act1 := _campaign(plan, 0)
 	act1.state.time_points = act1.tuning.total_points
 	var act2 := _campaign(plan, 1, plan.zoom_state(act1.state, plan.load_map(1), plan.load_tuning(1)))
@@ -212,7 +222,7 @@ func test_act2_zooms_out_to_the_world_on_the_carried_state() -> void:
 
 
 func test_an_act2_save_round_trips_with_its_act() -> void:
-	var plan := _plan()
+	var plan := _large_plan()
 	var act1 := _campaign(plan, 0)
 	act1.state.time_points = act1.tuning.total_points
 	var act2 := _campaign(plan, 1, plan.zoom_state(act1.state, plan.load_map(1), plan.load_tuning(1)))
@@ -241,7 +251,7 @@ func test_a_later_act_needs_a_zoom_focus() -> void:
 
 
 func test_an_act3_save_round_trips_with_its_act() -> void:
-	var plan := _plan()
+	var plan := _large_plan()
 	var state := Campaign.new_run_state(plan.load_map(0), plan.load_tuning(0))
 	state.time_points = plan.load_tuning(0).total_points
 	state = plan.zoom_state(state, plan.load_map(1), plan.load_tuning(1))

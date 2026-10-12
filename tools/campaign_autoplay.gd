@@ -14,7 +14,9 @@ extends RefCounted
 ## With `policy` POLICY_CAREFUL step 3 plays the map's odds as a person would
 ## (OddsEstimator, the odds the map shows): attack the in-range region with
 ## the best odds if they are Favored or Even; else breach the Risky region
-## whose breached odds are best, when the breach can be paid; else wait.
+## whose breached odds are best, when the breach can be paid; else wait. It
+## retreats from a forced defense at Risky or Outmatched odds when it can pay
+## the retreat (the region is lost, not the battle).
 ## POLICY_BLIND (the default) is the rule above. TODO(decision: loss-limit):
 ## the careful rule is a stand-in for how a person picks fights.
 ##
@@ -36,6 +38,8 @@ const POLICIES: Array[String] = [POLICY_BLIND, POLICY_CAREFUL]
 ## Odds labels the careful policy attacks at (data/combat/odds.json bands).
 const CAREFUL_ATTACK_LABELS: Array[String] = ["Favored", "Even"]
 const CAREFUL_BREACH_LABELS: Array[String] = ["Risky"]
+## Forced defenses at these odds the careful policy retreats from, when it can.
+const CAREFUL_RETREAT_LABELS: Array[String] = ["Risky", "Outmatched"]
 
 ## One played campaign.
 class Record:
@@ -57,6 +61,8 @@ class Record:
 	var fights_per_act: Array[int] = []
 	var limit_per_act: Array[int] = []
 	var breaches := 0
+	## Forced defenses the careful policy retreated from.
+	var retreats := 0
 	## Why the run ended (Stakes.END_*), or "".
 	var ended := ""
 	var boss_fought := false
@@ -251,7 +257,14 @@ func _attack(c: Campaign, r: Record, run_seed: int, region_id: String, breach :=
 
 func _defend(c: Campaign, r: Record, run_seed: int, region_id: String) -> void:
 	var attacker := c.attacker_of(region_id)
-	var level := attacker.defense if attacker != null else c.tuning.uprising_defense_level
+	# The level Campaign.defend() fights at: the attacker's, escalation included.
+	var level := c.defense_of(attacker.id) if attacker != null else c.tuning.uprising_defense_level
+	if policy == POLICY_CAREFUL and c.can_retreat(region_id):
+		var est := odds.estimate(c.squad_provider.get_squad(), region_id, level, run_seed, FightRequest.Kind.DEFEND)
+		if est.label in CAREFUL_RETREAT_LABELS:
+			c.retreat(region_id)
+			r.retreats += 1
+			return
 	var result := _fight(FightRequest.new(FightRequest.Kind.DEFEND, region_id, level, c.squad_provider.get_squad()), run_seed)
 	r.fights += 1
 	r.forced_defenses += 1

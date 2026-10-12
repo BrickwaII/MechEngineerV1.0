@@ -48,7 +48,7 @@ func test_an_act_file_lays_its_numbers_over_its_base() -> void:
 	var act2 := MapTuning.load_file("res://data/tuning/act2.json")
 	assert_array(act2.errors).is_empty()
 	assert_int(act2.total_points).is_equal(400)
-	assert_int(act2.pressure_reference_regions).is_equal(33)
+	assert_int(act2.pressure_reference_regions).is_equal(19)
 	assert_int(base.pressure_reference_regions).is_equal(0)
 	assert_str(act2.node_style).is_equal(MapTuning.NODE_COMPACT)
 	# Everything else comes from the base, nested keys included.

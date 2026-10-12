@@ -48,6 +48,7 @@ class Cell:
 	var boss_fought := 0
 	var boss_won := 0
 	var breaches := 0
+	var retreats := 0
 
 
 var runs := 0
@@ -112,6 +113,7 @@ func _play(policy: String, choices: Dictionary) -> Cell:
 			if r.ended == Stakes.END_LOSS_LIMIT and a == r.losses_per_act.size() - 1:
 				row.limit_hits += 1
 		cell.breaches += r.breaches
+		cell.retreats += r.retreats
 		if r.boss_fought:
 			cell.boss_fought += 1
 			cell.boss_won += 1 if r.boss_won else 0
@@ -135,8 +137,8 @@ func format_text() -> String:
 			lines.append("%-8s %-28s %4d %8d %6s %7d %8.0f%% %11.2f %9.0f%%" % [
 				cell.policy, switches_text(cell.choices), a + 1, row.reached, str(row.limit) if row.reached > 0 else "-",
 				row.fights, row.win_percent(), row.mean_losses(), row.limit_hit_percent()])
-		lines.append("%-8s %-28s boss: fought %d, won %d; breaches %d" % [
-			cell.policy, switches_text(cell.choices), cell.boss_fought, cell.boss_won, cell.breaches])
+		lines.append("%-8s %-28s boss: fought %d, won %d; breaches %d, retreats from defenses %d" % [
+			cell.policy, switches_text(cell.choices), cell.boss_fought, cell.boss_won, cell.breaches, cell.retreats])
 	if not problems.is_empty():
 		lines.append("Problems: " + "; ".join(problems))
 	return "\n".join(lines)
