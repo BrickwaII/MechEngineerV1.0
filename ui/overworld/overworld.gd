@@ -1049,7 +1049,7 @@ func _show_payload_zoom() -> void:
 	var bonus := plan.bonus_region_count(held)
 	var body := "The boss fight is not built yet, so the payload passes. You held %d of %d territories in %s. " % [
 		held, campaign.map.regions.size(), plan.act_name(act)]
-	body += "The network zooms out to %s: you carry %d energy and %d material, the grid recovers %s%%, and you hold %s%s." % [
+	body += "The network zooms out to %s: you carry %d energy and %d material (up to the storage cap), the grid recovers %s%%, and you hold %s%s." % [
 		plan.act_name(act + 1), floori(campaign.state.energy * plan.energy_kept),
 		floori(campaign.state.material * plan.material_kept), _number(plan.grid_restore), plan.act_name(act),
 		"" if bonus == 0 else " plus %d neighboring territor%s" % [bonus, "y" if bonus == 1 else "ies"]]
@@ -1338,7 +1338,12 @@ func resource_tooltip(key: String) -> String:
 			uses.append("%s %s" % [names[use], _number(amount)])
 	var text := "From held regions and won fights. "
 	text += ("Pays for %s." % ", ".join(uses)) if not uses.is_empty() else "Nothing spends it this run."
-	return text + " A lost battle takes %s." % _number(stakes.loss_cost[key])
+	text += " A lost battle takes %s." % _number(stakes.loss_cost[key])
+	var cap := campaign.resource_cap(key)
+	if cap < INF:
+		var stock := campaign.state.energy if key == Stakes.ENERGY else campaign.state.material
+		text += " Stored %d / %d: more is lost. The cap grows with regions held." % [floori(stock), floori(cap)]
+	return text
 
 
 ## A number of time points as days: "1 day", "0.75 day".

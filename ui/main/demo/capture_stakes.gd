@@ -82,7 +82,7 @@ func _stakes_run() -> void:
 	c.state.owned = c.map.ids()
 	for id in c.state.owned:
 		c.state.pressure[id] = 20.0
-	c.state.energy = 300.0
+	c.state.energy = 60.0
 	c.changed.emit()
 	ow.map_view.select("")
 	await _settle(30)
