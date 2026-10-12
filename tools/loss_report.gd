@@ -79,7 +79,7 @@ static func run(p_runs: int, p_base_seed: int, policies: Array[String] = Campaig
 
 
 ## "default", or "decision=option, ..." for a switch set.
-static func set_name(choices: Dictionary) -> String:
+static func switches_text(choices: Dictionary) -> String:
 	if choices.is_empty():
 		return "default"
 	var parts := PackedStringArray()
@@ -133,10 +133,10 @@ func format_text() -> String:
 		for a in cell.acts.size():
 			var row := cell.acts[a]
 			lines.append("%-8s %-28s %4d %8d %6s %7d %8.0f%% %11.2f %9.0f%%" % [
-				cell.policy, set_name(cell.choices), a + 1, row.reached, str(row.limit) if row.reached > 0 else "-",
+				cell.policy, switches_text(cell.choices), a + 1, row.reached, str(row.limit) if row.reached > 0 else "-",
 				row.fights, row.win_percent(), row.mean_losses(), row.limit_hit_percent()])
 		lines.append("%-8s %-28s boss: fought %d, won %d; breaches %d" % [
-			cell.policy, set_name(cell.choices), cell.boss_fought, cell.boss_won, cell.breaches])
+			cell.policy, switches_text(cell.choices), cell.boss_fought, cell.boss_won, cell.breaches])
 	if not problems.is_empty():
 		lines.append("Problems: " + "; ".join(problems))
 	return "\n".join(lines)
@@ -153,6 +153,6 @@ func format_markdown() -> String:
 			if row.reached == 0:
 				continue
 			lines.append("| %s | %s | %d | %d | %d | %.0f%% | %.2f | %.0f%% |" % [
-				cell.policy, set_name(cell.choices), a + 1, row.reached, row.limit, row.win_percent(),
+				cell.policy, switches_text(cell.choices), a + 1, row.reached, row.limit, row.win_percent(),
 				row.mean_losses(), row.limit_hit_percent()])
 	return "\n".join(lines)

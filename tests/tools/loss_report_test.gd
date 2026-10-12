@@ -38,6 +38,6 @@ func test_rejects_unknown_policies_and_options() -> void:
 	assert_array(LossReport.run(1, 1, ["reckless"] as Array[String]).problems).is_not_empty()
 	assert_array(LossReport.run(1, 1, [CampaignAutoplay.POLICY_BLIND] as Array[String],
 		[{"loss-limit": "nope"}] as Array[Dictionary]).problems).is_not_empty()
-	assert_str(LossReport.set_name({})).is_equal("default")
-	assert_str(LossReport.set_name({"loss-count": "attacks_only"})).is_equal("loss-count=attacks_only")
+	assert_str(LossReport.switches_text({})).is_equal("default")
+	assert_str(LossReport.switches_text({"loss-count": "attacks_only"})).is_equal("loss-count=attacks_only")
 	assert_int(preload("res://tools/check_losses.gd").main(PackedStringArray(["--bogus", "1"]))).is_equal(1)
