@@ -323,3 +323,90 @@ func test_a_lost_run_is_finished_in_its_summary() -> void:
 	summary["dir"] = _flow.run_dir
 	summary["has_save"] = true
 	assert_bool(RunFolder.can_continue(summary)).is_false()
+
+
+## Two regions: the start holds A and some Material; B next to it.
+const PAIR_MAP := "user://test_runs/run_journal_test_pair.json"
+
+
+func _write_pair_map() -> void:
+	DirAccess.make_dir_recursive_absolute(PAIR_MAP.get_base_dir())
+	var file := FileAccess.open(PAIR_MAP, FileAccess.WRITE)
+	file.store_string(JSON.stringify({
+		"id": "pair", "name": "Pair",
+		"regions": [
+			{"id": "a", "name": "A", "kind": "T", "polygon": [[0, 0], [0.5, 0], [0.5, 1]], "adjacent": ["b"],
+				"provides": {"power": 1, "energy": 2, "material": 1}, "defense": 0, "pressure_base": 1, "starts_owned": true},
+			{"id": "b", "name": "B", "kind": "T", "polygon": [[0.5, 0], [1, 0], [1, 1]], "adjacent": ["a"],
+				"provides": {"power": 0, "energy": 1, "material": 1}, "defense": 1, "pressure_base": 1, "starts_owned": false},
+		],
+		"starts": [{"id": "s", "name": "S", "description": "The only start.", "regions": ["a"], "material": 20}],
+	}))
+	file.close()
+
+
+func test_stakes_actions_are_journaled_and_replay() -> void:
+	_write_pair_map()
+	_flow = SCENE.instantiate()
+	_flow.run_seed = RUN_SEED
+	_flow.auto_fights = true
+	_flow.variants_path = VARIANTS
+	_flow.runs_root = RUNS_ROOT
+	_flow.region_file = PAIR_MAP
+	var runner := scene_runner(auto_free(_flow))
+	await runner.simulate_frames(2)
+	await _draft()
+	var overworld: Control = _flow.overworld
+	var c: Campaign = overworld.campaign
+	overworld._on_retreat("b")
+	assert_int(c.state.time_points).is_equal(c.stakes.retreat_attack_time)
+	overworld.show_pre_fight("b")
+	assert_str(overworld._modal_title.text).is_equal("Attack B")
+	overworld._hide_modal()
+	overworld._on_attack("b", true)
+	await _frames(3)
+	await _close_modal()
+	assert_bool(c.is_owned("b")).is_true()
+	overworld._on_repair()
+	assert_bool(c.can_fast_forward()).is_true()
+	overworld._on_fast_forward()
+	assert_bool(c.is_payload_due() or not c.pending_defense().is_empty()).is_true()
+
+	var lines := _journal()
+	var actions := lines.filter(func(l: Dictionary) -> bool: return l.kind == "action").map(
+		func(l: Dictionary) -> String: return str(l.action))
+	assert_array(actions).contains(["retreat", "attack", "repair", "fast_forward"])
+	var attack: Dictionary = lines.filter(func(l: Dictionary) -> bool: return l.kind == "action" and l.action == "attack")[0]
+	assert_bool(bool(attack.get("breach", false))).is_true()
+	assert_bool(lines.any(func(l: Dictionary) -> bool: return l.kind == "fast_forward")).is_true()
+	assert_bool(lines.any(func(l: Dictionary) -> bool: return l.kind == "snapshot" and l.reason == "fast_forward")).is_true()
+	var replay := await _replay(lines)
+	assert_array(replay.mismatches).is_empty()
+	assert_bool(replay.is_match()).is_true()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(PAIR_MAP))
+
+
+func test_reaching_the_loss_limit_ends_the_run_on_the_run_over_screen() -> void:
+	await _open(true)
+	await _draft()
+	var overworld: Control = _flow.overworld
+	var c: Campaign = overworld.campaign
+	c.state.losses = c.stakes.loss_limit
+	c.state.ended = Stakes.END_LOSS_LIMIT
+	c.changed.emit()
+	var summary := RunFolder.read_summary(_flow.run_dir)
+	assert_bool(bool(summary.finished)).is_true()
+	assert_str(str(summary.end_reason)).is_equal("loss limit reached")
+	overworld._check_forced()
+	assert_str(overworld._modal_title.text).is_equal("Too many defeats")
+	await _close_modal()
+	assert_object(_flow.run_over_screen).is_not_null()
+	assert_str(_flow.run_over_screen.title_label.text).is_equal("DEFEAT")
+	assert_str(_flow.run_over_screen.reason_label.text).contains("Too many battles")
+	var left := [false]
+	_flow.exit_requested.connect(func() -> void: left[0] = true)
+	_flow.run_over_screen.leave_button.pressed.emit()
+	assert_bool(left[0]).is_true()
+	# A run journal's replay still matches up to the end.
+	var ended := _journal().filter(func(l: Dictionary) -> bool: return l.kind == "run_end")
+	assert_int(ended.size()).is_equal(1)

@@ -81,6 +81,11 @@ func test_a_pending_attack_shows_a_ghost_and_committing_it_advances_time() -> vo
 	assert_float(screen._time_bar.ghost_ratio).is_equal_approx(3.0 / 48.0, 1e-6)
 	assert_float(screen._grid_bar.ghost_ratio).is_equal_approx(0.10, 1e-6)
 	_button(screen._panel, "ATTACK").pressed.emit()
+	# ATTACK opens the pre-fight step first; FIGHT starts the fight.
+	assert_bool(screen._modal.visible).is_true()
+	assert_str(screen._modal_title.text).is_equal("Attack Hydro Dam")
+	assert_int(screen.campaign.state.time_points).is_equal(0)
+	(screen._modal_buttons.get_child(0) as Button).pressed.emit()
 	await _runner.simulate_frames(3)
 	assert_int(screen.campaign.state.time_points).is_equal(3)
 	assert_bool(screen.campaign.is_owned("hydro_dam")).is_true()

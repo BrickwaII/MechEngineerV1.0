@@ -16,6 +16,16 @@ extends Control
 ## simulated auto-fights of the squad against the region's own enemies,
 ## shown as "RISKY · 42%", or the old stat formula under the switchboard's
 ## odds-model "formula". Set odds.run_seed to seed them with the run.
+##
+## Stakes (R2-A, Campaign's Stakes): the top bar shows losses left this act
+## ("LOSSES 1/3") and a REPAIR button that turns Material into grid; the
+## Energy and Material readouts say in their tooltips what each buys. ATTACK
+## opens a pre-fight step: FIGHT, BREACH (lower the defense for a cost) or
+## RETREAT (time and Energy, no fight). A forced defense may be retreated
+## from too, giving the region up. Once nothing is in range, FAST-FORWARD
+## plays the days to the payload (Campaign.fast_forward()) and sums them up.
+## When the run ends, the host's run_over_action takes over (RunFlow shows
+## the run-over screen); with none, the end message offers NEW RUN.
 
 const Palette := preload("res://ui/overworld/palette.gd")
 const MapView := preload("res://ui/overworld/map_view.gd")
@@ -53,6 +63,9 @@ var fight_service: FightService = StubFightService.new()
 var save_action: Callable
 var load_action: Callable
 var new_run_action: Callable
+## Called when the player closes the end-of-run message; a host shows its
+## run-over screen. When unset the message offers NEW RUN instead.
+var run_over_action: Callable
 ## Callable(options: Array[StartOption]) -> String. When set, new_run() starts
 ## on the start it names and offers no choice; when unset the player chooses.
 var start_picker: Callable
@@ -105,6 +118,9 @@ var _modal_body: Label
 var _modal_options: HBoxContainer
 var _modal_buttons: HBoxContainer
 var _status: Label
+var _losses: Label
+var _repair_button: Button
+var _ff_button: Button
 
 
 func _ready() -> void:
@@ -464,6 +480,10 @@ func _build_top_bar() -> Control:
 	grid.add_child(_grid_text)
 	_grid_rate = _text("", 11, Palette.TEXT_DIM)
 	grid.add_child(_grid_rate)
+	_repair_button = _button("REPAIR", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, _on_repair)
+	_repair_button.name = "RepairButton"
+	_repair_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	grid.add_child(_repair_button)
 
 	var middle := VBoxContainer.new()
 	middle.add_theme_constant_override("separation", 0)
@@ -475,6 +495,11 @@ func _build_top_bar() -> Control:
 	_day_line = _text("", 11, Palette.TEXT_DIM)
 	_day_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	middle.add_child(_day_line)
+	_losses = _text("", 11, Palette.WARNING)
+	_losses.name = "LossesLabel"
+	_losses.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_losses.mouse_filter = Control.MOUSE_FILTER_PASS
+	middle.add_child(_losses)
 
 	_income = HBoxContainer.new()
 	_income.add_theme_constant_override("separation", 22)
@@ -504,6 +529,11 @@ func _build_time_strip() -> Control:
 	_wait_button.mouse_entered.connect(_set_hover_wait.bind(true))
 	_wait_button.mouse_exited.connect(_set_hover_wait.bind(false))
 	header.add_child(_wait_button)
+	_ff_button = _button("FAST-FORWARD", Palette.ACCENT, Palette.ACCENT_TEXT, _on_fast_forward)
+	_ff_button.name = "FastForwardButton"
+	_ff_button.tooltip_text = "Nothing is in range. Play the days to the payload: income comes in, territories under pressure are reinforced while you can pay, and forced defenses still stop it."
+	_ff_button.visible = false
+	header.add_child(_ff_button)
 	header.add_child(_button("SAVE", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, _on_save))
 	header.add_child(_button("LOAD", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, _on_load))
 	header.add_child(_button("NEW RUN", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, _on_new_run))
@@ -624,7 +654,10 @@ func _refresh() -> void:
 	_clear(_income)
 	for key in ([MapRegion.MATERIAL] if shared else [MapRegion.ENERGY, MapRegion.MATERIAL]):
 		var stock: float = s.energy if key == MapRegion.ENERGY else s.material
-		_income.add_child(_resource_readout(key, floori(stock), income[key]))
+		var readout := _resource_readout(key, floori(stock), income[key])
+		readout.tooltip_text = resource_tooltip(key)
+		readout.mouse_filter = Control.MOUSE_FILTER_STOP
+		_income.add_child(readout)
 
 	_time_day.text = "DAY %d" % campaign.day()
 	var window := float(t.bar_window_points)
@@ -640,6 +673,8 @@ func _refresh() -> void:
 	_campaign_bar.fill_ratio = float(s.time_points) / t.total_points
 
 	_wait_button.disabled = not campaign.can_act() or zooming
+	_ff_button.visible = campaign.can_fast_forward() and not zooming
+	_refresh_stakes()
 	_status.text = "FIGHT IN PROGRESS" if campaign.fighting else ""
 	map_view.queue_redraw()
 	odds.update(campaign, map_view.selected_id)
@@ -709,10 +744,17 @@ func _refresh_panel() -> void:
 		var reinforce := _big_button("REINFORCE", Palette.ACCENT, Palette.ACCENT_TEXT, campaign.can_reinforce(id))
 		reinforce.pressed.connect(_on_reinforce.bind(id))
 		actions.add_child(reinforce)
-		actions.add_child(_note("Lowers pressure here. Costs a little time and grid power."))
+		var stakes := campaign.stakes
+		var note := "Lowers pressure here. Costs a little time and grid power"
+		if stakes.is_offered(Stakes.USE_REINFORCE):
+			note += ", and %s" % stakes.cost_text(Stakes.USE_REINFORCE)
+		note += "."
+		if campaign.can_act() and not stakes.can_pay(Stakes.USE_REINFORCE, campaign.state):
+			note += " Not enough to pay for it."
+		actions.add_child(_note(note))
 	else:
 		var attack := _big_button("ATTACK", Palette.ATTACK_BUTTON, Palette.ATTACK_TEXT, campaign.can_attack(id))
-		attack.pressed.connect(_on_attack.bind(id))
+		attack.pressed.connect(show_pre_fight.bind(id))
 		actions.add_child(attack)
 		if standing == Campaign.Standing.OUT_OF_REACH:
 			actions.add_child(_note("Not next to your network. Take a neighbor first."))
@@ -894,12 +936,12 @@ func _on_reinforce(region_id: String) -> void:
 	_check_forced()
 
 
-func _on_attack(region_id: String) -> void:
+func _on_attack(region_id: String, breach := false) -> void:
 	var region := campaign.map.get_region(region_id)
 	var result_holder := []
 	var on_finish := func(_request: FightRequest, result: FightResult) -> void: result_holder.append(result)
 	campaign.fight_finished.connect(on_finish, CONNECT_ONE_SHOT)
-	if not await campaign.attack(region_id):
+	if not await campaign.attack(region_id, breach):
 		if campaign.fight_finished.is_connected(on_finish):
 			campaign.fight_finished.disconnect(on_finish)
 		return
@@ -910,14 +952,19 @@ func _on_attack(region_id: String) -> void:
 			"Grid drained by %s%%.%s" % [_number(charge), _rewards_text(result)], _check_forced)
 	else:
 		_show_message("ASSAULT · DEFEAT", "The assault on %s failed" % region.name,
-			"The defenders held. Grid drained by %s%%." % _number(charge), _check_forced)
+			"The defenders held. Grid drained by %s%%. %s" % [_number(charge), _loss_text()], _check_forced)
 
 
 ## Shows whatever the run now demands: the end, or a forced defense.
 func _check_forced() -> void:
-	if campaign.is_lost():
-		_show_end("Your network is gone", "Every territory has fallen. The run ends here.", false)
-		return
+	match campaign.end_reason():
+		Stakes.END_ALL_LOST:
+			_show_end("Your network is gone", "Every territory has fallen. The run ends here.", false)
+			return
+		Stakes.END_LOSS_LIMIT:
+			_show_end("Too many defeats", "That was loss %d of %d in %s. The squad cannot go on; the run ends here." % [
+				campaign.state.losses, campaign.stakes.loss_limit, plan.act_name(campaign.state.act)], false)
+			return
 	if campaign.is_payload_due():
 		# TODO(decision: boss-fight): the boss fight is a stub. The last act's
 		# payload brings it and the run ends after it; an earlier payload
@@ -935,7 +982,14 @@ func _check_forced() -> void:
 	var title := "%s is under attack" % region.name if attacker != null else "%s is in revolt" % region.name
 	var body := ("Forces from %s are assaulting it." % attacker.name if attacker != null else "Unrest boiled over.") \
 		+ " You must fight to hold it."
-	_show_modal("DEFENSIVE BATTLE · FORCED", title, body, [["DEFEND", _on_defend]])
+	var buttons := [["DEFEND", _on_defend]]
+	# TODO(decision: retreat-defense): pulling out gives the region up.
+	buttons.append(["RETREAT · %s" % campaign.stakes.cost_text(Stakes.USE_RETREAT).to_upper(),
+		_on_retreat.bind(region_id), campaign.can_retreat(region_id),
+		"Give %s up without a fight. Costs %s and %s. Not counted as a loss." % [
+			region.name, campaign.stakes.cost_text(Stakes.USE_RETREAT), _points_text(campaign.stakes.retreat_defense_time)]])
+	body += " " + _losses_sentence()
+	_show_modal("DEFENSIVE BATTLE · FORCED", title, body, buttons)
 
 
 func _on_defend() -> void:
@@ -954,12 +1008,25 @@ func _on_defend() -> void:
 		_show_message("DEFENSE · VICTORY", "Held %s" % region.name,
 			"The attack was beaten back and pressure eased.%s" % _rewards_text(result), _check_forced)
 	else:
-		_show_message("DEFENSE · DEFEAT", "Lost %s" % region.name, "It is hostile again.", _check_forced)
+		_show_message("DEFENSE · DEFEAT", "Lost %s" % region.name, "It is hostile again. %s" % _loss_text(), _check_forced)
+
+
+## What the loss just cost, for a defeat message.
+func _loss_text() -> String:
+	var stakes := campaign.stakes
+	var text := "The defeat cost up to %s energy and %s material." % [
+		Stakes._n(stakes.loss_cost[Stakes.ENERGY]), Stakes._n(stakes.loss_cost[Stakes.MATERIAL])]
+	if stakes.loss_limit > 0:
+		text += " Losses this act: %d of %d." % [campaign.state.losses, stakes.loss_limit]
+	return text
 
 
 func _show_end(title: String, body: String, won: bool) -> void:
 	music.play_context(MusicDirector.VICTORY if won else MusicDirector.DEFEAT)
-	_show_modal("RUN OVER", title, body, [["NEW RUN", _on_new_run]])
+	if run_over_action.is_valid():
+		_show_modal("RUN OVER", title, body, [["CONTINUE", _close_modal_then.bind(run_over_action)]])
+	else:
+		_show_modal("RUN OVER", title, body, [["NEW RUN", _on_new_run]])
 
 
 ## The last act's payload: the stub boss fight, then the end of the run.
@@ -1111,7 +1178,7 @@ func _set_hover_wait(hovering: bool) -> void:
 	_refresh()
 
 
-## buttons: [[label, Callable], ...]
+## buttons: [[label, Callable, enabled (optional), tooltip (optional)], ...]
 func _show_modal(eyebrow: String, title: String, body: String, buttons: Array) -> void:
 	_modal_eyebrow.text = eyebrow
 	_modal_title.text = title
@@ -1121,7 +1188,9 @@ func _show_modal(eyebrow: String, title: String, body: String, buttons: Array) -
 	_modal_card.custom_minimum_size.x = 480
 	_clear(_modal_buttons)
 	for entry: Array in buttons:
-		var button := _big_button(entry[0], Palette.ACCENT, Palette.ACCENT_TEXT, true)
+		var button := _big_button(entry[0], Palette.ACCENT, Palette.ACCENT_TEXT, entry[2] if entry.size() > 2 else true)
+		if entry.size() > 3:
+			button.tooltip_text = entry[3]
 		button.custom_minimum_size.y = 44
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(entry[1])
@@ -1178,6 +1247,116 @@ func _start_traits(start: StartOption) -> PackedStringArray:
 
 func _hide_modal() -> void:
 	_modal.visible = false
+
+
+# --- Stakes and economy (R2-A) ---------------------------------------------------
+
+## Losses label, REPAIR button and their tooltips.
+func _refresh_stakes() -> void:
+	var stakes := campaign.stakes
+	var limit := stakes.loss_limit
+	_losses.text = "LOSSES %d/%d" % [campaign.state.losses, limit] if limit > 0 else "LOSSES %d · NO LIMIT" % campaign.state.losses
+	_losses.add_theme_color_override("font_color", Palette.DANGER if limit > 0 and campaign.losses_left() <= 1 else Palette.WARNING)
+	_losses.tooltip_text = "Lost battles in this act. %s Each lost battle also takes %s energy and %s material." % [
+		"The run ends at loss %d; the count starts again in the next act. Losing the boss fight always ends the run." % limit
+			if limit > 0 else "There is no limit (loss-limit option).",
+		Stakes._n(stakes.loss_cost[Stakes.ENERGY]), Stakes._n(stakes.loss_cost[Stakes.MATERIAL])]
+	_repair_button.visible = stakes.is_offered(Stakes.USE_REPAIR) and stakes.repair_grid > 0.0
+	_repair_button.text = "REPAIR +%s%%" % _number(stakes.repair_grid)
+	_repair_button.disabled = not campaign.can_repair() or zooming
+	_repair_button.tooltip_text = "Restore %s%% grid capacity for %s. Takes no time." % [
+		_number(stakes.repair_grid), stakes.cost_text(Stakes.USE_REPAIR)]
+
+
+## What a resource is for, for its readout's tooltip.
+## TODO(decision: resource-uses): the uses follow the switchboard option.
+func resource_tooltip(key: String) -> String:
+	var stakes := campaign.stakes
+	var uses := PackedStringArray()
+	var names := {Stakes.USE_REINFORCE: "REINFORCE (lower pressure on a territory)",
+		Stakes.USE_RETREAT: "RETREAT (back out of a fight before it starts)",
+		Stakes.USE_BREACH: "BREACH (attack at %d lower defense)" % stakes.breach_levels,
+		Stakes.USE_REPAIR: "REPAIR (+%s%% grid)" % _number(stakes.repair_grid)}
+	for use in Stakes.USES:
+		var amount: float = stakes.cost(use)[key]
+		if amount > 0.0:
+			uses.append("%s: %s" % [names[use], _number(amount)])
+	var label: String = RESOURCE_LABELS[key]
+	var text := "%s comes from the territories you hold and from won fights.\n" % label
+	text += ("Spend it on:\n  " + "\n  ".join(uses)) if not uses.is_empty() else "Nothing spends it under this option."
+	text += "\nA lost battle takes %s." % _number(stakes.loss_cost[key])
+	return text
+
+
+## "Losses this act: 1 of 3. One more ends the run." or "" with no limit.
+func _losses_sentence() -> String:
+	var limit := campaign.stakes.loss_limit
+	if limit <= 0:
+		return ""
+	var left := campaign.losses_left()
+	return "Losses this act: %d of %d.%s" % [campaign.state.losses, limit,
+		" Losing this one ends the run." if left == 1 else ""]
+
+
+func _points_text(points: int) -> String:
+	var per_day := campaign.tuning.points_per_day
+	if points % per_day == 0:
+		return "%d day%s" % [points / per_day, "" if points / per_day == 1 else "s"]
+	return "%s day" % str(snappedf(float(points) / per_day, 0.01))
+
+
+## The step between ATTACK and the fight: what the squad faces, and the
+## choice to fight, breach first, or call it off.
+func show_pre_fight(region_id: String) -> void:
+	if not campaign.can_attack(region_id):
+		return
+	var region := campaign.map.get_region(region_id)
+	var stakes := campaign.stakes
+	var body := "%s defense (%d). Your odds: %s." % [campaign.tuning.defense_label(region.defense), region.defense, odds_text(region_id)]
+	body += " Costs %s and about %s%% grid; a defeat costs more grid and %s energy, %s material." % [
+		_points_text(campaign.tuning.attack_time), _number(campaign.attack_grid_cost(region_id)),
+		Stakes._n(stakes.loss_cost[Stakes.ENERGY]), Stakes._n(stakes.loss_cost[Stakes.MATERIAL])]
+	var sentence := _losses_sentence()
+	if not sentence.is_empty():
+		body += " " + sentence
+	var buttons := [["FIGHT", _close_modal_then.bind(_on_attack.bind(region_id))]]
+	if stakes.is_offered(Stakes.USE_BREACH) and stakes.breach_levels > 0:
+		var level := campaign.attack_level(region_id, true)
+		buttons.append(["BREACH · %s" % stakes.cost_text(Stakes.USE_BREACH).to_upper(),
+			_close_modal_then.bind(_on_attack.bind(region_id, true)), campaign.can_breach(region_id),
+			"Break the defenses first: fight at defense %d instead of %d for %s." % [level, region.defense, stakes.cost_text(Stakes.USE_BREACH)]])
+	buttons.append(["RETREAT · %s" % stakes.cost_text(Stakes.USE_RETREAT).to_upper(),
+		_on_retreat.bind(region_id), campaign.can_retreat(region_id),
+		"Call the assault off. Costs %s and %s, no fight, no loss." % [
+			stakes.cost_text(Stakes.USE_RETREAT), _points_text(stakes.retreat_attack_time)]])
+	_show_modal("ASSAULT · PRE-FIGHT", "Attack %s" % region.name, body, buttons)
+
+
+func _on_retreat(region_id: String) -> void:
+	_hide_modal()
+	campaign.retreat(region_id)
+	_check_forced()
+
+
+func _on_repair() -> void:
+	campaign.repair()
+
+
+func _on_fast_forward() -> void:
+	var summary := campaign.fast_forward()
+	if summary.is_empty():
+		return
+	var lines := PackedStringArray()
+	lines.append("%s days passed." % _number(summary.days))
+	lines.append("Energy %+d, material %+d, grid %+d%%." % [roundi(summary.energy), roundi(summary.material), roundi(summary.grid)])
+	if int(summary.reinforced) > 0:
+		lines.append("Territories reinforced: %d." % int(summary.reinforced))
+	match str(summary.stopped):
+		"defense":
+			lines.append("Stopped: a territory is under attack.")
+		"attackable":
+			lines.append("Stopped: a territory is in range again.")
+	_show_message("FAST-FORWARD", "Day %d" % campaign.day(), " ".join(lines), _check_forced)
 
 
 # --- Small builders -------------------------------------------------------------

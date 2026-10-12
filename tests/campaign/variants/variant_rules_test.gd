@@ -46,8 +46,9 @@ func test_separate_keeps_todays_income_rules() -> void:
 	var c := _campaign()
 	var income := c.income_per_day()
 	c.state.grid = 50.0
+	var energy := c.state.energy
 	c.wait()
-	assert_float(c.state.energy).is_equal_approx(float(income[MapRegion.ENERGY]) / c.tuning.points_per_day, 0.0001)
+	assert_float(c.state.energy).is_equal_approx(energy + float(income[MapRegion.ENERGY]) / c.tuning.points_per_day, 0.0001)
 	assert_float(c.state.grid).is_equal_approx(50.0 + income[MapRegion.POWER] / c.tuning.grid_regen_divisor, 0.0001)
 
 

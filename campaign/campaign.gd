@@ -12,6 +12,12 @@ extends RefCounted
 ## with the act's paced copy, energy-grid and auto-expansion change how time
 ## passes. grid-cost-owner is read when each fight starts, from
 ## next_fight_variants.
+##
+## Stakes (campaign/stakes.gd): a lost battle costs resources and counts
+## toward the act's loss limit; reaching it, losing the boss fight or losing
+## every region ends the run (state.ended). Energy and Material pay for
+## reinforcing, retreating, breaching and grid repair. Once nothing is in
+## range, fast_forward() plays the days to the payload on its own.
 
 signal changed
 ## The player chose a map action that needs no fight: WAIT, or REINFORCE on
@@ -22,10 +28,12 @@ signal fight_started(request: FightRequest)
 signal fight_finished(request: FightRequest, result: FightResult)
 ## A region auto-expansion took without a fight.
 signal expanded(region_id: String)
+## fast_forward() is done; `summary` says what it did.
+signal fast_forwarded(summary: Dictionary)
 
 ## How a region looks from the player's side.
 enum Standing { OWNED, IN_RANGE, OUT_OF_REACH }
-enum Action { NONE, ATTACK, REINFORCE, WAIT }
+enum Action { NONE, ATTACK, REINFORCE, WAIT, RETREAT, REPAIR, FAST_FORWARD }
 ## Why pressure builds on a held region.
 enum Cause { UPRISING, ATTACK }
 
@@ -46,6 +54,10 @@ var variants: CampaignVariants
 var next_fight_variants: Callable = func() -> CampaignVariants: return CampaignVariants.load_active()
 ## The variants of the fight in progress, or null between fights.
 var _fight_variants: CampaignVariants
+## What losing costs and what resources buy.
+var stakes: Stakes
+## True when the attack in progress (or the last one) was breached.
+var breached := false
 
 
 func _init(
@@ -61,6 +73,7 @@ func _init(
 	state = p_state if p_state != null else new_run_state(p_map, p_tuning)
 	variants = CampaignVariants.for_run(state.variants)
 	tuning = ActPacing.paced(p_tuning, state.act, variants)
+	stakes = Stakes.make(tuning, variants)
 
 
 ## The state a fresh run starts from. `start` is one of the map's
@@ -258,7 +271,25 @@ func is_lost() -> bool:
 
 
 func is_over() -> bool:
-	return is_payload_due() or is_lost()
+	return is_payload_due() or is_defeated() or not state.ended.is_empty()
+
+
+## True once the run is lost: every region gone, the act's loss limit
+## reached, or the boss fight lost.
+func is_defeated() -> bool:
+	return is_lost() or state.ended in [Stakes.END_LOSS_LIMIT, Stakes.END_BOSS_LOST, Stakes.END_ALL_LOST]
+
+
+## Why the run ended (Stakes.END_*), or "" while it goes on.
+func end_reason() -> String:
+	if not state.ended.is_empty():
+		return state.ended
+	return Stakes.END_ALL_LOST if is_lost() else ""
+
+
+## Lost battles left in this act before the run ends, or -1 with no limit.
+func losses_left() -> int:
+	return maxi(0, stakes.loss_limit - state.losses) if stakes.loss_limit > 0 else -1
 
 
 ## A held region whose pressure is full and must be defended before anything
@@ -282,7 +313,7 @@ func can_attack(region_id: String) -> bool:
 
 
 func can_reinforce(region_id: String) -> bool:
-	return can_act() and is_owned(region_id)
+	return can_act() and is_owned(region_id) and stakes.can_pay(Stakes.USE_REINFORCE, state)
 
 
 # --- Actions --------------------------------------------------------------------
@@ -300,8 +331,7 @@ func reinforce(region_id: String) -> bool:
 	if not can_reinforce(region_id):
 		return false
 	acted.emit(Action.REINFORCE, region_id)
-	state.pressure[region_id] = maxf(0.0, pressure_of(region_id) - tuning.reinforce_relief)
-	state.grid = maxf(0.0, state.grid - tuning.reinforce_grid_cost)
+	_reinforce_now(region_id)
 	_log("Reinforced %s." % map.get_region(region_id).name)
 	_advance(tuning.reinforce_time)
 	changed.emit()
@@ -309,14 +339,19 @@ func reinforce(region_id: String) -> bool:
 
 
 ## Attacks a hostile region in range through the FightService. Returns false
-## without fighting if the attack is not allowed. Await it.
-func attack(region_id: String) -> bool:
-	if not can_attack(region_id):
+## without fighting if the attack is not allowed. With `breach`, pays the
+## breach cost first and fights at a lower defense (can_breach()). Await it.
+func attack(region_id: String, breach := false) -> bool:
+	if not can_attack(region_id) or (breach and not can_breach(region_id)):
 		return false
 	var region := map.get_region(region_id)
 	set_focus(region_id)
+	breached = breach
+	if breach:
+		stakes.pay(Stakes.USE_BREACH, state)
+		_log("Breached the defenses of %s." % region.name)
 	var request := FightRequest.new(
-		FightRequest.Kind.ATTACK, region_id, region.defense, squad_provider.get_squad())
+		FightRequest.Kind.ATTACK, region_id, attack_level(region_id, breach), squad_provider.get_squad())
 	var result := await _run_fight(request)
 	if result == null:
 		return false
@@ -354,6 +389,7 @@ func boss_fight() -> FightResult:
 	var result := await _run_fight(request)
 	if result != null:
 		_log("The boss is beaten." if result.is_victory() else "The boss holds.")
+		state.ended = Stakes.END_WON if result.is_victory() else Stakes.END_BOSS_LOST
 		changed.emit()
 	return result
 
@@ -384,6 +420,7 @@ func apply_attack_result(region_id: String, result: FightResult) -> void:
 		_log("Captured %s." % region.name)
 	else:
 		_log("The assault on %s was repelled." % region.name)
+		_record_loss()
 	state.grid = maxf(0.0, state.grid - fight_grid_charge(FightRequest.Kind.ATTACK, result))
 	_end_fight_variants()
 	_add_rewards(result)
@@ -401,6 +438,7 @@ func apply_defense_result(region_id: String, result: FightResult) -> void:
 	else:
 		_set_owned(region_id, false)
 		_log("Lost %s. It is hostile again." % region.name)
+		_record_loss()
 	state.grid = maxf(0.0, state.grid - fight_grid_charge(FightRequest.Kind.DEFEND, result))
 	_end_fight_variants()
 	_add_rewards(result)
@@ -486,3 +524,169 @@ func _add_rewards(result: FightResult) -> void:
 
 func _log(text: String) -> void:
 	event_logged.emit(text)
+
+
+# --- Stakes and economy (R2-A) ---------------------------------------------------
+
+## The defense level an attack on `region_id` fights at, breached or not.
+func attack_level(region_id: String, breach := false) -> int:
+	var level := map.get_region(region_id).defense
+	return maxi(FightRequest.MIN_DEFENSE_LEVEL, level - stakes.breach_levels) if breach else level
+
+
+## Whether the next attack on `region_id` may be breached: the option offers
+## breaching, it can be paid, and there is defense to take off.
+func can_breach(region_id: String) -> bool:
+	return can_attack(region_id) and stakes.is_offered(Stakes.USE_BREACH) and stakes.breach_levels > 0 \
+		and map.get_region(region_id).defense > FightRequest.MIN_DEFENSE_LEVEL \
+		and stakes.can_pay(Stakes.USE_BREACH, state)
+
+
+## Whether the squad may pull back from the fight at `region_id`: the attack
+## about to start there, or the forced defense pending there.
+## TODO(decision: retreat-defense): a stand-in. Retreating from a forced
+## defense gives the region up without a fight and does not count as a loss.
+func can_retreat(region_id: String) -> bool:
+	if fighting or is_over() or not stakes.can_pay(Stakes.USE_RETREAT, state):
+		return false
+	var defense := pending_defense()
+	if not defense.is_empty():
+		return region_id == defense
+	return can_attack(region_id)
+
+
+## Pulls back from the fight at `region_id` (can_retreat()): pays the retreat
+## cost and its time. From a forced defense the region is lost. No battle,
+## so no loss is counted.
+func retreat(region_id: String) -> bool:
+	if not can_retreat(region_id):
+		return false
+	acted.emit(Action.RETREAT, region_id)
+	stakes.pay(Stakes.USE_RETREAT, state)
+	var region := map.get_region(region_id)
+	if region_id == pending_defense():
+		_set_owned(region_id, false)
+		_log("Pulled out of %s without a fight. It is hostile again." % region.name)
+		_advance(stakes.retreat_defense_time)
+	else:
+		_log("Called off the assault on %s." % region.name)
+		_advance(stakes.retreat_attack_time)
+	changed.emit()
+	return true
+
+
+func can_repair() -> bool:
+	return can_act() and stakes.is_offered(Stakes.USE_REPAIR) and stakes.repair_grid > 0.0 \
+		and state.grid < tuning.max_grid and stakes.can_pay(Stakes.USE_REPAIR, state)
+
+
+## Spends the repair cost to restore grid capacity. Takes no time.
+func repair() -> bool:
+	if not can_repair():
+		return false
+	acted.emit(Action.REPAIR, "")
+	stakes.pay(Stakes.USE_REPAIR, state)
+	state.grid = minf(tuning.max_grid, state.grid + stakes.repair_grid)
+	_log("Repaired the grid.")
+	changed.emit()
+	return true
+
+
+## True when no hostile region is in range: the map is taken, or what is
+## left is out of reach.
+func nothing_attackable() -> bool:
+	for region in map.regions:
+		if standing(region.id) == Standing.IN_RANGE:
+			return false
+	return true
+
+
+func can_fast_forward() -> bool:
+	return can_act() and nothing_attackable()
+
+
+## Plays time on toward the payload with nothing for the player to choose:
+## income comes in, and at each day's start held regions at or above
+## stakes.ff_reinforce_at pressure are reinforced (most pressed first, at most
+## ff_reinforce_per_day, while the cost can be paid; no time). It stops at the
+## payload, at a forced defense (fought as usual), or when a region comes in
+## range. Returns {days, reinforced, energy, material, grid, stopped}, where
+## energy, material and grid are the changes and stopped is "payload",
+## "defense", "attackable" or "over".
+func fast_forward() -> Dictionary:
+	if not can_fast_forward():
+		return {}
+	acted.emit(Action.FAST_FORWARD, "")
+	var start_energy := state.energy
+	var start_material := state.material
+	var start_grid := state.grid
+	var start_points := state.time_points
+	var reinforced := 0
+	var stopped := ""
+	var first := true
+	while true:
+		if is_payload_due():
+			stopped = "payload"
+			break
+		if is_over():
+			stopped = "over"
+			break
+		if not pending_defense().is_empty():
+			stopped = "defense"
+			break
+		if not nothing_attackable():
+			stopped = "attackable"
+			break
+		if first or state.time_points % tuning.points_per_day == 0:
+			reinforced += _auto_reinforce()
+		first = false
+		_advance(1)
+	var summary := {
+		"days": snappedf(float(state.time_points - start_points) / tuning.points_per_day, 0.01),
+		"reinforced": reinforced,
+		"energy": state.energy - start_energy,
+		"material": state.material - start_material,
+		"grid": state.grid - start_grid,
+		"stopped": stopped,
+	}
+	_log("Fast-forwarded %s days." % Stakes._n(summary.days))
+	changed.emit()
+	fast_forwarded.emit(summary)
+	return summary
+
+
+## Fast-forward's reinforcing for one day. Returns how many it reinforced.
+func _auto_reinforce() -> int:
+	var hot: Array[String] = []
+	for region_id in state.owned:
+		if pressure_of(region_id) >= stakes.ff_reinforce_at:
+			hot.append(region_id)
+	var order := map.ids()
+	hot.sort_custom(func(a: String, b: String) -> bool:
+		return pressure_of(a) > pressure_of(b) if pressure_of(a) != pressure_of(b) else order.find(a) < order.find(b))
+	var n := 0
+	for region_id in hot:
+		if n >= stakes.ff_reinforce_per_day or not stakes.can_pay(Stakes.USE_REINFORCE, state):
+			break
+		_reinforce_now(region_id)
+		n += 1
+	if n > 0:
+		_log("Auto-reinforced %d territor%s." % [n, "y" if n == 1 else "ies"])
+	return n
+
+
+## Reinforce's effect and cost, with no time and no checks.
+func _reinforce_now(region_id: String) -> void:
+	stakes.pay(Stakes.USE_REINFORCE, state)
+	state.pressure[region_id] = maxf(0.0, pressure_of(region_id) - tuning.reinforce_relief)
+	state.grid = maxf(0.0, state.grid - tuning.reinforce_grid_cost)
+
+
+## A lost battle: its resource cost, and the act's loss count. Reaching the
+## loss limit ends the run.
+func _record_loss() -> void:
+	stakes.charge_loss(state)
+	state.losses += 1
+	if stakes.loss_limit > 0 and state.losses >= stakes.loss_limit and state.ended.is_empty():
+		state.ended = Stakes.END_LOSS_LIMIT
+		_log("That was loss %d of %d this act. The run is over." % [state.losses, stakes.loss_limit])
