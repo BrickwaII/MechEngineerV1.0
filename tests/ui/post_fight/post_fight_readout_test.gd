@@ -36,7 +36,9 @@ func test_demo_panel_shows_counters_rank_ups_and_growth() -> void:
 	assert_str(texts).contains(r.display_name)
 	assert_str(texts).contains("Hit an enemy")
 	assert_str(texts).contains("RANK UP")
-	assert_str(texts).contains("+%.2f aggressive" % r.growth(Personality.ENDS.find("aggressive")))
+	assert_str(texts).contains("+%.2f" % r.growth(Personality.ENDS.find("aggressive")))
+	var grown: IconStat = panel.find_child("IconStat_trait_aggressive", true, false)
+	assert_object(grown).is_not_null()
 	# Generation 1, and its other spectrums grew too.
 	assert_int(r.generation).is_equal(1)
 	assert_float(r.growth(Personality.ENDS.find("reactive"))).is_greater(0.0)
