@@ -1,6 +1,7 @@
 extends HBoxContainer
-## A unit's statuses as icons with a short word each: color AND shape AND a
-## word, never color alone. Icons are assets/ui/icons/status_<id>.png.
+## A unit's statuses as icons with their number: color AND shape, never color
+## alone, and the word in the hover tooltip (ui/README.md style). Icons are
+## the status_<id> ids in data/ui/icons.json.
 ##
 ##   guard           shield    "GUARD 40%"
 ##   charging        bolt      "CHARGE >6"   (in a wait, filling toward a cost)
@@ -40,7 +41,8 @@ func show_statuses(statuses: Dictionary) -> void:
 		var item := HBoxContainer.new()
 		item.name = "Status_%s" % id
 		item.add_theme_constant_override("separation", 2)
-		item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		item.mouse_filter = Control.MOUSE_FILTER_PASS
+		UiTooltip.attach(item, UiIcons.display_name("status_" + id), UiIcons.text("status_" + id), shown[id], "status_" + id)
 		var icon := TextureRect.new()
 		icon.texture = icon_for(id)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -49,13 +51,24 @@ func show_statuses(statuses: Dictionary) -> void:
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		item.add_child(icon)
 		var label := Label.new()
-		label.text = shown[id]
+		label.text = number_of(shown[id])
+		label.visible = not label.text.is_empty()
 		label.theme_type_variation = &"SmallLabel"
 		label.add_theme_color_override("font_color", color_for(id))
 		label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		item.add_child(label)
 		add_child(item)
+
+
+## The part of a status word the card shows: the tokens with a digit.
+## "GUARD 40%" -> "40%", "CHARGE >6" -> ">6", "LOW EN" -> "".
+static func number_of(word: String) -> String:
+	var parts: Array[String] = []
+	for token in word.split(" ", false):
+		if RegEx.create_from_string("\\d").search(token) != null:
+			parts.append(token)
+	return " ".join(parts)
 
 
 func text() -> String:

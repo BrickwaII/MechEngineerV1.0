@@ -65,14 +65,16 @@ var enemy_turn_delay := 0.0
 
 var timeline_bar: TimelineBar
 var unit_panels: Dictionary[String, UnitPanel] = {}
-var skill_buttons: Dictionary[String, Button] = {}
-var wait_button: Button
+var skill_buttons: Dictionary[String, SkillCard] = {}
+var wait_button: ActionButton
 ## Exact wait length; shown only when the d-wait-length variant is "exact".
 var wait_ticks_box: SpinBox
-var cancel_button: Button
+var cancel_button: ActionButton
 var prompt_label: Label
 var message_label: Label
 var log_label: Label
+## Shows and hides the log; the log starts collapsed (ui/README.md rule 5).
+var log_toggle: Button
 ## The choice preview: what the selected skill would do to the target under
 ## the pointer.
 var preview_area: PanelContainer
@@ -84,6 +86,8 @@ var wait_hovered := false
 ## The preview shown now, or null. Read-only; for tests.
 var shown_preview: ChoicePreview
 var header_label: Label
+## The fight's defense level as an icon and number in the header.
+var defense_stat: IconStat
 ## Returns the drafted Bot for a squad member id, or null (tier rule input).
 ## Optional; without it tiers come from what the fight knows.
 var bot_source: Callable
@@ -261,7 +265,9 @@ func refresh() -> void:
 		panel.show_meter_preview(shown_preview.effect_on(c.id) if shown_preview != null else null,
 			shown_preview != null and shown_preview.change_for(c.id) != null and not _goes_down(c.id))
 		panel.show_energy_preview(_energy_preview_for(c))
-	arrows.set_arrows(arrow_list(action), _arrow_focus())
+	var arrow_dicts := arrow_list(action)
+	arrows.set_arrows(arrow_dicts, _arrow_focus())
+	_refresh_intent_chips(arrow_dicts)
 	_refresh_preview_box(action)
 	var upcoming: Array[TimelineEntry] = []
 	if not fight.is_over():
@@ -273,6 +279,7 @@ func refresh() -> void:
 	_refresh_commands()
 	var lines := fight.log_lines
 	log_label.text = "\n".join(lines.slice(maxi(0, lines.size() - LOG_LINES_SHOWN)))
+	log_toggle.text = "%s Log (%d)" % ["v" if log_label.visible else ">", lines.size()]
 	if fight.is_over():
 		prompt_label.text = "VICTORY" if fight.outcome == FightResult.Outcome.VICTORY else "DEFEAT"
 	elif actor == null:
@@ -288,6 +295,22 @@ func refresh() -> void:
 	else:
 		prompt_label.text = "%s is ready. Choose a skill, or Wait." % actor.display_name
 	_announce_turn(actor)
+
+
+## Each enemy's intent as an icon and number on its card, from the arrows
+## drawn now (the arrow's badge carries the number).
+func _refresh_intent_chips(arrow_dicts: Array[Dictionary]) -> void:
+	var badges := {}
+	for a in arrow_dicts:
+		if a.player or a.ghost or a.badge == null:
+			continue
+		badges[a.from] = a.badge
+	for id: String in unit_panels:
+		var panel := unit_panels[id]
+		if not panel.is_enemy:
+			continue
+		var badge: ArrowBadge = badges.get(id)
+		panel.show_intent_chip(panel.intent_kind if badge == null else badge.kind, "" if badge == null else badge.text())
 
 
 ## Every arrow to draw, with its badge: the enemy intents (as they would
@@ -407,18 +430,19 @@ func _refresh_commands() -> void:
 		var own := shown.skill(skill_id) if shown != null and shown.side == Combatant.Side.PLAYER else null
 		button.visible = own != null
 		if own != null:
-			button.text = skill_button_text(own)
+			var face := skill_card_face(own, shown.stats.attack)
+			button.set_skill(face.name, own.energy_cost, face.effect, face.rank)
 		var has_it := can_act and own != null
 		button.disabled = not has_it or not handler.skill_problem(skill_id).is_empty()
 		button.button_pressed = skill_id == handler.selected_skill_id
-		button.tooltip_text = handler.skill_problem(skill_id) if has_it else ""
+		button.set_problem(handler.skill_problem(skill_id) if has_it else "")
 	var wait_skill := handler.default_wait_skill() if can_act else ""
 	var ticks := exact_wait_ticks()
 	wait_button.disabled = wait_skill.is_empty() and (ticks == 0 or not can_act)
 	if ticks > 0:
-		wait_button.text = "WAIT %d ticks" % ticks
+		wait_button.label.text = "Wait %d ticks" % ticks
 	else:
-		wait_button.text = "WAIT" if wait_skill.is_empty() else "WAIT for %s" % handler.actor().skill(wait_skill).display_name
+		wait_button.label.text = "Wait" if wait_skill.is_empty() else "Wait for %s" % handler.actor().skill(wait_skill).display_name
 	cancel_button.disabled = not can_act or not handler.is_choosing_target()
 
 
@@ -528,9 +552,15 @@ func _build_layout() -> void:
 	field_root = root
 
 	var request := fight.request
-	header_label = _label(root, "%s  -  %s  -  DEFENSE %d" % [
-		FightRequest.Kind.keys()[request.kind], request.territory_id.capitalize().to_upper(),
-		request.defense_level], "DimLabel")
+	var header := HBoxContainer.new()
+	header.name = "Header"
+	header.add_theme_constant_override("separation", 12)
+	root.add_child(header)
+	header_label = _label(header, "%s  -  %s" % [
+		FightRequest.Kind.keys()[request.kind], request.territory_id.capitalize().to_upper()], "DimLabel")
+	defense_stat = IconStat.make("defense_level", request.defense_level)
+	defense_stat.name = "DefenseLevel"
+	header.add_child(defense_stat)
 	timeline_bar = TimelineBar.new()
 	timeline_bar.name = "TimelineBar"
 	timeline_bar.settings = settings
@@ -548,8 +578,17 @@ func _build_layout() -> void:
 	middle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	middle.alignment = BoxContainer.ALIGNMENT_END
 	field.add_child(middle)
-	_label(middle, "LOG", "SmallLabel")
+	log_toggle = Button.new()
+	log_toggle.name = "LogToggle"
+	log_toggle.flat = true
+	log_toggle.focus_mode = Control.FOCUS_NONE
+	log_toggle.theme_type_variation = &"SmallLabel"
+	log_toggle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	log_toggle.pressed.connect(toggle_log)
+	middle.add_child(log_toggle)
 	log_label = _label(middle, "", "SmallLabel")
+	log_label.name = "LogLabel"
+	log_label.visible = false
 	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	log_label.clip_text = true
 	log_label.custom_minimum_size = Vector2(0, 10 * LOG_LINES_SHOWN + 16)
@@ -592,12 +631,17 @@ func _build_layout() -> void:
 	buttons.add_theme_constant_override("v_separation", 6)
 	commands.add_child(buttons)
 	for skill_id in _all_player_skills():
-		var button := _button(buttons, skill_button_text(fight.tuning.skill(skill_id)))
+		var skill := fight.tuning.skill(skill_id)
+		var button := SkillCard.make(skill.display_name, skill.energy_cost, "")
 		button.name = "Skill_%s" % skill_id
+		buttons.add_child(button)
 		button.toggle_mode = true
 		button.pressed.connect(on_skill_pressed.bind(skill_id))
 		skill_buttons[skill_id] = button
-	wait_button = _button(buttons, "WAIT")
+	wait_button = ActionButton.make("action_wait", "Wait")
+	wait_button.custom_minimum_size.y = 34
+	wait_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	buttons.add_child(wait_button)
 	wait_button.name = "WaitButton"
 	wait_button.pressed.connect(on_wait_pressed)
 	wait_button.mouse_entered.connect(on_wait_hovered.bind(true))
@@ -612,7 +656,10 @@ func _build_layout() -> void:
 	wait_ticks_box.visible = WaitRules.exact_waits_allowed(fight.tuning)
 	wait_ticks_box.value_changed.connect(func(_v: float) -> void: _refresh_commands())
 	buttons.add_child(wait_ticks_box)
-	cancel_button = _button(buttons, "CANCEL")
+	cancel_button = ActionButton.make("action_cancel", "Cancel")
+	cancel_button.custom_minimum_size.y = 34
+	cancel_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	buttons.add_child(cancel_button)
 	cancel_button.name = "CancelButton"
 	cancel_button.pressed.connect(on_cancel_pressed)
 	message_label = _label(commands, "", "SmallLabel")
@@ -654,10 +701,44 @@ func _build_layout() -> void:
 	add_child(outcome_banner)
 
 
-## "PATCH UP  [3]", or "PATCH UP Lv2  [3]" above level 1.
-static func skill_button_text(skill: CombatSkill) -> String:
-	var level := " Lv%d" % skill.level if skill.level > 1 and not skill.names_rank else ""
-	return "%s%s  [%d]" % [skill.display_name.to_upper(), level, skill.energy_cost]
+## What a skill card shows for `skill` in the hands of a unit with `attack`:
+## {name, rank, effect}. The rank is "+2" for a named rank ("Mega Strike +2"
+## shows "Mega Strike" and "+2"), "Lv2" for a flat level above 1, else "".
+## The effect is short words with numbers: "Deal 9. Pierce 20%."
+static func skill_card_face(skill: CombatSkill, attack: int) -> Dictionary:
+	var title := skill.display_name
+	var rank := ""
+	if skill.names_rank:
+		var m := RegEx.create_from_string("^(.*) (\\+\\d+)$").search(title)
+		if m != null:
+			title = m.get_string(1)
+			rank = m.get_string(2)
+	elif skill.level > 1:
+		rank = "Lv%d" % skill.level
+	@warning_ignore("integer_division")
+	var amount := attack * skill.power_percent / 100
+	var parts: Array[String] = []
+	if skill.is_damage():
+		parts.append("Deal %d%s." % [amount, " to all" if skill.hits_all() else ""])
+		if skill.pierce_percent > 0:
+			parts.append("Pierce %d%%." % skill.pierce_percent)
+		if skill.weakest_bonus_percent > 0:
+			parts.append("+%d%% to Weakest." % skill.weakest_bonus_percent)
+	elif skill.is_heal():
+		parts.append("Heal %d%s." % [amount, "" if skill.target != CombatSkill.TARGET_SELF else " self"])
+		if skill.heal_guard_percent > 0:
+			parts.append("Guard %d%%." % skill.heal_guard_percent)
+	elif skill.is_guard():
+		parts.append("Guard %d%%%s." % [skill.power_percent, " self" if skill.target == CombatSkill.TARGET_SELF else ""])
+		if skill.reflect_percent > 0:
+			parts.append("Reflect %d%%." % skill.reflect_percent)
+	return {"name": title, "rank": rank, "effect": " ".join(parts)}
+
+
+## Shows or hides the battle log.
+func toggle_log() -> void:
+	log_label.visible = not log_label.visible
+	refresh()
 
 
 ## Skill ids any bot in the fight has, in roster then menu order. Each bot
