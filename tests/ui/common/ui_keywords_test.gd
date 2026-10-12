@@ -122,3 +122,33 @@ func test_a_keyword_box_links_its_own_keywords() -> void:
 	assert_str(rt.text).contains("[url=kw:Guard]")
 	assert_int(rt.meta_clicked.get_connections().size()).is_equal(1)
 	assert_object(text).is_not_null()
+
+
+func test_a_box_goes_beside_its_card_where_it_covers_no_other_card() -> void:
+	var view := Rect2(0, 0, 1280, 820)
+	var size := Vector2(300, 80)
+	# A lone card with room on its right: the box goes there.
+	var card := Rect2(100, 300, 196, 136)
+	assert_vector(KeywordPopup.place_beside(size, card, [], view, 6.0)).is_equal(Vector2(302, 300))
+	# A row of cards: right and left are taken by neighbours, so it goes above.
+	var left := Rect2(0, 300, 96, 136)
+	var right := Rect2(302, 300, 196, 136)
+	var at := KeywordPopup.place_beside(size, card, [left, right], view, 6.0)
+	assert_vector(at).is_equal(Vector2(100, 214))
+	# A row at the bottom of the screen still opens above it.
+	var low := Rect2(100, 700, 196, 120)
+	var spot := KeywordPopup.place_beside(size, low, [Rect2(302, 700, 196, 120), Rect2(0, 700, 96, 120)], view, 6.0)
+	assert_float(spot.y + size.y).is_less_equal(low.position.y)
+
+
+func test_a_box_is_kept_on_screen() -> void:
+	var view := Rect2(0, 0, 1280, 820)
+	var at := KeywordPopup.place_beside(Vector2(300, 80), Rect2(1200, 10, 70, 40), [], view, 6.0)
+	assert_bool(view.encloses(Rect2(at, Vector2(300, 80)))).is_true()
+
+
+func test_a_label_anchors_to_its_card() -> void:
+	var card: SkillCard = auto_free(SkillCard.make("Beam", 3, "Deal 12. Pierce 20%."))
+	assert_object(KeywordPopup.anchor_of(card.effect_label)).is_same(card)
+	var b: PanelContainer = auto_free(KeywordPopup.box("Reflect"))
+	assert_object(KeywordPopup.anchor_of(b.find_child("Text", true, false))).is_same(b)

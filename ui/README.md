@@ -50,6 +50,9 @@ which word a box belongs to:
   a pinned box are links too: hover shows theirs beside it, click pins theirs.
 - Hovering a whole card or tooltip also lists the boxes of every keyword it
   uses.
+- A keyword box never covers other cards' text: it opens beside its card,
+  tooltip or box where there is room, above a card row otherwise (as Slay the
+  Spire does), and stays on screen. A chained box stacks beside its parent box.
 
 Keywords, their aliases (Piercing, Pierces -> Pierce) and definitions live in
 `data/ui/glossary.json`. To show a description, use
