@@ -4,7 +4,8 @@ extends GdUnitTestSuite
 
 func test_each_demo_scene_builds() -> void:
 	for path in ["res://ui/common/demo/theme_demo.tscn", "res://ui/common/demo/feel_demo.tscn",
-			"res://ui/common/demo/sprite_demo.tscn"]:
+			"res://ui/common/demo/sprite_demo.tscn",
+			"res://ui/common/demo/ui_kit_demo.tscn"]:
 		var scene: Node = auto_free(load(path).instantiate())
 		add_child(scene)
 		await await_idle_frame()

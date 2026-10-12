@@ -1,0 +1,14 @@
+{
+	"_comment": "Keywords a tooltip highlights, like Slay the Spire keywords. Each keyword, as written in any tooltip or card text, gets its own small box under the tooltip with these lines. Matching ignores case and needs whole words. icon is an id in data/ui/icons.json (optional).",
+	"keywords": {
+		"Guard": {"icon": "status_guard", "text": "Blocks part of the damage from incoming hits until its next turn."},
+		"Pierce": {"icon": "atk", "text": "Ignores part of the target's Guard and Defense."},
+		"Charge": {"icon": "intent_charge", "text": "Waits to fill Energy, then uses a bigger skill."},
+		"Energy": {"icon": "energy", "text": "Spent on skills. Refills a little every tick."},
+		"Down": {"icon": "status_down", "text": "At 0 HP a unit is Down and out of the fight."},
+		"Wait": {"icon": "status_waiting", "text": "Skip ahead on the timeline, filling Energy."},
+		"Reflect": {"icon": "def", "text": "Sends part of the blocked damage back at the attacker."},
+		"Weakest": {"icon": "hp", "text": "The target with the least HP left."},
+		"Rank": {"icon": "intent_buff", "text": "A skill grows with use: +1 to +5, then Mega, then Ultra."}
+	}
+}

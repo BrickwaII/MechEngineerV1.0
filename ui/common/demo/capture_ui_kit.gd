@@ -1,0 +1,34 @@
+extends SceneTree
+## Renders the UI kit demo to PNGs for pull requests. Needs a display:
+##     xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1280x820 \
+##         -s res://ui/common/demo/capture_ui_kit.gd -- <out_dir>
+## Writes ui_kit.png and ui_kit_tooltip.png (a skill card's tooltip open).
+
+var out_dir := "res://ui/common/screenshots"
+
+
+func _init() -> void:
+	var args := OS.get_cmdline_user_args()
+	if not args.is_empty():
+		out_dir = args[0]
+	DirAccess.make_dir_recursive_absolute(out_dir)
+	_run.call_deferred()
+
+
+func _run() -> void:
+	var demo: Control = load("res://ui/common/demo/ui_kit_demo.tscn").instantiate()
+	root.add_child(demo)
+	for i in 10:
+		await process_frame
+	await _save("ui_kit")
+	var card: SkillCard = demo.first_card
+	UiTooltip.show_at(card, card.global_position + Vector2(card.size.x * 0.5, card.size.y + 4))
+	for i in 6:
+		await process_frame
+	await _save("ui_kit_tooltip")
+	quit()
+
+
+func _save(file: String) -> void:
+	await RenderingServer.frame_post_draw
+	root.get_texture().get_image().save_png("%s/%s.png" % [out_dir, file])
