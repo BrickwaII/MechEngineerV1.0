@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
 ## Fight raises a FightEvent for everything an action does, for the battle
 ## presentation, and listening changes nothing.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 
@@ -89,3 +90,13 @@ func test_listening_changes_nothing() -> void:
 				break
 			fight.submit(SimpleFightPolicy.new().choose(fight, unit, RandomNumberGenerator.new()))
 	assert_str(heard.log_text()).is_equal(quiet.log_text())
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

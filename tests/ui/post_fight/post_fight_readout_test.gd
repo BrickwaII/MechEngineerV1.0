@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
 ## The post-fight readout and its demo scene, headless.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const DEMO := "res://ui/post_fight/post_fight_demo.tscn"
 const READOUT := "res://ui/post_fight/post_fight_readout.tscn"
@@ -219,3 +220,13 @@ func test_a_click_skips_to_the_end() -> void:
 	var texts := "\n".join(_texts(readout))
 	assert_str(texts).contains("RANK UP")
 	assert_str(texts).contains("TIER UP")
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

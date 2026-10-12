@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
 ## OddsEstimator: auto-fights of the squad against the region's own enemy
 ## draw give a win rate and a label; deterministic for a run seed and region.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const REGION := "ballard"
 
@@ -123,3 +124,13 @@ func test_the_switchboard_lists_the_odds_model() -> void:
 	var v := FightVariants.defaults()
 	assert_str(v.option(OddsEstimator.ODDS_MODEL)).is_equal(OddsEstimator.MODEL_SIMULATED)
 	assert_bool(v.choose(OddsEstimator.ODDS_MODEL, OddsEstimator.MODEL_FORMULA)).is_true()
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

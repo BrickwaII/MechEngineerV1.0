@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
 ## FightTelegraph, headless: intents in words, revision marks, personality
 ## tags and the choice preview. None of it may change the fight.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const T := preload("res://tests/fight/intent/intent_test_helpers.gd")
 const Helpers := preload("res://tests/ui/fight/fight_ui_helpers.gd")
@@ -154,3 +155,13 @@ func test_a_refused_choice_says_why() -> void:
 	var action := FightAction.use("strike", "bolt")
 	var text := telegraph.describe_choice(f, action, telegraph.preview_choice(f, action))
 	assert_str(text).contains("not allowed: ")
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

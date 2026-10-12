@@ -1,15 +1,18 @@
 {
-	"_comment": "Difficulty targets for the balance sim (tools/balance_sim.gd, BalanceCurve). Each case plays runs auto-fights of a freshly drafted squad (BotFactory, run i drafts from seed base_seed + i) against one act's enemies and checks the win rate against target [low, high] percent. factions: the factions of the act (data/combat/factions.json, by_act), run i fights factions[i % size]; empty plays the generic roster (enemy_tables.json pools), as the boss stub does. tier: the act's tier for the defense level (tier_by_act), raised tier_steps tiers (capped at the top tier): early fights are alert 0 (0 steps), late fights the act's top alert. territory (default: act) picks the difficulty-curve scaling (DifficultyRules; boss is the boss stub's territory). skill_ranks_added: ranks added to every squad skill, a stand-in for the growth a squad has by that act. TODO(decision: difficulty-targets): the bands, the alert steps (R2-B owns alert-to-tier) and the growth stand-ins are first guesses.",
-	"runs": 100,
+	"_comment": "Difficulty targets for the balance sim (tools/balance_sim.gd, BalanceCurve). Each case is one alert tier of an act (escalation, data/tuning/escalation.json, R2-B) at the defense level that tier's band puts a typical region of the act at, or the boss stub. A case plays runs auto-fights of a freshly drafted squad (BotFactory, run i drafts from seed base_seed + i) and checks the win rate against target [low, high] percent. factions: the act's factions (data/combat/factions.json regions), run i fights factions[i % size]; empty plays the generic roster (enemy_tables.json pools), as the boss stub does. The unit tier comes from the defense level through tier_by_act (the difficulty-curve switch in data/variants/variants.json). territory (default: act) picks the difficulty-curve scaling (DifficultyRules; boss is the boss stub's territory). skill_ranks_added: ranks added to every squad skill, a stand-in for the growth a squad has by then. TODO(decision: difficulty-targets): the bands (alert 0 60-70%, alert 1 52-62%, alert 2 45-55%, boss 30-40%), the levels per alert and the growth stand-ins are first guesses.",
+	"runs": 200,
 	"squad_policy": "patient",
 	"enemy_policy": "intent",
 	"cases": [
-		{"id": "act1_early", "factions": ["human_resistance"], "act": "act1", "defense_level": 1, "tier_steps": 0, "skill_ranks_added": 0, "target": [60, 70]},
-		{"id": "act1_late", "factions": ["human_resistance"], "act": "act1", "defense_level": 3, "tier_steps": 1, "skill_ranks_added": 1, "target": [45, 55]},
-		{"id": "act2_early", "factions": ["rival_ai", "enhanced_humans"], "act": "act2", "defense_level": 2, "tier_steps": 0, "skill_ranks_added": 2, "target": [60, 70]},
-		{"id": "act2_late", "factions": ["rival_ai", "enhanced_humans"], "act": "act2", "defense_level": 3, "tier_steps": 1, "skill_ranks_added": 3, "target": [45, 55]},
-		{"id": "act3_early", "factions": ["aliens", "rival_ai"], "act": "act3", "defense_level": 3, "tier_steps": 0, "skill_ranks_added": 4, "target": [60, 70]},
-		{"id": "act3_late", "factions": ["aliens", "rival_ai"], "act": "act3", "defense_level": 4, "tier_steps": 1, "skill_ranks_added": 5, "target": [45, 55]},
-		{"id": "boss", "factions": [], "act": "", "territory": "boss", "defense_level": 5, "tier_steps": 0, "skill_ranks_added": 6, "target": [30, 40]}
+		{"id": "act1_alert0", "factions": ["human_resistance"], "act": "act1", "alert": 0, "defense_level": 1, "skill_ranks_added": 0, "target": [60, 70]},
+		{"id": "act1_alert1", "factions": ["human_resistance"], "act": "act1", "alert": 1, "defense_level": 2, "skill_ranks_added": 1, "target": [52, 62]},
+		{"id": "act1_alert2", "factions": ["human_resistance"], "act": "act1", "alert": 2, "defense_level": 3, "skill_ranks_added": 1, "target": [45, 55]},
+		{"id": "act2_alert0", "factions": ["rival_ai", "enhanced_humans"], "act": "act2", "alert": 0, "defense_level": 2, "skill_ranks_added": 2, "target": [60, 70]},
+		{"id": "act2_alert1", "factions": ["rival_ai", "enhanced_humans"], "act": "act2", "alert": 1, "defense_level": 3, "skill_ranks_added": 2, "target": [52, 62]},
+		{"id": "act2_alert2", "factions": ["rival_ai", "enhanced_humans"], "act": "act2", "alert": 2, "defense_level": 4, "skill_ranks_added": 3, "target": [45, 55]},
+		{"id": "act3_alert0", "factions": ["aliens", "rival_ai"], "act": "act3", "alert": 0, "defense_level": 2, "skill_ranks_added": 4, "target": [60, 70]},
+		{"id": "act3_alert1", "factions": ["aliens", "rival_ai"], "act": "act3", "alert": 1, "defense_level": 3, "skill_ranks_added": 4, "target": [52, 62]},
+		{"id": "act3_alert2", "factions": ["aliens", "rival_ai"], "act": "act3", "alert": 2, "defense_level": 5, "skill_ranks_added": 5, "target": [45, 55]},
+		{"id": "boss", "factions": [], "act": "", "territory": "boss", "defense_level": 5, "skill_ranks_added": 6, "target": [30, 40]}
 	]
 }

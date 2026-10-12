@@ -82,7 +82,8 @@ func pick_for(request: FightRequest, rng: RandomNumberGenerator,
 		if faction != FactionTable.GENERIC:
 			var tier := DifficultyRules.tier_for(
 				factions, factions.act_of(request.territory_id), request.defense_level, tuning)
-			var ids := factions.pick(self, faction, request.defense_level, tier, rng)
+			var ids := factions.pick(self, faction, request.defense_level, tier, rng,
+				DifficultyRules.count_for(request.defense_level, tuning))
 			if not ids.is_empty():
 				return ids
 	return pick(request.defense_level, rng)

@@ -92,21 +92,22 @@
 			"default": "tuned",
 			"options": [
 				{"id": "flat", "name": "Flat (old)", "description": "Enemy tiers from tier_by_act in data/combat/factions.json; enemy stats as listed in data/combat/enemy_tables.json."},
-				{"id": "tuned", "name": "Tuned to target win rates", "description": "tier_by_act here replaces the factions file's; every enemy fought in an act's territory gets that act's scaling (the boss stub: scaling.boss), times its tier's tier_scaling. Tuned with tools/balance_sim.gd against data/combat/difficulty_targets.json. TODO(decision: difficulty-targets).", "params": {
+				{"id": "tuned", "name": "Tuned to target win rates", "description": "tier_by_act here replaces the factions file's; every enemy fought in an act's territory gets that act's scaling (the boss stub: scaling.boss), times its tier's tier_scaling; a faction fight fields count_by_level[level] enemies (the generic roster keeps enemy_tables.json counts). Tuned with tools/balance_sim.gd against data/combat/difficulty_targets.json. TODO(decision: difficulty-targets).", "params": {
+					"count_by_level": [2, 3, 3, 3, 3, 4],
 					"tier_by_act": {
-						"act1": ["beginner", "beginner", "beginner", "beginner", "medium", "advanced"],
+						"act1": ["beginner", "beginner", "medium", "medium", "medium", "advanced"],
 						"act2": ["beginner", "beginner", "beginner", "beginner", "medium", "advanced"],
 						"act3": ["beginner", "beginner", "medium", "medium", "advanced", "advanced"]
 					},
 					"scaling": {
 						"act1": {"hp_percent": 107, "attack_percent": 106, "defense_percent": 100},
 						"act2": {"hp_percent": 122, "attack_percent": 117, "defense_percent": 100},
-						"act3": {"hp_percent": 110, "attack_percent": 112, "defense_percent": 100},
-						"boss": {"hp_percent": 63, "attack_percent": 70, "defense_percent": 85}
+						"act3": {"hp_percent": 118, "attack_percent": 116, "defense_percent": 100},
+						"boss": {"hp_percent": 60, "attack_percent": 70, "defense_percent": 85}
 					},
 					"tier_scaling": {
 						"beginner": {"hp_percent": 120, "attack_percent": 115, "defense_percent": 100},
-						"medium": {"hp_percent": 100, "attack_percent": 100, "defense_percent": 100},
+						"medium": {"hp_percent": 105, "attack_percent": 100, "defense_percent": 100},
 						"advanced": {"hp_percent": 68, "attack_percent": 78, "defense_percent": 85}
 					}
 				}}

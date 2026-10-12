@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
 ## Skill uses count toward skill levels, and leftover uses carry between fights.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const P := preload("res://tests/fight/post_fight/post_fight_test_helpers.gd")
 
@@ -91,3 +92,13 @@ func test_levels_are_per_bot() -> void:
 	SkillProgress.apply(a, _uses({"strike": 3}), ledger, P.tuning())
 	assert_int(_skill(a, "Strike").level).is_equal(2)
 	assert_int(_skill(b, "Strike").level).is_equal(1)
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

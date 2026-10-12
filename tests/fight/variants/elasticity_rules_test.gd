@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
 ## The d-elasticity options (ElasticityRules).
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 const V := preload("res://tests/fight/variants/variant_test_helpers.gd")
@@ -76,3 +77,13 @@ func test_after_hit_does_nothing_without_damage() -> void:
 	u.energy_milli = 0
 	ElasticityRules.after_hit(u, 0, t)
 	assert_int(u.energy_milli).is_equal(0)
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

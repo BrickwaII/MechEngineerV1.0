@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
 ## FightCommandHandler, headless: whole fights driven by commands alone.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 const SEED := 7
@@ -210,3 +211,13 @@ func test_a_self_only_skill_is_used_on_selection() -> void:
 	assert_str(handler.apply(FightCommand.select_skill("brace"))).is_empty()
 	assert_str(handler.fight.action_tags[0]).is_equal("anvil:brace")
 	assert_int(handler.fight.combatant("anvil").guard_percent).is_greater(0)
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

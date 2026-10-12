@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
 ## Enemy factions: which faction holds each region (data/combat/factions.json)
 ## and which enemies a fight there fields (FactionTable, EnemyTable.pick_for).
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const V := preload("res://tests/fight/variants/variant_test_helpers.gd")
 const ACTS_PATH := "res://data/tuning/acts.json"
@@ -177,3 +178,13 @@ func test_validate_reports_a_broken_table() -> void:
 	assert_int(problems.size()).is_greater_equal(4)
 	assert_str("\n".join(problems)).contains("no enemy missing_beginner").contains("listed more than once") \
 		.contains("unknown faction z").contains("mixed_pool")
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

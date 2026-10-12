@@ -26,7 +26,7 @@
 	},
 	"_player_skills_comment": "Skills of a squad member whose summary lists no skills (old saves, tools, tests). Drafted bots fight with their own skills through bot_skill_effects instead.",
 	"player_skills": ["strike", "heavy_strike", "overload"],
-	"_basic_attack_comment": "Every squad member keeps this skill, so it always has something to do: it is added when none of the bot's own skills is a free single-target attack.",
+	"_basic_attack_comment": "Every squad member keeps this skill, so it always has something to do: it is added when none of the bot's own skills is a free single-target attack. The strike-cost switch (data/variants/variants.json) may give it a cost and its own recharge; a unit that cannot afford it waits.",
 	"basic_attack": "strike",
 	"_bot_skill_effects_comment": "Bot skill effect_id (data/bot_data/skills.json) -> the combat skill it fights with. The bot's name and level for the skill carry over; cost, power, effect and target come from skills below.",
 	"bot_skill_effects": {

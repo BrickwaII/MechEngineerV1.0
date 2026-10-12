@@ -1,4 +1,5 @@
 extends GdUnitTestSuite
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 
 func _fight(seed_value := 1) -> SimulatedFight:
@@ -145,3 +146,13 @@ func test_personality_text_names_the_larger_end_and_its_lean() -> void:
 	p.methodical = 1.0
 	assert_str(DebugOverlay.personality_text(p, 1.0)).is_equal("agg .60 sup .40 [rea .50]")
 	assert_str(DebugOverlay.personality_text(Personality.new(3), 1.0)).is_equal("bal .00 bal .00 bal .00")
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

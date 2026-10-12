@@ -44,7 +44,11 @@ godot --headless --path . -s res://tools/compare_variants.gd -- --decision d-wai
 ```
 
 Decisions: `d-wait`, `d-wait-length`, `d-elasticity`, `d-personality-map`,
-`hp-carryover`, `draft-rule`. Options: `--runs N`, `--seed N`, `--level N`,
+`hp-carryover`, `skill-progression`, `tag-weight`, `speed-range`,
+`strike-cost`, `draft-rule`. Besides growth, the table shows `fair` (the
+slowest bot's growth over the fastest's; 1.0 is even), the slowest and
+fastest bots' levels and damage per fight, and the squad's Strike, other-skill
+and wait shares. Options: `--runs N`, `--seed N`, `--level N`,
 `--policy NAME` (the squad's; default `patient`, which waits so the wait
 options show), `--enemy-policy NAME` (default `intent`), `--chain N`. Run i
 drafts a fresh squad from seed + i. Defaults live in `data/scenarios/_dev_tools.json`.
@@ -57,6 +61,18 @@ enemies), on the same seeded squads:
 
 ```sh
 godot --headless --path . -s res://tools/check_factions.gd -- --runs 200 [--markdown 1]
+```
+
+## Balance sim
+
+Win rates of freshly drafted squads against each act's fights at every alert
+tier (the defense level escalation puts a typical region at) and the boss,
+next to the target bands in `data/combat/difficulty_targets.json` (alert 0
+60-70%, alert 1 52-62%, alert 2 45-55%, boss 30-40%). `--old 1` plays the
+switches before the combat-economy pass; `--set d=o,...` any fight switches.
+
+```sh
+godot --headless --path . -s res://tools/balance_sim.gd -- --runs 200 [--old 1] [--markdown 1]
 ```
 
 ## Fight stats log
@@ -78,6 +94,7 @@ dealt, energy spent and hp left.
 | `fight_stats_log.gd` | The JSON-lines log |
 | `variant_comparison.gd`, `compare_variants.gd` | Every option of one decision on the same seeded fights |
 | `faction_win_rates.gd`, `check_factions.gd` | Win rates per enemy faction, act tier and defense level |
+| `balance_curve.gd`, `balance_sim.gd` | Win rates per act and alert tier against the difficulty targets |
 | `odds_calibration.gd`, `odds_calibration_cli.gd` | The map's simulated odds labels next to real auto-fight outcomes, per defense level |
 | `bot_library.gd`, `bot_json.gd` | Saved bots (one BotSquadStorage file each) and inline bots |
 

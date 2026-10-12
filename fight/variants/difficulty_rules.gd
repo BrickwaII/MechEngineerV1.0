@@ -11,7 +11,9 @@ extends RefCounted
 ##          entry in scaling (hp_percent, attack_percent, defense_percent),
 ##          or, for a territory outside every act (the boss stub), the entry
 ##          named by the territory id; on top of that, its tier's entry in
-##          tier_scaling (the same keys, multiplied). Tuned with tools/balance_sim.gd against
+##          tier_scaling (the same keys, multiplied). A faction fight fields
+##          count_by_level[level] enemies instead of the level's count in
+##          enemy_tables.json (the generic roster keeps its counts). Tuned with tools/balance_sim.gd against
 ##          data/combat/difficulty_targets.json.
 ##
 ## TODO(decision: difficulty-targets): the target bands, the tables and the
@@ -31,6 +33,17 @@ static func tier_for(factions: FactionTable, act_id: String, level: int, tuning:
 		if by_level is Array and not by_level.is_empty():
 			return str(by_level[clampi(level, 0, by_level.size() - 1)])
 	return factions.tier_for(act_id, level)
+
+
+## How many enemies a faction fight at `level` fields, or -1 for the enemy
+## table's count.
+static func count_for(level: int, tuning: CombatTuning) -> int:
+	if not tuned(tuning):
+		return -1
+	var counts: Variant = _params(tuning).get("count_by_level", [])
+	if not counts is Array or level < 0 or level >= (counts as Array).size():
+		return -1
+	return maxi(1, int(counts[level]))
 
 
 ## The scaling key of `territory_id`: its act, or the territory itself when

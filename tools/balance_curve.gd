@@ -11,9 +11,10 @@ extends RefCounted
 ## Run i of every case drafts a squad from seed base_seed + i (BotFactory, the
 ## default draft) and fights enemies drawn with that seed, so every case and
 ## every variant set meets the same squads. A case's enemies are one of its
-## act's factions at the act's tier for the defense level, raised tier_steps
-## tiers (late-act alert); a case with no factions fights the generic roster
-## (the boss stub). skill_ranks_added stands in for a squad's growth by then.
+## act's factions at the act's tier for the defense level (tier_by_act, by the
+## difficulty-curve switch); a case with no factions fights the generic roster
+## (the boss stub). Each case is one alert tier of an act, at the defense level
+## escalation puts a typical region at (data/tuning/escalation.json bands). skill_ranks_added stands in for a squad's growth by then.
 ## The fight is fought over the case's territory (default: its act id), which
 ## picks the difficulty-curve scaling.
 ## `choices` (decision id -> option id) override fight switches, so the old
@@ -29,9 +30,10 @@ class ForcedTierTable:
 	var forced: FactionTable
 	var faction := ""
 	var tier := ""
+	var tuning: CombatTuning
 
 	func pick(level: int, rng: RandomNumberGenerator) -> Array[String]:
-		return forced.pick(self, faction, level, tier, rng)
+		return forced.pick(self, faction, level, tier, rng, DifficultyRules.count_for(level, tuning))
 
 
 ## One target from the data file.
@@ -43,7 +45,8 @@ class Case:
 	## scaling (DifficultyRules). Defaults to the act.
 	var territory := ""
 	var defense_level := 0
-	var tier_steps := 0
+	## The act's alert tier the case stands for (0, 1, 2), or -1. A label.
+	var alert := -1
 	var skill_ranks_added := 0
 	var target_low := 0.0
 	var target_high := 100.0
@@ -121,7 +124,7 @@ static func parse_cases(data: Dictionary, out_problems: Array[String]) -> Array[
 		c.act = str(entry.get("act", ""))
 		c.territory = str(entry.get("territory", c.act))
 		c.defense_level = int(entry.get("defense_level", 0))
-		c.tier_steps = int(entry.get("tier_steps", 0))
+		c.alert = int(entry.get("alert", -1))
 		c.skill_ranks_added = int(entry.get("skill_ranks_added", 0))
 		var target: Array = entry.get("target", [0, 100])
 		c.target_low = float(target[0]) if target.size() > 0 else 0.0
@@ -136,13 +139,12 @@ static func parse_cases(data: Dictionary, out_problems: Array[String]) -> Array[
 	return out
 
 
-## The tier `c` fights in `factions`: the act's tier (by the difficulty-curve
-## switch of `tuning`) raised tier_steps, capped.
+## The tier `c` fights in `factions`: the act's tier for its level, by the
+## difficulty-curve switch of `tuning`. "" for the generic roster.
 static func tier_of(c: Case, factions: FactionTable, tuning: CombatTuning) -> String:
-	if c.factions.is_empty() or factions.tiers.is_empty():
+	if c.factions.is_empty():
 		return ""
-	var i := factions.tiers.find(DifficultyRules.tier_for(factions, c.act, c.defense_level, tuning))
-	return factions.tiers[clampi(maxi(i, 0) + c.tier_steps, 0, factions.tiers.size() - 1)]
+	return DifficultyRules.tier_for(factions, c.act, c.defense_level, tuning)
 
 
 func _play(c: Case, base: EnemyTable, tuning: CombatTuning) -> CaseResult:
@@ -163,6 +165,7 @@ func _play(c: Case, base: EnemyTable, tuning: CombatTuning) -> CaseResult:
 		t.forced = base.factions
 		t.faction = faction
 		t.tier = r.tier
+		t.tuning = tuning
 		tables.append(t)
 	var factory := BotFactory.new(BotTuning.load_default())
 	var top_rank := tuning.skill_ranks.max_rank() if tuning.skill_ranks != null else Skill.MIN_LEVEL + c.skill_ranks_added
@@ -199,10 +202,10 @@ func format_text() -> String:
 	lines.append("Balance sim: %d runs per case (seeds %d to %d), squad policy %s, enemy policy %s%s." % [
 		runs, base_seed, base_seed + runs - 1, player_policy, enemy_policy,
 		(", switches " + _choices_text()) if not choices.is_empty() else ""])
-	lines.append("%-12s %6s %-9s %6s %9s %8s %7s" % ["case", "level", "tier", "ranks", "target", "win", "verdict"])
+	lines.append("%-12s %5s %6s %-9s %6s %9s %8s %7s" % ["case", "alert", "level", "tier", "ranks", "target", "win", "verdict"])
 	for r in results:
-		lines.append("%-12s %6d %-9s %6d %4.0f-%-4.0f %7.1f%% %7s" % [
-			r.case.id, r.case.defense_level, r.tier if not r.tier.is_empty() else "generic",
+		lines.append("%-12s %5s %6d %-9s %6d %4.0f-%-4.0f %7.1f%% %7s" % [
+			r.case.id, str(r.case.alert) if r.case.alert >= 0 else "-", r.case.defense_level, r.tier if not r.tier.is_empty() else "generic",
 			r.case.skill_ranks_added, r.case.target_low, r.case.target_high, r.win_rate(), r.verdict()])
 	lines.append("%d of %d cases on target." % [on_target(), results.size()])
 	return "\n".join(lines)
@@ -211,11 +214,11 @@ func format_text() -> String:
 ## The same table as Markdown, for a pull request.
 func format_markdown() -> String:
 	var lines := PackedStringArray()
-	lines.append("| Case | Level | Tier | Target | Win |")
-	lines.append("|---|---|---|---|---|")
+	lines.append("| Case | Alert | Level | Tier | Target | Win |")
+	lines.append("|---|---|---|---|---|---|")
 	for r in results:
-		lines.append("| %s | L%d | %s | %.0f-%.0f%% | %.0f%% %s |" % [
-			r.case.id, r.case.defense_level, r.tier if not r.tier.is_empty() else "generic",
+		lines.append("| %s | %s | L%d | %s | %.0f-%.0f%% | %.0f%% %s |" % [
+			r.case.id, str(r.case.alert) if r.case.alert >= 0 else "-", r.case.defense_level, r.tier if not r.tier.is_empty() else "generic",
 			r.case.target_low, r.case.target_high, r.win_rate(), "" if r.verdict() == "ok" else "(%s)" % r.verdict()])
 	return "\n".join(lines)
 

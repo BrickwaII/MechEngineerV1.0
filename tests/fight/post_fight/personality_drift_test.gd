@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
 ## Drift is tallied over the fight and applied once, after the last action.
 ## TODO(decision: d-personality-map): pins the default mapping.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const P := preload("res://tests/fight/post_fight/post_fight_test_helpers.gd")
 
@@ -197,3 +198,13 @@ func test_pole_lookup() -> void:
 	assert_int(PersonalityDrift.direction_of_pole("reactive")).is_equal(-1)
 	assert_int(PersonalityDrift.direction_of_pole("methodical")).is_equal(1)
 	assert_int(PersonalityDrift.scale_of_pole("grumpy")).is_equal(-1)
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

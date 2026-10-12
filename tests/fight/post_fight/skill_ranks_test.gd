@@ -2,6 +2,7 @@ extends GdUnitTestSuite
 ## Named skill ranks: names, power, bonuses, fx levels, the uses curve, rank
 ## progression after a fight, the level-up numbers and the save conversion.
 ## TODO(decision: skill-ranks): pins the rank structure, not the numbers.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const P := preload("res://tests/fight/post_fight/post_fight_test_helpers.gd")
 
@@ -182,3 +183,13 @@ func test_flat_levels_convert_to_ranks_no_stronger() -> void:
 	for level in range(1, 11):
 		var rank := r.rank_for_flat_level(level, 10)
 		assert_int(r.power_bonus_percent(rank)).is_less_equal((level - 1) * 10)
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

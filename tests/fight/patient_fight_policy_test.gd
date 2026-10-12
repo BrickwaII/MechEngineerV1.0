@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
 ## PatientFightPolicy: waits for its strongest attack instead of a weaker one.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 const V := preload("res://tests/fight/variants/variant_test_helpers.gd")
@@ -44,3 +45,13 @@ func test_names_exact_ticks_that_end_where_a_snap_would() -> void:
 		f.advance()
 	assert_int(exact.decision_tags[0].kind).is_equal(FightAction.Kind.WAIT)
 	assert_int(exact.timeline.current_tick).is_equal(snap.timeline.current_tick)
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+
