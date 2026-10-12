@@ -8,6 +8,9 @@ extends Control
 ## stay in the load list with their summary but cannot be loaded. The
 ## single-slot save of earlier versions (user://run.res) is offered once as
 ## an imported run.
+##
+## A finished run's VIEW shows its run-over screen (RunOverScreen), read-only;
+## a run that ends in play leaves its run-over screen back to this menu.
 
 const RUN_SCENE := preload("res://ui/run/run_flow.tscn")
 const MENU_WIDTH := 520.0
@@ -24,6 +27,8 @@ var configure_flow: Callable
 var settings := RunDataSettings.load_default()
 ## The run flow once a run is open, else null.
 var flow: RunFlow
+## A finished run's run-over screen while it shows, else null.
+var run_over: RunOverScreen
 
 var menu: Control
 var continue_button: Button
@@ -150,9 +155,41 @@ func _open_flow(dir: String) -> void:
 	flow.start_dir = dir
 	if configure_flow.is_valid():
 		configure_flow.call(flow)
+	flow.exit_requested.connect(close_flow)
 	for child in [menu, load_list, legacy_panel]:
 		child.visible = false
 	add_child(flow)
+
+
+## Closes the run flow and shows the menu again.
+func close_flow() -> void:
+	if flow != null:
+		remove_child(flow)
+		flow.queue_free()
+		flow = null
+	menu.visible = true
+	load_list.visible = false
+	refresh()
+	if MusicDirector.current != null:
+		MusicDirector.current.play_context(MusicDirector.MENU)
+
+
+## Shows a finished run's run-over screen, read-only, over the load list.
+func view_finished_run(dir: String) -> void:
+	run_over = RunOverScreen.new()
+	run_over.name = "RunOverScreen"
+	run_over.leave_text = "BACK"
+	run_over.show_run(dir, _summary_of(dir))
+	run_over.main_menu_requested.connect(close_run_over)
+	run_over.folder_requested.connect(func() -> void: OS.shell_open(ProjectSettings.globalize_path(dir)))
+	add_child(run_over)
+
+
+func close_run_over() -> void:
+	if run_over != null:
+		remove_child(run_over)
+		run_over.queue_free()
+		run_over = null
 
 
 # --- Layout ----------------------------------------------------------------------
@@ -263,12 +300,12 @@ func _run_row(summary: Dictionary) -> Control:
 		name_text += "  ·  %s" % summary.act_name
 	text.add_child(_label(name_text, "text_bright" if not finished else "text_dim", 10, false))
 	text.add_child(_label(RunFolder.describe(summary), "text_dim", 10, false))
-	# TODO(decision: finished-runs): a finished run is listed with its result
-	# and folder but cannot be loaded; there is no run-over screen to return to.
-	var load := _small_button("LOAD" if not finished else ("WON" if summary.get("won", false) else "LOST"),
-		load_run_folder.bind(summary.dir))
-	load.disabled = not RunFolder.can_continue(summary)
-	load.tooltip_text = "" if not load.disabled else ("This run is over." if finished else "This run has no save yet.")
+	# A finished run is read-only: VIEW shows its run-over screen.
+	var load := _small_button("LOAD" if not finished else "VIEW",
+		load_run_folder.bind(summary.dir) if not finished else view_finished_run.bind(summary.dir))
+	load.disabled = not finished and not RunFolder.can_continue(summary)
+	load.tooltip_text = "This run is over (%s). See how it ended." % ("won" if summary.get("won", false) else "lost") if finished \
+		else ("" if not load.disabled else "This run has no save yet.")
 	row.add_child(load)
 	load_buttons[summary.dir] = load
 	var dir: String = summary.dir

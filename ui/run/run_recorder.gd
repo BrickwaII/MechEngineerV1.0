@@ -184,7 +184,7 @@ func watch_campaign(c: Campaign) -> void:
 
 func _campaign_handlers() -> Array:
 	return [["acted", _on_acted], ["fight_started", _on_fight_started], ["fight_finished", _on_fight_finished],
-		["expanded", _on_expanded], ["changed", _on_changed]]
+		["expanded", _on_expanded], ["changed", _on_changed], ["fast_forwarded", _on_fast_forwarded]]
 
 
 ## A map action that is not a Campaign call: focus, save, load, act_zoom.
@@ -223,8 +223,25 @@ func _region_name(region_id: String) -> String:
 	return region_id
 
 
+const _ACTION_NAMES := {
+	Campaign.Action.WAIT: RunJournal.ACTION_WAIT,
+	Campaign.Action.REINFORCE: RunJournal.ACTION_REINFORCE,
+	Campaign.Action.RETREAT: RunJournal.ACTION_RETREAT,
+	Campaign.Action.REPAIR: RunJournal.ACTION_REPAIR,
+	Campaign.Action.FAST_FORWARD: RunJournal.ACTION_FAST_FORWARD,
+}
+
+
 func _on_acted(p_action: Campaign.Action, region_id: String) -> void:
-	action(RunJournal.ACTION_WAIT if p_action == Campaign.Action.WAIT else RunJournal.ACTION_REINFORCE, region_id)
+	action(_ACTION_NAMES.get(p_action, RunJournal.ACTION_WAIT), region_id)
+
+
+## What fast-forward did, then a snapshot to check it by.
+func _on_fast_forwarded(result: Dictionary) -> void:
+	var line := {"kind": RunJournal.KIND_FAST_FORWARD}
+	line.merge(result)
+	write(line)
+	snapshot(RunJournal.SNAPSHOT_FAST_FORWARD)
 
 
 func _on_expanded(region_id: String) -> void:
@@ -241,7 +258,8 @@ func _on_fight_started(request: FightRequest) -> void:
 		name = RunJournal.ACTION_DEFEND
 	elif request.territory_id == Campaign.BOSS_ID:
 		name = RunJournal.ACTION_BOSS
-	action(name, request.territory_id if name != RunJournal.ACTION_BOSS else "")
+	var extra := {"breach": true} if name == RunJournal.ACTION_ATTACK and campaign != null and campaign.breached else {}
+	action(name, request.territory_id if name != RunJournal.ACTION_BOSS else "", extra)
 	var fv: FightVariants = fight_variants_source.call()
 	var cv: CampaignVariants = campaign_variants_source.call()
 	var line := {
@@ -321,19 +339,28 @@ func _on_changed() -> void:
 	if _snapshot_due:
 		_snapshot_due = false
 		snapshot(RunJournal.SNAPSHOT_FIGHT)
-		if _fight_request != null and _fight_request.territory_id == Campaign.BOSS_ID:
-			_end(_last_result.is_victory(), "boss fight won" if _last_result.is_victory() else "boss fight lost")
-			return
-	if campaign.is_lost():
-		_end(false, "every region lost")
+	var reason := campaign.end_reason()
+	if not reason.is_empty():
+		_end(reason == Stakes.END_WON, END_TEXT.get(reason, reason))
+
+
+## Stakes.END_* -> the run_end line's reason.
+const END_TEXT := {
+	Stakes.END_WON: "boss fight won",
+	Stakes.END_BOSS_LOST: "boss fight lost",
+	Stakes.END_ALL_LOST: "every region lost",
+	Stakes.END_LOSS_LIMIT: "loss limit reached",
+}
 
 
 func _end(won: bool, reason: String) -> void:
 	if _ended:
 		return
 	_ended = true
+	_update_summary()
 	summary.finished = true
 	summary.won = won
+	summary.end_reason = reason
 	write({"kind": RunJournal.KIND_RUN_END, "won": won, "reason": reason})
 	_write_summary()
 	run_ended.emit(won)
@@ -348,6 +375,8 @@ func _update_summary() -> void:
 		summary.day = campaign.day()
 		summary.regions_held = campaign.state.owned.size()
 		summary.regions_total = campaign.map.regions.size()
+		summary.losses = campaign.state.losses
+		summary.loss_limit = campaign.stakes.loss_limit
 	_write_summary()
 
 
@@ -357,6 +386,11 @@ func _write_summary() -> void:
 	summary.play_s = snappedf(play_seconds(), 0.001)
 	summary.updated_unix = clock.call()
 	RunFolder.write_summary(dir, summary)
+
+
+## Writes the summary now, with play time up to this moment.
+func snapshot_summary() -> void:
+	_write_summary()
 
 
 ## Sets the summary's act name (the map screen knows it).

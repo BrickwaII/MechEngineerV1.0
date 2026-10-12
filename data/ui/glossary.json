@@ -9,6 +9,9 @@
 		"Wait": {"icon": "status_waiting", "text": "Skip ahead on the timeline, filling Energy."},
 		"Reflect": {"icon": "def", "text": "Sends part of the blocked damage back at the attacker."},
 		"Weakest": {"icon": "hp", "text": "The target with the least HP left."},
+		"Material": {"icon": "material", "text": "From held regions and won fights. Pays for Breach and Repair."},
+		"Breach": {"icon": "action_breach", "text": "Pay before an attack to fight at a lower Defense level."},
+		"Retreat": {"icon": "action_retreat", "text": "Back out of a fight before it starts, for time and Energy. No loss counted."},
 		"Rank": {"icon": "intent_buff", "text": "A skill grows with use: +1 to +5, then Mega, then Ultra."}
 	}
 }
