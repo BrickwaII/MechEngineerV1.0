@@ -139,8 +139,8 @@ static func _button(root: Node, text: String) -> Button:
 func test_losses_resources_and_actions_show_as_icons_with_tooltips() -> void:
 	var screen := _screen()
 	await _runner.simulate_frames(1)
-	assert_str(screen._losses.value_text()).is_equal("3")
-	assert_str(str(UiTooltip.spec(screen._losses).body)).contains("Lost battles left")
+	assert_str(screen._losses.value_text()).is_equal("0/3")
+	assert_str(str(UiTooltip.spec(screen._losses).body)).contains("Battles lost this act")
 	var energy: IconStat = screen._income_label("energy").get_child(0)
 	assert_str(str(UiTooltip.spec(energy).body)).contains("Reinforce")
 	assert_str(str(UiTooltip.spec(energy).body)).contains("Retreat")
