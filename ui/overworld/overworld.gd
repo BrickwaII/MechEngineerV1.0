@@ -118,9 +118,9 @@ var _modal_body: Label
 var _modal_options: HBoxContainer
 var _modal_buttons: HBoxContainer
 var _status: Label
-var _losses: Label
-var _repair_button: Button
-var _ff_button: Button
+var _losses: IconStat
+var _repair_button: ActionButton
+var _ff_button: ActionButton
 
 
 func _ready() -> void:
@@ -480,9 +480,10 @@ func _build_top_bar() -> Control:
 	grid.add_child(_grid_text)
 	_grid_rate = _text("", 11, Palette.TEXT_DIM)
 	grid.add_child(_grid_rate)
-	_repair_button = _button("REPAIR", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, _on_repair)
+	_repair_button = ActionButton.make("action_repair", "Repair")
 	_repair_button.name = "RepairButton"
 	_repair_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_repair_button.pressed.connect(_on_repair)
 	grid.add_child(_repair_button)
 
 	var middle := VBoxContainer.new()
@@ -495,10 +496,9 @@ func _build_top_bar() -> Control:
 	_day_line = _text("", 11, Palette.TEXT_DIM)
 	_day_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	middle.add_child(_day_line)
-	_losses = _text("", 11, Palette.WARNING)
-	_losses.name = "LossesLabel"
-	_losses.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_losses.mouse_filter = Control.MOUSE_FILTER_PASS
+	_losses = IconStat.make("losses", 0)
+	_losses.name = "LossesStat"
+	_losses.alignment = BoxContainer.ALIGNMENT_CENTER
 	middle.add_child(_losses)
 
 	_income = HBoxContainer.new()
@@ -529,9 +529,9 @@ func _build_time_strip() -> Control:
 	_wait_button.mouse_entered.connect(_set_hover_wait.bind(true))
 	_wait_button.mouse_exited.connect(_set_hover_wait.bind(false))
 	header.add_child(_wait_button)
-	_ff_button = _button("FAST-FORWARD", Palette.ACCENT, Palette.ACCENT_TEXT, _on_fast_forward)
+	_ff_button = ActionButton.make("action_fast_forward", "Fast-forward")
 	_ff_button.name = "FastForwardButton"
-	_ff_button.tooltip_text = "Nothing is in range. Play the days to the payload: income comes in, territories under pressure are reinforced while you can pay, and forced defenses still stop it."
+	_ff_button.pressed.connect(_on_fast_forward)
 	_ff_button.visible = false
 	header.add_child(_ff_button)
 	header.add_child(_button("SAVE", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, _on_save))
@@ -654,10 +654,7 @@ func _refresh() -> void:
 	_clear(_income)
 	for key in ([MapRegion.MATERIAL] if shared else [MapRegion.ENERGY, MapRegion.MATERIAL]):
 		var stock: float = s.energy if key == MapRegion.ENERGY else s.material
-		var readout := _resource_readout(key, floori(stock), income[key])
-		readout.tooltip_text = resource_tooltip(key)
-		readout.mouse_filter = Control.MOUSE_FILTER_STOP
-		_income.add_child(readout)
+		_income.add_child(_resource_stat(key, floori(stock), income[key]))
 
 	_time_day.text = "DAY %d" % campaign.day()
 	var window := float(t.bar_window_points)
@@ -982,14 +979,13 @@ func _check_forced() -> void:
 	var title := "%s is under attack" % region.name if attacker != null else "%s is in revolt" % region.name
 	var body := ("Forces from %s are assaulting it." % attacker.name if attacker != null else "Unrest boiled over.") \
 		+ " You must fight to hold it."
-	var buttons := [["DEFEND", _on_defend]]
+	var buttons := [_action("action_defend", "Defend", "", 0.0, _on_defend, true, "")]
 	# TODO(decision: retreat-defense): pulling out gives the region up.
-	buttons.append(["RETREAT · %s" % campaign.stakes.cost_text(Stakes.USE_RETREAT).to_upper(),
-		_on_retreat.bind(region_id), campaign.can_retreat(region_id),
-		"Give %s up without a fight. Costs %s and %s. Not counted as a loss." % [
-			region.name, campaign.stakes.cost_text(Stakes.USE_RETREAT), _points_text(campaign.stakes.retreat_defense_time)]])
-	body += " " + _losses_sentence()
+	buttons.append(_use_action(Stakes.USE_RETREAT, "action_retreat", "Retreat", _on_retreat.bind(region_id),
+		campaign.can_retreat(region_id), "Give %s up without a fight. Takes %s. Not counted as a loss." % [
+			region.name, _points_text(campaign.stakes.retreat_defense_time)]))
 	_show_modal("DEFENSIVE BATTLE · FORCED", title, body, buttons)
+	_show_stat_row([_losses_stat()])
 
 
 func _on_defend() -> void:
@@ -1178,19 +1174,22 @@ func _set_hover_wait(hovering: bool) -> void:
 	_refresh()
 
 
-## buttons: [[label, Callable, enabled (optional), tooltip (optional)], ...]
+## buttons: [[label, Callable], ...] or ready-made buttons (ActionButton).
 func _show_modal(eyebrow: String, title: String, body: String, buttons: Array) -> void:
 	_modal_eyebrow.text = eyebrow
 	_modal_title.text = title
 	_modal_body.text = body
+	_modal_body.visible = not body.is_empty()
 	_clear(_modal_options)
 	_modal_options.visible = false
 	_modal_card.custom_minimum_size.x = 480
 	_clear(_modal_buttons)
-	for entry: Array in buttons:
-		var button := _big_button(entry[0], Palette.ACCENT, Palette.ACCENT_TEXT, entry[2] if entry.size() > 2 else true)
-		if entry.size() > 3:
-			button.tooltip_text = entry[3]
+	for entry: Variant in buttons:
+		if entry is Button:
+			(entry as Button).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			_modal_buttons.add_child(entry)
+			continue
+		var button := _big_button(entry[0], Palette.ACCENT, Palette.ACCENT_TEXT, true)
 		button.custom_minimum_size.y = 44
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(entry[1])
@@ -1251,53 +1250,92 @@ func _hide_modal() -> void:
 
 # --- Stakes and economy (R2-A) ---------------------------------------------------
 
-## Losses label, REPAIR button and their tooltips.
+## The losses stat and the REPAIR button.
 func _refresh_stakes() -> void:
 	var stakes := campaign.stakes
-	var limit := stakes.loss_limit
-	_losses.text = "LOSSES %d/%d" % [campaign.state.losses, limit] if limit > 0 else "LOSSES %d · NO LIMIT" % campaign.state.losses
-	_losses.add_theme_color_override("font_color", Palette.DANGER if limit > 0 and campaign.losses_left() <= 1 else Palette.WARNING)
-	_losses.tooltip_text = "Lost battles in this act. %s Each lost battle also takes %s energy and %s material." % [
-		"The run ends at loss %d; the count starts again in the next act. Losing the boss fight always ends the run." % limit
-			if limit > 0 else "There is no limit (loss-limit option).",
-		Stakes._n(stakes.loss_cost[Stakes.ENERGY]), Stakes._n(stakes.loss_cost[Stakes.MATERIAL])]
+	_losses.set_value(campaign.losses_left() if stakes.loss_limit > 0 else "-")
+	_losses.set_tip_text(_losses_tip())
 	_repair_button.visible = stakes.is_offered(Stakes.USE_REPAIR) and stakes.repair_grid > 0.0
-	_repair_button.text = "REPAIR +%s%%" % _number(stakes.repair_grid)
+	_repair_button.label.text = "Repair +%s%%" % _number(stakes.repair_grid)
+	var c := _use_cost(Stakes.USE_REPAIR)
+	_repair_button.set_cost(c[0], c[1])
 	_repair_button.disabled = not campaign.can_repair() or zooming
-	_repair_button.tooltip_text = "Restore %s%% grid capacity for %s. Takes no time." % [
-		_number(stakes.repair_grid), stakes.cost_text(Stakes.USE_REPAIR)]
 
 
-## What a resource is for, for its readout's tooltip.
+func _losses_tip() -> String:
+	var stakes := campaign.stakes
+	var text := "Lost battles left this act. Each loss takes %s Energy and %s Material." % [
+		Stakes._n(stakes.loss_cost[Stakes.ENERGY]), Stakes._n(stakes.loss_cost[Stakes.MATERIAL])]
+	if stakes.loss_limit <= 0:
+		return text + " No limit this run."
+	return text + " Lost %d of %d; the next act starts again. Losing the boss ends the run." % [campaign.state.losses, stakes.loss_limit]
+
+
+func _losses_stat() -> IconStat:
+	var stat := IconStat.make("losses", campaign.losses_left() if campaign.stakes.loss_limit > 0 else "-", _losses_tip())
+	stat.name = "LossesLeft"
+	return stat
+
+
+## [cost icon id, amount] for a use: its Energy cost, else its Material cost,
+## else ["", null].
+func _use_cost(use: String) -> Array:
+	var c := campaign.stakes.cost(use)
+	if c[Stakes.ENERGY] > 0.0:
+		return ["energy", roundi(c[Stakes.ENERGY])]
+	if c[Stakes.MATERIAL] > 0.0:
+		return ["material", roundi(c[Stakes.MATERIAL])]
+	return ["", null]
+
+
+## An ActionButton for a map action: icon, label, cost, tooltip lines.
+func _action(icon_id: String, label: String, cost_icon: String, cost: Variant, on_press: Callable,
+		enabled: bool, lines: String) -> ActionButton:
+	var b := ActionButton.make(icon_id, label, cost_icon, cost if not cost_icon.is_empty() else null)
+	b.disabled = not enabled
+	b.custom_minimum_size.y = maxf(b.custom_minimum_size.y, 44)
+	b.pressed.connect(on_press)
+	if not lines.is_empty():
+		var numbers := "" if cost_icon.is_empty() else "Cost: %s %s" % [IconStat.format_value(cost), UiIcons.display_name(cost_icon)]
+		UiTooltip.attach(b, label, lines, numbers, icon_id)
+	return b
+
+
+## An ActionButton for a Stakes use, with its cost.
+func _use_action(use: String, icon_id: String, label: String, on_press: Callable, enabled: bool, lines: String) -> ActionButton:
+	var c := _use_cost(use)
+	return _action(icon_id, label, c[0], c[1], on_press, enabled, lines)
+
+
+## A resource readout: its icon and stock (tooltip: what it buys), and the
+## income per day beside it.
+func _resource_stat(key: String, stock: int, per_day: int) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	var stat := IconStat.make(key, stock, resource_tooltip(key))
+	row.add_child(stat)
+	row.add_child(_text("+%d/day" % per_day, 10, Palette.TEXT_DIM))
+	row.set_meta("resource", key)
+	return row
+
+
+## What a resource buys, for its tooltip.
 ## TODO(decision: resource-uses): the uses follow the switchboard option.
 func resource_tooltip(key: String) -> String:
 	var stakes := campaign.stakes
+	var names := {Stakes.USE_REINFORCE: "Reinforce", Stakes.USE_RETREAT: "Retreat",
+		Stakes.USE_BREACH: "Breach", Stakes.USE_REPAIR: "Repair"}
 	var uses := PackedStringArray()
-	var names := {Stakes.USE_REINFORCE: "REINFORCE (lower pressure on a territory)",
-		Stakes.USE_RETREAT: "RETREAT (back out of a fight before it starts)",
-		Stakes.USE_BREACH: "BREACH (attack at %d lower defense)" % stakes.breach_levels,
-		Stakes.USE_REPAIR: "REPAIR (+%s%% grid)" % _number(stakes.repair_grid)}
 	for use in Stakes.USES:
 		var amount: float = stakes.cost(use)[key]
 		if amount > 0.0:
-			uses.append("%s: %s" % [names[use], _number(amount)])
-	var label: String = RESOURCE_LABELS[key]
-	var text := "%s comes from the territories you hold and from won fights.\n" % label
-	text += ("Spend it on:\n  " + "\n  ".join(uses)) if not uses.is_empty() else "Nothing spends it under this option."
-	text += "\nA lost battle takes %s." % _number(stakes.loss_cost[key])
-	return text
+			uses.append("%s %s" % [names[use], _number(amount)])
+	var text := "From held regions and won fights. "
+	text += ("Pays for %s." % ", ".join(uses)) if not uses.is_empty() else "Nothing spends it this run."
+	return text + " A lost battle takes %s." % _number(stakes.loss_cost[key])
 
 
-## "Losses this act: 1 of 3. One more ends the run." or "" with no limit.
-func _losses_sentence() -> String:
-	var limit := campaign.stakes.loss_limit
-	if limit <= 0:
-		return ""
-	var left := campaign.losses_left()
-	return "Losses this act: %d of %d.%s" % [campaign.state.losses, limit,
-		" Losing this one ends the run." if left == 1 else ""]
-
-
+## A number of time points as days: "1 day", "0.75 day".
 func _points_text(points: int) -> String:
 	var per_day := campaign.tuning.points_per_day
 	if points % per_day == 0:
@@ -1305,31 +1343,38 @@ func _points_text(points: int) -> String:
 	return "%s day" % str(snappedf(float(points) / per_day, 0.01))
 
 
-## The step between ATTACK and the fight: what the squad faces, and the
-## choice to fight, breach first, or call it off.
+## A row of icon stats in the message, above its buttons.
+func _show_stat_row(stats: Array) -> void:
+	_clear(_modal_options)
+	_modal_options.visible = true
+	for stat: Control in stats:
+		_modal_options.add_child(stat)
+
+
+## The step between ATTACK and the fight: what the squad faces as icons, and
+## the choice to fight, breach first, or call it off.
 func show_pre_fight(region_id: String) -> void:
 	if not campaign.can_attack(region_id):
 		return
 	var region := campaign.map.get_region(region_id)
 	var stakes := campaign.stakes
-	var body := "%s defense (%d). Your odds: %s." % [campaign.tuning.defense_label(region.defense), region.defense, odds_text(region_id)]
-	body += " Costs %s and about %s%% grid; a defeat costs more grid and %s energy, %s material." % [
-		_points_text(campaign.tuning.attack_time), _number(campaign.attack_grid_cost(region_id)),
-		Stakes._n(stakes.loss_cost[Stakes.ENERGY]), Stakes._n(stakes.loss_cost[Stakes.MATERIAL])]
-	var sentence := _losses_sentence()
-	if not sentence.is_empty():
-		body += " " + sentence
-	var buttons := [["FIGHT", _close_modal_then.bind(_on_attack.bind(region_id))]]
+	var buttons := [_action("action_attack", "Fight", "grid_power", roundi(campaign.attack_grid_cost(region_id)),
+		_close_modal_then.bind(_on_attack.bind(region_id)), true,
+		"Start the fight. Takes %s; a defeat costs more grid." % _points_text(campaign.tuning.attack_time))]
 	if stakes.is_offered(Stakes.USE_BREACH) and stakes.breach_levels > 0:
-		var level := campaign.attack_level(region_id, true)
-		buttons.append(["BREACH · %s" % stakes.cost_text(Stakes.USE_BREACH).to_upper(),
+		buttons.append(_use_action(Stakes.USE_BREACH, "action_breach", "Breach",
 			_close_modal_then.bind(_on_attack.bind(region_id, true)), campaign.can_breach(region_id),
-			"Break the defenses first: fight at defense %d instead of %d for %s." % [level, region.defense, stakes.cost_text(Stakes.USE_BREACH)]])
-	buttons.append(["RETREAT · %s" % stakes.cost_text(Stakes.USE_RETREAT).to_upper(),
-		_on_retreat.bind(region_id), campaign.can_retreat(region_id),
-		"Call the assault off. Costs %s and %s, no fight, no loss." % [
-			stakes.cost_text(Stakes.USE_RETREAT), _points_text(stakes.retreat_attack_time)]])
-	_show_modal("ASSAULT · PRE-FIGHT", "Attack %s" % region.name, body, buttons)
+			"Fight at Defense %d instead of %d." % [campaign.attack_level(region_id, true), region.defense]))
+	buttons.append(_use_action(Stakes.USE_RETREAT, "action_retreat", "Retreat", _on_retreat.bind(region_id),
+		campaign.can_retreat(region_id), "Call it off. Takes %s. No fight, no loss." % _points_text(stakes.retreat_attack_time)))
+	_show_modal("ASSAULT", region.name, "", buttons)
+	var defense := IconStat.make("defense_level", region.defense, "%s. %s" % [
+		campaign.tuning.defense_label(region.defense), campaign.tuning.opposition(region.defense)])
+	var odds_label := _text(odds_text(region_id), 13, _odds_color(odds.label_for(campaign, region_id)))
+	UiTooltip.attach(odds_label, "Your odds", "From auto-fights against this region's enemies." if odds.is_simulated()
+		else "Squad strength against the Defense level.")
+	_show_stat_row([defense, odds_label, IconStat.make("time", _points_text(campaign.tuning.attack_time), "Time the attack takes."),
+		_losses_stat()])
 
 
 func _on_retreat(region_id: String) -> void:
@@ -1346,17 +1391,20 @@ func _on_fast_forward() -> void:
 	var summary := campaign.fast_forward()
 	if summary.is_empty():
 		return
-	var lines := PackedStringArray()
-	lines.append("%s days passed." % _number(summary.days))
-	lines.append("Energy %+d, material %+d, grid %+d%%." % [roundi(summary.energy), roundi(summary.material), roundi(summary.grid)])
-	if int(summary.reinforced) > 0:
-		lines.append("Territories reinforced: %d." % int(summary.reinforced))
+	var body := ""
 	match str(summary.stopped):
 		"defense":
-			lines.append("Stopped: a territory is under attack.")
+			body = "Stopped: a region is under attack."
 		"attackable":
-			lines.append("Stopped: a territory is in range again.")
-	_show_message("FAST-FORWARD", "Day %d" % campaign.day(), " ".join(lines), _check_forced)
+			body = "Stopped: a region is in range again."
+	_show_message("FAST-FORWARD", "Day %d" % campaign.day(), body, _check_forced)
+	_show_stat_row([
+		IconStat.make("time", "+%s" % _number(summary.days), "Days that passed."),
+		IconStat.make("energy", "%+d" % roundi(summary.energy), "Energy gained, after auto-reinforcing."),
+		IconStat.make("material", "%+d" % roundi(summary.material), "Material gained."),
+		IconStat.make("grid_power", "%+d%%" % roundi(summary.grid), "Grid capacity change."),
+		IconStat.make("action_reinforce", int(summary.reinforced), "Regions auto-reinforced at %s Pressure or more." % _number(campaign.stakes.ff_reinforce_at)),
+	])
 
 
 # --- Small builders -------------------------------------------------------------
@@ -1475,19 +1523,6 @@ func _style_button(button: Button, bg: Color, fg: Color, edge: Color) -> void:
 	for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		button.add_theme_color_override(color_name, fg)
 	button.add_theme_color_override("font_disabled_color", Palette.TEXT_DIM if bg == Palette.DISABLED else fg.darkened(0.4))
-
-
-func _resource_readout(key: String, stock: int, per_day: int) -> Control:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	row.add_child(_swatch(Palette.resource_color(key), Vector2(10, 10)))
-	var lines := VBoxContainer.new()
-	lines.add_theme_constant_override("separation", 0)
-	lines.add_child(_text(str(stock), 20, Palette.TEXT))
-	lines.add_child(_text("%s +%d/DAY" % [RESOURCE_LABELS[key].to_upper(), per_day], 10, Palette.TEXT_DIM))
-	row.add_child(lines)
-	row.set_meta("resource", key)
-	return row
 
 
 func _odds_color(label: String) -> Color:

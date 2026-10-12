@@ -361,7 +361,7 @@ func test_stakes_actions_are_journaled_and_replay() -> void:
 	overworld._on_retreat("b")
 	assert_int(c.state.time_points).is_equal(c.stakes.retreat_attack_time)
 	overworld.show_pre_fight("b")
-	assert_str(overworld._modal_title.text).is_equal("Attack B")
+	assert_str(overworld._modal_title.text).is_equal("B")
 	overworld._hide_modal()
 	overworld._on_attack("b", true)
 	await _frames(3)

@@ -83,7 +83,7 @@ func test_a_pending_attack_shows_a_ghost_and_committing_it_advances_time() -> vo
 	_button(screen._panel, "ATTACK").pressed.emit()
 	# ATTACK opens the pre-fight step first; FIGHT starts the fight.
 	assert_bool(screen._modal.visible).is_true()
-	assert_str(screen._modal_title.text).is_equal("Attack Hydro Dam")
+	assert_str(screen._modal_title.text).is_equal("Hydro Dam")
 	assert_int(screen.campaign.state.time_points).is_equal(0)
 	(screen._modal_buttons.get_child(0) as Button).pressed.emit()
 	await _runner.simulate_frames(3)
@@ -100,7 +100,9 @@ func test_a_full_ring_opens_the_forced_defense() -> void:
 	await _runner.simulate_frames(1)
 	assert_bool(screen._modal.visible).is_true()
 	assert_str(screen._modal_title.text).is_equal("Substation 9 is under attack")
-	_button(screen._modal_buttons, "DEFEND").pressed.emit()
+	var defend := screen._modal_buttons.get_child(0) as ActionButton
+	assert_str(defend.label_text).is_equal("Defend")
+	defend.pressed.emit()
 	await _runner.simulate_frames(3)
 	# The stub loses at Downtown Exchange's defense of 4.
 	assert_str(screen._modal_title.text).is_equal("Lost Substation 9")
@@ -132,3 +134,20 @@ static func _button(root: Node, text: String) -> Button:
 		if node.text == text:
 			return node
 	return null
+
+
+func test_losses_resources_and_actions_show_as_icons_with_tooltips() -> void:
+	var screen := _screen()
+	await _runner.simulate_frames(1)
+	assert_str(screen._losses.value_text()).is_equal("3")
+	assert_str(str(UiTooltip.spec(screen._losses).body)).contains("Lost battles left")
+	var energy: IconStat = screen._income_label("energy").get_child(0)
+	assert_str(str(UiTooltip.spec(energy).body)).contains("Reinforce")
+	assert_str(str(UiTooltip.spec(energy).body)).contains("Retreat")
+	assert_bool(screen._repair_button.visible).is_true()
+	assert_str(screen._repair_button.cost_icon_id).is_equal("material")
+	assert_bool(screen._ff_button.visible).is_false()
+	screen.show_pre_fight("hydro_dam")
+	var labels: Array = screen._modal_buttons.get_children().map(func(b: ActionButton) -> String: return b.label_text)
+	assert_array(labels).is_equal(["Fight", "Breach", "Retreat"])
+	assert_str((screen._modal_buttons.get_child(2) as ActionButton).cost_icon_id).is_equal("energy")

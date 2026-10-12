@@ -1,8 +1,9 @@
 class_name RunOverScreen
 extends Control
-## The end of a run: the result and why, the act and day it ended on, fights
-## won and lost, play time and the run's folder, all from the folder's
-## summary.json (RunFolder). MAIN MENU leaves; OPEN FOLDER shows the folder.
+## The end of a run, as icons and numbers with hover tooltips (ui/README.md
+## style guide): the result and why, the act and day it ended on, regions
+## held, fights won and lost, losses, play time, and the run's folder, all
+## from the folder's summary.json (RunFolder). MAIN MENU leaves; OPEN FOLDER shows the folder.
 ## RunFlow shows it when a run ends; the main menu shows it, read-only, for a
 ## finished run in the load list (BACK instead of MAIN MENU).
 
@@ -87,26 +88,26 @@ func _fill() -> void:
 	reason_label.text = reason_text(str(summary.get("end_reason", "")), won)
 	for child in details.get_children():
 		child.queue_free()
-	var act_line := "Act %d" % int(summary.get("act", 1))
+	var stats := HBoxContainer.new()
+	stats.add_theme_constant_override("separation", 22)
+	details.add_child(stats)
+	var act_tip := "Act %d" % int(summary.get("act", 1))
 	if not str(summary.get("act_name", "")).is_empty():
-		act_line += " · %s" % summary.act_name
-	for pair: Array in [
-		["ENDED ON", "%s · day %d" % [act_line, int(summary.get("day", 1))]],
-		["TERRITORIES", "%d of %d held" % [int(summary.get("regions_held", 0)), int(summary.get("regions_total", 0))]],
-		["FIGHTS", "%d won · %d lost" % [int(summary.get("fights_won", 0)), int(summary.get("fights_lost", 0))]],
-		["PLAY TIME", RunFolder.play_time_text(float(summary.get("play_s", 0.0)))],
-		["RUN FOLDER", ProjectSettings.globalize_path(run_dir) if not run_dir.is_empty() else "-"],
+		act_tip += ", %s" % summary.act_name
+	for entry: Array in [
+		["time", "A%d D%d" % [int(summary.get("act", 1)), int(summary.get("day", 1))], "Where the run ended: %s, day %d." % [act_tip, int(summary.get("day", 1))]],
+		["defense_level", "%d/%d" % [int(summary.get("regions_held", 0)), int(summary.get("regions_total", 0))], "Regions held at the end."],
+		["action_attack", "%d-%d" % [int(summary.get("fights_won", 0)), int(summary.get("fights_lost", 0))], "Fights won and lost in the whole run."],
+		["losses", maxi(0, int(summary.get("loss_limit", 0)) - int(summary.get("losses", 0))) if int(summary.get("loss_limit", 0)) > 0 else "-",
+			"Lost battles left in the last act: %d lost there." % int(summary.get("losses", 0))],
+		["status_waiting", RunFolder.play_time_text(float(summary.get("play_s", 0.0))), "Real time played."],
 	]:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 12)
-		var key := _label(pair[0], "text_dim", 10)
-		key.custom_minimum_size.x = 140
-		key.autowrap_mode = TextServer.AUTOWRAP_OFF
-		row.add_child(key)
-		var value := _label(pair[1], "text_bright", 10)
-		value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(value)
-		details.add_child(row)
+		var stat := IconStat.make(entry[0], entry[1], entry[2])
+		stat.name = "Stat_%s" % entry[0]
+		stats.add_child(stat)
+	var folder := _label(ProjectSettings.globalize_path(run_dir) if not run_dir.is_empty() else "", "text_dim", 8)
+	folder.name = "FolderLabel"
+	details.add_child(folder)
 	leave_button.text = leave_text
 
 
