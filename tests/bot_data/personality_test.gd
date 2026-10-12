@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
 ## Personality: three spectrums, two ends each, ends only ever >= 0.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 
 func test_defaults_to_generation_one_and_no_lean() -> void:
@@ -129,3 +130,13 @@ func test_a_format_one_file_converts_as_it_loads() -> void:
 	var saved := FileAccess.get_file_as_string(path2)
 	assert_str(saved).contains("aggressive = 1.0")
 	assert_str(saved).not_contains("aggressive_defensive")
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

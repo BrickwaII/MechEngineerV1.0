@@ -1,4 +1,5 @@
 extends GdUnitTestSuite
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 
@@ -90,3 +91,13 @@ func test_speed_below_minimum_still_charges() -> void:
 	var timeline := _timeline([0])
 	assert_object(timeline.advance_to_next_ready()).is_not_null()
 	assert_int(timeline.current_tick).is_equal(ceili(float(_tuning.action_threshold) / _tuning.min_charge_per_tick))
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

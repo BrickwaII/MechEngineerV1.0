@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
 ## Enemies come from data/combat/enemy_tables.json by defense level.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 
@@ -54,3 +55,13 @@ func test_seed_changes_the_draw_from_a_mixed_pool() -> void:
 
 func test_rewards_come_from_the_level() -> void:
 	assert_dict(_table.rewards(2)).is_equal({"energy": int(_table.levels[2].rewards.energy), "material": int(_table.levels[2].rewards.material)})
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

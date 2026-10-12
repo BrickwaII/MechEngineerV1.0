@@ -2,6 +2,7 @@ extends GdUnitTestSuite
 ## Bots fight with their own skills: each bot skill's effect_id picks a combat
 ## skill, the bot's name and level carry over, and the new effects (heal,
 ## guard, hit all) resolve deterministically.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 
@@ -271,3 +272,13 @@ func test_post_fight_maps_each_combat_skill_back_to_the_same_bot_effect() -> voi
 
 func test_the_tuning_is_valid() -> void:
 	assert_array(_tuning().validate()).is_empty()
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

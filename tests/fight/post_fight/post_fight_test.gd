@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
 ## PostFight.apply(): the one entry point after a fight.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const P := preload("res://tests/fight/post_fight/post_fight_test_helpers.gd")
 
@@ -83,3 +84,13 @@ func test_works_on_a_fight_from_the_auto_service() -> void:
 	assert_str(report.error).is_empty()
 	assert_int(report.bot("a").decisions).is_equal(
 		fight.decision_tags.filter(func(t: ActionTag) -> bool: return t.actor_id == "a").size())
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

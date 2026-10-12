@@ -2,6 +2,7 @@ extends GdUnitTestSuite
 ## Named ranks in a fight: the rank sets power and name, and a tier's bonus
 ## effect resolves deterministically (pierce, weakest bonus, heal guard,
 ## reflect). TODO(decision: skill-ranks).
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 const P := preload("res://tests/fight/post_fight/post_fight_test_helpers.gd")
@@ -132,3 +133,13 @@ func test_a_ranked_fight_replays_exactly() -> void:
 		var fight := HeadlessFightRunner.run(request, 9, IntentFightPolicy.new(), IntentFightPolicy.new(), _tuning())
 		logs.append(fight.log_text())
 	assert_str(logs[0]).is_equal(logs[1])
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

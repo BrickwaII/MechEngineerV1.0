@@ -82,12 +82,12 @@ func _init(
 			continue
 		var o: Dictionary = skill_overrides.get(skill_id, {})
 		_skills[skill_id] = tuning.skill_at(skill_id, int(o.get("level", 1)), String(o.get("name", "")))
-	charge_per_tick = maxi(tuning.min_charge_per_tick, p_stats.speed)
+	charge_per_tick = SpeedRules.charge_per_tick(p_stats.speed, tuning)
 	max_energy_milli = maxi(0, p_stats.battery_capacity) * MILLI
 	energy_milli = max_energy_milli * tuning.starting_energy_percent / 100
 	recharge_milli = maxi(
-		tuning.recharge_floor_milli_per_tick,
-		maxi(0, p_stats.battery_capacity) * tuning.recharge_milli_per_battery_per_tick)
+		EnergyRules.recharge_floor_milli(tuning),
+		maxi(0, p_stats.battery_capacity) * EnergyRules.recharge_milli_per_battery(tuning))
 	wait_recharge_milli = WaitRules.wait_recharge_milli(recharge_milli, tuning)
 
 

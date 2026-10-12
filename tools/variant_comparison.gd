@@ -20,7 +20,12 @@ extends RefCounted
 ##
 ## Growth columns: grow/bot is the personality growth per bot per fight (summed
 ## over the six ends); slow/fast splits it between the slowest and the fastest
-## bot of each squad, so tag-weight's fairness shows; lvl/fight is skill levels
+## bot of each squad, and fair is slow / fast (1.0 is even), so tag-weight's
+## fairness shows; slow lvl and fast lvl are skill levels gained per fight by
+## the same two bots, and slow dmg and fast dmg the damage they deal per
+## fight, so speed-range's trade-off shows; strike%, skill% and wait% split
+## the squad's decisions between Strike, other skills and waits, so
+## strike-cost's effect on choices shows; lvl/fight is skill levels
 ## (ranks) gained per bot per fight, and top lvl the highest level reached.
 ## Every other switch stays at its default.
 
@@ -29,6 +34,7 @@ const FIGHT_DECISIONS: Array[String] = [
 	FightVariants.WAIT_FORM, FightVariants.WAIT_LENGTH, FightVariants.ELASTICITY,
 	FightVariants.PERSONALITY_MAP, FightVariants.HP_CARRYOVER,
 	FightVariants.SKILL_PROGRESSION, FightVariants.TAG_WEIGHT,
+	FightVariants.SPEED_RANGE, FightVariants.STRIKE_COST,
 ]
 ## Decisions whose runs chain fights.
 const CHAINED: Array[String] = [FightVariants.HP_CARRYOVER, FightVariants.SKILL_PROGRESSION, FightVariants.TAG_WEIGHT]
@@ -50,11 +56,29 @@ class OptionResult:
 	## The same for the slowest and the fastest bot of each squad.
 	var drift_slow := 0.0
 	var drift_fast := 0.0
+	## Skill levels gained per fight by the slowest and the fastest bot.
+	var levels_slow := 0.0
+	var levels_fast := 0.0
+	## Damage dealt per fight by the slowest and the fastest bot.
+	var damage_slow := 0.0
+	var damage_fast := 0.0
+	## Squad decisions that were Strike (the basic attack), another skill, or a wait.
+	var strikes := 0
+	var other_skills := 0
+	var waits := 0
+
+	func share(count: int) -> float:
+		var total := strikes + other_skills + waits
+		return 100.0 * count / total if total > 0 else 0.0
 	## Skill levels gained per bot per fight, and the highest level reached.
 	var levels_per_bot := 0.0
 	var top_level := 0
 	## Squad hp at the end of each run, in percent of max (0 when wiped).
 	var end_hp_percent := 0.0
+
+	## Growth of the slowest bot over the fastest's: 1.0 is even.
+	func fairness() -> float:
+		return drift_slow / drift_fast if drift_fast > 0.0 else 0.0
 
 
 var decision := ""
@@ -149,6 +173,10 @@ func _play_option(option: String) -> OptionResult:
 	var fast_total := 0.0
 	var squad_fights := 0
 	var levels_total := 0
+	var levels_slow_total := 0
+	var levels_fast_total := 0
+	var damage_slow_total := 0
+	var damage_fast_total := 0
 	var bot_fights := 0
 	var hp_percent_total := 0.0
 	for i in runs:
@@ -174,6 +202,17 @@ func _play_option(option: String) -> OptionResult:
 				FightScenario.make_policy(player_policy, problems_unused), FightScenario.make_policy(enemy_policy, problems_unused),
 				combat_tuning, enemy_table).run_to_end()
 			records.append(sim.record("%s=%s" % [decision, option]))
+			damage_slow_total += sim.damage_dealt.get(slowest.id, 0)
+			for tag in sim.fight.decision_tags:
+				if tag.actor_side != Combatant.Side.PLAYER:
+					continue
+				if tag.kind == FightAction.Kind.WAIT:
+					r.waits += 1
+				elif tag.skill_id == combat_tuning.basic_attack:
+					r.strikes += 1
+				else:
+					r.other_skills += 1
+			damage_fast_total += sim.damage_dealt.get(fastest.id, 0)
 			var before := {}
 			for bot in bots:
 				before[bot.id] = PersonalityDrift.values_of(bot.personality)
@@ -195,6 +234,10 @@ func _play_option(option: String) -> OptionResult:
 			for br in post.bots:
 				for change in br.skill_changes:
 					levels_total += maxi(0, change.levels_gained())
+					if br.bot_id == slowest.id:
+						levels_slow_total += maxi(0, change.levels_gained())
+					if br.bot_id == fastest.id:
+						levels_fast_total += maxi(0, change.levels_gained())
 			var end_hp := HpCarryover.end_hp_by_id(sim.fight)
 			for bot in bots:
 				bot.hp = HpCarryover.hp_after(end_hp.get(bot.id, bot.hp), bot.get_max_hp(), variants)
@@ -210,6 +253,10 @@ func _play_option(option: String) -> OptionResult:
 	r.drift_slow = slow_total / squad_fights if squad_fights > 0 else 0.0
 	r.drift_fast = fast_total / squad_fights if squad_fights > 0 else 0.0
 	r.levels_per_bot = float(levels_total) / bot_fights if bot_fights > 0 else 0.0
+	r.levels_slow = float(levels_slow_total) / squad_fights if squad_fights > 0 else 0.0
+	r.levels_fast = float(levels_fast_total) / squad_fights if squad_fights > 0 else 0.0
+	r.damage_slow = float(damage_slow_total) / squad_fights if squad_fights > 0 else 0.0
+	r.damage_fast = float(damage_fast_total) / squad_fights if squad_fights > 0 else 0.0
 	r.end_hp_percent = hp_percent_total / runs if runs > 0 else 0.0
 	return r
 
@@ -236,18 +283,19 @@ func format_text() -> String:
 	lines.append("Each run drafts a fresh squad from its seed; enemies are drawn with the same seed. * marks the default.")
 	if chain_fights > 1:
 		lines.append("Each run plays up to %d fights in a row with the same squad, stopping at the first defeat." % chain_fights)
-	var header := "%-22s %8s %16s %18s %18s %18s %10s %8s %8s %9s %7s" % [
-		"option", "win rate", "actions", "ticks", "squad energy", "enemy energy", "grow/bot", "slow", "fast",
-		"lvl/fight", "top lvl"]
+	var header := "%-22s %8s %16s %18s %18s %18s %10s %8s %8s %6s %9s %8s %8s %7s %8s %8s %7s %7s %7s" % [
+		"option", "win rate", "actions", "ticks", "squad energy", "enemy energy", "grow/bot", "slow", "fast", "fair",
+		"lvl/fight", "slow lvl", "fast lvl", "top lvl", "slow dmg", "fast dmg", "strike%", "skill%", "wait%"]
 	if chain_fights > 1:
 		header += " %10s %10s" % ["full runs", "end hp%"]
 	lines.append(header)
 	for r in results:
 		var b := r.report
-		var line := "%-22s %7.1f%% %16s %18s %18s %18s %10.3f %8.3f %8.3f %9.3f %7d" % [
+		var line := "%-22s %7.1f%% %16s %18s %18s %18s %10.3f %8.3f %8.3f %6.2f %9.3f %8.3f %8.3f %7d %8.1f %8.1f %6.0f%% %6.0f%% %6.0f%%" % [
 			r.option + ("*" if r.is_default else ""), b.win_rate * 100.0,
 			b.actions.short_text(), b.ticks.short_text(), b.squad_energy.short_text(), b.enemy_energy.short_text(),
-			r.drift_per_bot, r.drift_slow, r.drift_fast, r.levels_per_bot, r.top_level]
+			r.drift_per_bot, r.drift_slow, r.drift_fast, r.fairness(), r.levels_per_bot, r.levels_slow, r.levels_fast,
+			r.top_level, r.damage_slow, r.damage_fast, r.share(r.strikes), r.share(r.other_skills), r.share(r.waits)]
 		if chain_fights > 1:
 			line += " %9.1f%% %9.1f%%" % [100.0 * r.full_runs / maxi(1, runs), r.end_hp_percent]
 		lines.append(line)

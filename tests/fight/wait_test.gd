@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
 ## TODO(decision: d-wait): these pin the default rules, bonus recharge while
 ## waiting and snapping to the first affordable tick.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 
@@ -107,3 +108,13 @@ func test_preview_shows_when_a_waiting_unit_acts() -> void:
 	assert_bool(next.ends_wait).is_true()
 	fight.advance()
 	assert_int(next.tick).is_equal(fight.timeline.current_tick)
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

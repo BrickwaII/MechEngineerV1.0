@@ -74,13 +74,26 @@ func pick(level: int, rng: RandomNumberGenerator) -> Array[String]:
 ## Enemy ids for `request`'s fight: the faction holding its territory under
 ## `faction_rule` (a FightVariants enemy-factions option), or the generic
 ## pool of its level when no faction holds it.
+## `tuning`'s difficulty-curve switch may change the act's tier (DifficultyRules).
 func pick_for(request: FightRequest, rng: RandomNumberGenerator,
-		faction_rule := FightVariants.FACTIONS_BY_ACT) -> Array[String]:
+		faction_rule := FightVariants.FACTIONS_BY_ACT, tuning: CombatTuning = null) -> Array[String]:
 	if factions != null:
-		var ids := factions.pick_for_territory(self, request.territory_id, request.defense_level, faction_rule, rng)
-		if not ids.is_empty():
-			return ids
+		var faction := factions.faction_for_region(request.territory_id, faction_rule)
+		if faction != FactionTable.GENERIC:
+			var tier := DifficultyRules.tier_for(
+				factions, factions.act_of(request.territory_id), request.defense_level, tuning)
+			var ids := factions.pick(self, faction, request.defense_level, tier, rng,
+				DifficultyRules.count_for(request.defense_level, tuning))
+			if not ids.is_empty():
+				return ids
 	return pick(request.defense_level, rng)
+
+
+## The stats of `enemy_id` fought at `request`'s territory: scaled by the
+## difficulty-curve switch (DifficultyRules), else as listed.
+func stats_for(enemy_id: String, request: FightRequest, tuning: CombatTuning = null) -> UnitStats:
+	return DifficultyRules.scaled(stats_of(enemy_id), DifficultyRules.scaling_key(factions, request.territory_id),
+		str(enemies[enemy_id].get("tier", "")), tuning)
 
 
 ## The sprite that draws `enemy_id`: {"unit": manifest unit id, "tier": tier},

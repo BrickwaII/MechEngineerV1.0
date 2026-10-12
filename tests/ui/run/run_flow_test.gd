@@ -3,6 +3,7 @@ extends GdUnitTestSuite
 ## bots, driven through the same calls the screens' input handlers make, and
 ## the run save with bots. Fights play on the real battle screen unless a test
 ## asks for auto-fights.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const SCENE := preload("res://ui/run/run_flow.tscn")
 const Helpers := preload("res://tests/ui/fight/fight_ui_helpers.gd")
@@ -396,3 +397,13 @@ func _texts(node: Node) -> String:
 	for child in node.get_children():
 		out.append(_texts(child))
 	return "\n".join(out)
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

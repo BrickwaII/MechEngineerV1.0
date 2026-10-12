@@ -1,4 +1,5 @@
 extends GdUnitTestSuite
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 
@@ -72,3 +73,13 @@ func test_cannot_use_a_skill_it_cannot_afford() -> void:
 	ally.energy_milli = 0
 	assert_str(fight.submit(FightAction.use("overload", "foe#1"))).contains("cannot afford")
 	assert_int(ally.energy_milli).is_equal(0)
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

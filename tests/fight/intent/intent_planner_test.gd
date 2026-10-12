@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
 ## Enemy intent from personality weights, with no UI.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const T := preload("res://tests/fight/intent/intent_test_helpers.gd")
 
@@ -137,3 +138,13 @@ func test_weights_lean_with_personality() -> void:
 	# An inactive scale has no say: generation 1 has only aggressive/defensive.
 	var gen1 := Personality.new(1, 0.0, 1.0, 0.0)
 	assert_float(w.weight(IntentWeights.HEAL, gen1)).is_equal(w.weight(IntentWeights.HEAL, null))
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
 ## Every decision leaves one ActionTag, in order, with the right labels.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const P := preload("res://tests/fight/post_fight/post_fight_test_helpers.gd")
 const H := preload("res://tests/fight/fight_test_helpers.gd")
@@ -131,3 +132,13 @@ func test_first_affordable() -> void:
 	assert_array(_labels(_tag("a", PL, SK, "e", EN, 1, 5000, cost), [rich])).not_contains(["first_affordable"])
 	# The turn that ends a wait does not count.
 	assert_array(_labels(_tag("a", PL, SK, "e", EN, 1, 5000, cost, true), [poor])).not_contains(["first_affordable"])
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

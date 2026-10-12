@@ -1,4 +1,5 @@
 extends GdUnitTestSuite
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const H := preload("res://tests/tools/tools_test_helpers.gd")
 
@@ -85,3 +86,13 @@ func test_the_command_line_fails_on_a_missing_scenario_or_bad_option() -> void:
 	assert_int(main.main(PackedStringArray(["--scenario", "res://data/scenarios/nope.json"]))).is_equal(1)
 	assert_int(main.main(PackedStringArray(["--frobnicate", "1"]))).is_equal(1)
 	assert_int(main.main(PackedStringArray([]))).is_equal(1)
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

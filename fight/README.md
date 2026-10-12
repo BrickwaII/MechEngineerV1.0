@@ -25,7 +25,10 @@ Combat core (M2), pure logic with no scenes:
   reads this layer's switches from `data/variants/variants.json` (plus the
   player's choices in `user://variants.json`); `CombatTuning.variants` holds
   them for a fight. `WaitRules` (d-wait, d-wait-length), `ElasticityRules`
-  (d-elasticity) and `HpCarryover` (hp-carryover) implement the options;
+  (d-elasticity), `HpCarryover` (hp-carryover), `SpeedRules` (speed-range:
+  turn charge and the slow units' damage bonus), `EnergyRules` (strike-cost:
+  Strike's cost and recharge) and `DifficultyRules` (difficulty-curve: tier
+  per act and level, enemy counts, act and tier scaling) implement the options;
   d-personality-map picks a drift rule set and tag-weight and
   skill-progression their options in `PostFightTuning`.
 - `FactionTable`: enemy factions (data/combat/factions.json, M7 P4). Which

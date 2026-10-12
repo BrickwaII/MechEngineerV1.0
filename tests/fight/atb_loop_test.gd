@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
 ## ATB wait mode: time runs only between decisions, never during one.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 
@@ -72,3 +73,13 @@ func test_turns_alternate_by_speed_through_decisions() -> void:
 		fight.submit(FightAction.use("strike", target.id))
 	# Speeds 7 and 4: the ally acts at ticks 15, 29, 43, 58; the foe at 25, 50.
 	assert_array(order).contains_exactly(["ally", "foe#1", "ally", "ally", "foe#1", "ally"])
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

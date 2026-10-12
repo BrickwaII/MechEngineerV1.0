@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
 ## FightPreview.units(): a read-only view of each unit's intent and personality.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const T := preload("res://tests/fight/intent/intent_test_helpers.gd")
 
@@ -56,3 +57,13 @@ func test_the_default_rules_load_and_predict_everything() -> void:
 	assert_object(rules).is_not_null()
 	for id: String in CombatTuning.load_default().skills:
 		assert_bool(rules.is_random(id)).is_false()
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

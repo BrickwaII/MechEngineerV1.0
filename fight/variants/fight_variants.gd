@@ -45,6 +45,30 @@ const PROGRESSION_FLAT := "flat_levels"
 const TAG_WEIGHT := "tag-weight"
 const TAG_WEIGHT_PER_ACTION := "per_action"
 const TAG_WEIGHT_PER_ENERGY := "per_energy"
+## A decision counts reference_speed / the bot's speed: weight per unit of
+## turn time, so a bot that acts less often counts more per decision.
+const TAG_WEIGHT_PER_TURN_TIME := "per_turn_time"
+## Each bot's decisions share a fixed budget of pushes per fight
+## (pushes_per_fight), however many decisions it made.
+const TAG_WEIGHT_PER_FIGHT := "per_fight"
+
+## How far apart the fastest and slowest units act, and what slow units get
+## for it. See SpeedRules. TODO(decision: speed-range).
+const SPEED_RANGE := "speed-range"
+const SPEED_WIDE := "wide"
+const SPEED_COMPRESSED := "compressed"
+
+## What the basic attack (Strike) costs, and the energy recharge that goes
+## with it. See EnergyRules. TODO(decision: strike-cost).
+const STRIKE_COST := "strike-cost"
+const STRIKE_FREE := "free"
+const STRIKE_COSTS := "costs"
+
+## Enemy tiers per act and act scaling. See DifficultyRules.
+## TODO(decision: difficulty-targets).
+const DIFFICULTY_CURVE := "difficulty-curve"
+const DIFFICULTY_FLAT := "flat"
+const DIFFICULTY_TUNED := "tuned"
 
 const HP_CARRYOVER := "hp-carryover"
 const HP_FULL_HEAL := "full_heal"
@@ -68,7 +92,10 @@ const KNOWN := {
 	ELASTICITY: [ELASTICITY_NONE, ELASTICITY_BIG_HITS, ELASTICITY_KNOCKBACK, ELASTICITY_ENERGY],
 	PERSONALITY_MAP: [PERSONALITY_CURRENT, PERSONALITY_BY_TARGET, PERSONALITY_OFF],
 	SKILL_PROGRESSION: [PROGRESSION_RANKS, PROGRESSION_FLAT],
-	TAG_WEIGHT: [TAG_WEIGHT_PER_ACTION, TAG_WEIGHT_PER_ENERGY],
+	TAG_WEIGHT: [TAG_WEIGHT_PER_ACTION, TAG_WEIGHT_PER_ENERGY, TAG_WEIGHT_PER_TURN_TIME, TAG_WEIGHT_PER_FIGHT],
+	SPEED_RANGE: [SPEED_WIDE, SPEED_COMPRESSED],
+	STRIKE_COST: [STRIKE_FREE, STRIKE_COSTS],
+	DIFFICULTY_CURVE: [DIFFICULTY_FLAT, DIFFICULTY_TUNED],
 	HP_CARRYOVER: [HP_FULL_HEAL, HP_CARRY, HP_PARTIAL_HEAL],
 	ENEMY_FACTIONS: [FACTIONS_BY_ACT, FACTIONS_MIXED, FACTIONS_GENERIC],
 	ODDS_MODEL: [ODDS_SIMULATED, ODDS_FORMULA],

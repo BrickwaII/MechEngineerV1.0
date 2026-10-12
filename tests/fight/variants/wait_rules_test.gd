@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
 ## The d-wait and d-wait-length options (WaitRules).
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 const V := preload("res://tests/fight/variants/variant_test_helpers.gd")
@@ -114,3 +115,13 @@ func test_handler_sends_exact_waits() -> void:
 	var t0 := fight.timeline.current_tick
 	assert_str(handler.apply(FightCommand.wait("", 4))).is_empty()
 	assert_int(fight.timeline.current_tick - t0).is_equal(4)
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

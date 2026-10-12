@@ -133,13 +133,14 @@ func pool(faction: String, level: int, tier: String) -> Array[String]:
 
 
 ## Enemy ids for one fight of `faction` at `level` in `tier`. The count comes
-## from `table`'s level entry; draws use `rng`.
-func pick(table: EnemyTable, faction: String, level: int, tier: String, rng: RandomNumberGenerator) -> Array[String]:
+## from `table`'s level entry unless `count` is 0 or more; draws use `rng`.
+func pick(table: EnemyTable, faction: String, level: int, tier: String, rng: RandomNumberGenerator,
+		count := -1) -> Array[String]:
 	var ids := pool(faction, level, tier)
 	var out: Array[String] = []
 	if ids.is_empty():
 		return out
-	for i in int(table.levels[level].count):
+	for i in (count if count >= 0 else int(table.levels[level].count)):
 		out.append(ids[rng.randi_range(0, ids.size() - 1)])
 	return out
 

@@ -1,5 +1,6 @@
 extends GdUnitTestSuite
 ## VariantComparison and the compare_variants command line.
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const RUNS := 6
 
@@ -73,7 +74,32 @@ func test_skill_progression_chains_fights_and_ranks_climb_slower() -> void:
 
 func test_tag_weight_reports_slow_and_fast_growth() -> void:
 	var cmp := VariantComparison.run(FightVariants.TAG_WEIGHT, RUNS, 1, -1, "", "", 2)
-	assert_int(cmp.results.size()).is_equal(2)
+	assert_int(cmp.results.size()).is_equal(4)
 	for r in cmp.results:
 		assert_float(r.drift_slow).is_greater(0.0)
 		assert_float(r.drift_fast).is_greater(0.0)
+	assert_str(cmp.format_text()).contains("fair")
+
+
+## speed-range and strike-cost compare one fight per run and show the slow and
+## fast bots' damage and the squad's Strike, skill and wait shares.
+func test_speed_and_strike_decisions_show_their_columns() -> void:
+	for decision in [FightVariants.SPEED_RANGE, FightVariants.STRIKE_COST]:
+		var cmp := VariantComparison.run(decision, RUNS, 1)
+		assert_array(cmp.problems).is_empty()
+		assert_int(cmp.results.size()).is_equal(2)
+		var text := cmp.format_text()
+		assert_str(text).contains("slow dmg")
+		assert_str(text).contains("strike%")
+		var r: VariantComparison.OptionResult = cmp.results[0]
+		assert_float(r.share(r.strikes) + r.share(r.other_skills) + r.share(r.waits)).is_equal_approx(100.0, 0.01)
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+

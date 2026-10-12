@@ -15,12 +15,31 @@ extends RefCounted
 
 
 ## Uses per combat skill id from `actor_id`'s decisions, in first-use order.
-## Waits are not uses.
-static func count_uses(tags: Array[ActionTag], actor_id: String) -> Dictionary[String, int]:
+## Waits are not uses. With `tuning` on the tag-weight rules per_turn_time or
+## per_fight, each use counts its decision's weight (PersonalityDrift.weights)
+## and a skill's total is rounded to whole uses once per fight, so a slow bot
+## levels as fast as a quick one. TODO(decision: tag-fairness).
+static func count_uses(tags: Array[ActionTag], actor_id: String, tuning: PostFightTuning = null) -> Dictionary[String, int]:
 	var uses: Dictionary[String, int] = {}
+	var weighted := tuning != null and tuning.tag_weight in [
+		FightVariants.TAG_WEIGHT_PER_TURN_TIME, FightVariants.TAG_WEIGHT_PER_FIGHT]
+	if not weighted:
+		for tag in tags:
+			if tag.actor_id == actor_id and tag.kind == FightAction.Kind.SKILL:
+				uses[tag.skill_id] = uses.get(tag.skill_id, 0) + 1
+		return uses
+	var each := PersonalityDrift.weights(tags, actor_id, tuning)
+	var totals := {}
+	var i := 0
 	for tag in tags:
-		if tag.actor_id == actor_id and tag.kind == FightAction.Kind.SKILL:
-			uses[tag.skill_id] = uses.get(tag.skill_id, 0) + 1
+		if tag.actor_id != actor_id:
+			continue
+		if tag.kind == FightAction.Kind.SKILL:
+			totals[tag.skill_id] = totals.get(tag.skill_id, 0.0) + each[i]
+		i += 1
+	for skill_id: String in totals:
+		if roundi(totals[skill_id]) > 0:
+			uses[skill_id] = roundi(totals[skill_id])
 	return uses
 
 

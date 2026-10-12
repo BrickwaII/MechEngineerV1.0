@@ -1,4 +1,5 @@
 extends GdUnitTestSuite
+const Legacy := preload("res://tests/fight/legacy_switches.gd")
 
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 
@@ -58,3 +59,13 @@ func test_a_hit_in_a_fight_uses_the_rule() -> void:
 	fight.submit(FightAction.use("strike", "foe#1"))
 	var expected := DamageRules.damage(ally, foe, fight.tuning.skill("strike"), fight.tuning)
 	assert_int(fight.combatant("foe#1").hp).is_equal(50 - expected)
+
+
+## These tests' numbers were worked out under the old fight switches.
+func before() -> void:
+	Legacy.pin()
+
+
+func after() -> void:
+	Legacy.unpin()
+
