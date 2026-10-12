@@ -106,3 +106,40 @@ func test_picked_bots_fill_the_squad_bar_in_pick_order() -> void:
 	_screen.cards[bots[2].id].pressed.emit()
 	assert_str(_screen.slot_bot_ids()[0]).is_equal(bots[0].id)
 	assert_str(_screen.slot_bot_ids()[1]).is_empty()
+
+
+## Each draft card lists the skills the bot will fight with, with the cost
+## and effect numbers the battle shows for that bot.
+func test_card_skills_match_what_the_battle_shows() -> void:
+	var tuning := CombatTuning.load_default()
+	for bot in _screen.picker.bots():
+		var member := bot.to_summary()
+		var faces := DraftCard.skill_faces(bot, tuning)
+		var ids: Array[String] = []
+		for f in faces:
+			ids.append(f.id)
+		assert_array(ids).is_equal(SquadSkills.ids_for(member, tuning))
+		var overrides := SquadSkills.overrides_for(member, tuning)
+		for f in faces:
+			var o: Dictionary = overrides.get(f.id, {})
+			var skill := tuning.skill_at(f.id, int(o.get("level", 1)), String(o.get("name", "")))
+			var battle := BattleScreen.skill_card_face(skill, member.stats.attack)
+			assert_str(f.effect).override_failure_message(f.id).is_equal(battle.effect)
+			assert_int(f.cost).is_equal(skill.energy_cost)
+			if skill.is_damage():
+				@warning_ignore("integer_division")
+				assert_str(f.effect).starts_with("Deal %d" % (member.stats.attack * skill.power_percent / 100))
+		var row: Control = _screen.cards[bot.id].find_child("Skill_%s" % faces[0].id, true, false)
+		assert_object(row).is_not_null()
+		var effect: RichTextLabel = row.find_child("Effect", true, false)
+		assert_str(effect.get_parsed_text()).is_equal(faces[0].effect)
+
+
+func test_card_costs_follow_the_fight_variants() -> void:
+	var t := CombatTuning.load_default()
+	t.variants.choose(FightVariants.STRIKE_COST, FightVariants.STRIKE_COSTS)
+	var cost := t.variants.param_int(FightVariants.STRIKE_COST, "energy_cost")
+	for bot in _screen.picker.bots():
+		for f in DraftCard.skill_faces(bot, t):
+			if f.id == "strike":
+				assert_int(f.cost).is_equal(cost)

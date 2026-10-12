@@ -17,6 +17,9 @@ const SLOT_SIZE := Vector2(96, 84)
 ## Set before the screen enters the tree.
 var draft_seed := 0
 var bot_tuning: BotTuning
+## The fight's combat tuning with the run's fight variants; cards show skill
+## costs and numbers from it. Null uses the default tuning.
+var combat_tuning: CombatTuning
 var settings: GameSettings
 var picker: DraftPicker
 
@@ -173,7 +176,7 @@ func _build_layout() -> void:
 	row.add_theme_constant_override("separation", 12)
 	root.add_child(row)
 	for bot in picker.bots():
-		var card := DraftCard.new(bot, settings)
+		var card := DraftCard.new(bot, settings, combat_tuning)
 		card.pressed.connect(toggle.bind(bot.id))
 		row.add_child(card)
 		cards[bot.id] = card

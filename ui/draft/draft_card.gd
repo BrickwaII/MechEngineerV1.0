@@ -14,6 +14,9 @@ const ALLY_UNIT := "ally_frame"
 
 var bot: Bot
 var settings: GameSettings
+## The fight's combat tuning (with the run's fight variants), so each skill
+## row shows the cost and numbers the battle will use.
+var combat_tuning: CombatTuning
 ## The content that flips and lifts.
 var face: Control
 var sprite: UnitSprite
@@ -34,9 +37,10 @@ static func look_seed(bot_id: String) -> int:
 	return hash(bot_id)
 
 
-func _init(p_bot: Bot = null, p_settings: GameSettings = null) -> void:
+func _init(p_bot: Bot = null, p_settings: GameSettings = null, p_tuning: CombatTuning = null) -> void:
 	bot = p_bot
 	settings = p_settings
+	combat_tuning = p_tuning if p_tuning != null else CombatTuning.load_default()
 	toggle_mode = true
 	focus_mode = Control.FOCUS_NONE
 	clip_contents = false
@@ -184,22 +188,55 @@ func _build() -> void:
 		var stat := IconStat.make(pair[0], pair[1])
 		stat_icons[pair[0]] = stat
 		grid.add_child(stat)
-	# Skills: the cost as an Energy icon and number, then the name.
+	# Skills as the battle will show them: the Energy cost, the name and rank,
+	# and the effect with this bot's true numbers ("Deal 9. Pierce 20%.").
 	var skills := VBoxContainer.new()
 	skills.name = "Skills"
-	skills.add_theme_constant_override("separation", 2)
+	skills.add_theme_constant_override("separation", 4)
 	skills.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(skills)
-	for skill in bot.skills:
+	for face: Dictionary in skill_faces(bot, combat_tuning):
 		var row := HBoxContainer.new()
+		row.name = "Skill_%s" % face.id
 		row.add_theme_constant_override("separation", 6)
 		row.mouse_filter = Control.MOUSE_FILTER_PASS
 		skills.add_child(row)
-		UiTooltip.attach(row, skill.display_name, "Costs %d Energy. Rank %d." % [skill.energy_cost, skill.level])
-		var cost := IconStat.make("energy", skill.energy_cost)
+		var title: String = face.name if face.rank.is_empty() else "%s %s" % [face.name, face.rank]
+		UiTooltip.attach(row, title, face.effect, "Energy: %d" % face.cost, "energy")
+		var cost := IconStat.make("energy", face.cost)
 		cost.custom_minimum_size.x = 40
 		row.add_child(cost)
-		DraftScreen._label(row, skill.display_name, 10, Palette.TEXT).size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		# Name and effect share one line, so the card keeps its height.
+		var name_label := DraftScreen._label(row, title, 10, Palette.TEXT_BRIGHT)
+		name_label.name = "Name"
+		name_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var effect := UiGlossary.rich(face.effect, ScreenTheme.size(10), Palette.TEXT)
+		effect.name = "Effect"
+		# One line: a wrapping label in a row asks for far more height than it uses.
+		effect.autowrap_mode = TextServer.AUTOWRAP_OFF
+		effect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		effect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(effect)
+
+
+## The skills `bot` fights with, in menu order, as the battle builds them
+## (SquadSkills: its own skills, plus the basic attack when it has no free
+## one): [{id, name, rank, effect, cost}], with the effect worked out from the
+## bot's attack (BattleScreen.skill_card_face).
+static func skill_faces(p_bot: Bot, tuning: CombatTuning) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var member := p_bot.to_summary()
+	var overrides := SquadSkills.overrides_for(member, tuning)
+	for id in SquadSkills.ids_for(member, tuning):
+		var o: Dictionary = overrides.get(id, {})
+		var skill := tuning.skill_at(id, int(o.get("level", 1)), String(o.get("name", "")))
+		if skill == null:
+			continue
+		var face := BattleScreen.skill_card_face(skill, member.stats.attack)
+		face["id"] = id
+		face["cost"] = skill.energy_cost
+		out.append(face)
+	return out
 
 
 ## Picked cards get the ally border and a raised panel; the rest a plain one.
