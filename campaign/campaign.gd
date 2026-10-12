@@ -78,7 +78,7 @@ func _init(
 	state = p_state if p_state != null else new_run_state(p_map, p_tuning)
 	variants = CampaignVariants.for_run(state.variants)
 	tuning = ActPacing.paced(p_tuning, state.act, variants)
-	stakes = Stakes.make(tuning, variants)
+	stakes = Stakes.make(tuning, variants, state.act)
 	escalation = Escalation.new(map, state, variants)
 	escalation.update(false)
 	escalation.news.connect(_on_escalation_news)
@@ -455,7 +455,8 @@ func apply_defense_result(region_id: String, result: FightResult) -> void:
 	else:
 		_set_owned(region_id, false)
 		_log("Lost %s. It is hostile again." % region.name)
-		_record_loss()
+		if stakes.defense_losses_count:
+			_record_loss()
 	state.grid = maxf(0.0, state.grid - fight_grid_charge(FightRequest.Kind.DEFEND, result))
 	_end_fight_variants()
 	_add_rewards(result)

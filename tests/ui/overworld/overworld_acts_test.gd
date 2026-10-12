@@ -21,8 +21,12 @@ func after_test() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
 
 
+## The screen on the larger act 2 and 3 maps, whose region ids these tests
+## name (the defaults are the smaller maps, TODO(decision: act-maps)).
 func _screen() -> Node:
-	return _runner.scene()
+	var screen := _runner.scene()
+	screen.act_variants = PackedStringArray(["lake_washington_12", "north_america_33", "world_20"])
+	return screen
 
 
 ## Spends the rest of the act's countdown and returns once the payload shows.

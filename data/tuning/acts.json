@@ -1,4 +1,5 @@
 {
+	"_comment": "The acts, their map variants and default maps. TODO(decision: act-maps): acts 2 and 3 default to their smaller maps (north_america_19, world_8) so each act has about 9-10 battles, like act 1; the larger maps stay F4 options (act-maps).",
 	"acts": [
 		{
 			"id": "act1",
@@ -32,7 +33,7 @@
 			"id": "act2",
 			"name": "North America",
 			"tuning_file": "res://data/tuning/act2.json",
-			"default_variant": "north_america_33",
+			"default_variant": "north_america_19",
 			"variants": [
 				{
 					"id": "north_america_19",
@@ -58,7 +59,7 @@
 			"id": "act3",
 			"name": "The World",
 			"tuning_file": "res://data/tuning/act3.json",
-			"default_variant": "world_20",
+			"default_variant": "world_8",
 			"variants": [
 				{
 					"id": "world_8",

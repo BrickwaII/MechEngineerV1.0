@@ -54,6 +54,13 @@ const LOSS_LIMIT := "loss-limit"
 const LOSSES_THREE_PER_ACT := "three_per_act"
 const LOSSES_ONE := "one_loss"
 const LOSSES_UNLIMITED := "unlimited"
+## The limit grows with the act's length. TODO(decision: loss-limit).
+const LOSSES_SCALED := "scaled"
+
+## Which lost battles count toward the loss limit. TODO(decision: loss-limit).
+const LOSS_COUNT := "loss-count"
+const LOSS_COUNT_ALL := "all"
+const LOSS_COUNT_ATTACKS_ONLY := "attacks_only"
 
 const RESOURCE_USES := "resource-uses"
 const USES_SPLIT := "split"
@@ -70,13 +77,14 @@ const KNOWN := {
 	SQUAD_SIZE: [SQUAD_DRAFT5_FIELD3, SQUAD_DRAFT4_FIELD3, SQUAD_DRAFT6_FIELD4],
 	ACT_PACING: [PACING_CURRENT, PACING_EVEN, PACING_FASTER_LATER],
 	AUTO_EXPANSION: [EXPANSION_OFF, EXPANSION_SIMPLE],
-	LOSS_LIMIT: [LOSSES_THREE_PER_ACT, LOSSES_ONE, LOSSES_UNLIMITED],
+	LOSS_LIMIT: [LOSSES_THREE_PER_ACT, LOSSES_ONE, LOSSES_UNLIMITED, LOSSES_SCALED],
+	LOSS_COUNT: [LOSS_COUNT_ALL, LOSS_COUNT_ATTACKS_ONLY],
 	RESOURCE_USES: [USES_SPLIT, USES_SWAPPED],
 	RESOURCE_CAP: [CAP_CAPPED, CAP_UNCAPPED],
 	ESCALATION: [ESCALATION_ON, ESCALATION_OFF, ESCALATION_QUARTERS],
 }
 ## The decisions a run keeps from its start (applies: next_run).
-const RUN_DECISIONS: Array[String] = [ENERGY_GRID, SQUAD_SIZE, ACT_PACING, AUTO_EXPANSION, LOSS_LIMIT, RESOURCE_USES, RESOURCE_CAP, ESCALATION]
+const RUN_DECISIONS: Array[String] = [ENERGY_GRID, SQUAD_SIZE, ACT_PACING, AUTO_EXPANSION, LOSS_LIMIT, LOSS_COUNT, RESOURCE_USES, RESOURCE_CAP, ESCALATION]
 
 ## The player's choices file; "" reads the defaults only. See the class notes.
 static var user_path := ""

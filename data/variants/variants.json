@@ -268,7 +268,19 @@
 			"options": [
 				{"id": "three_per_act", "name": "Third loss in an act ends the run", "description": "Every lost battle costs stakes.loss_cost (data/tuning/overworld.json). The limit-th lost battle in one act ends the run; the count starts again in each act. Losing the boss fight always ends the run.", "params": {"limit": 3}},
 				{"id": "one_loss", "name": "First loss ends the run", "description": "As three_per_act with a limit of 1.", "params": {"limit": 1}},
-				{"id": "unlimited", "name": "Unlimited", "description": "Losses cost resources but never end the run; only losing every region or the boss fight does.", "params": {"limit": 0}}
+				{"id": "unlimited", "name": "Unlimited", "description": "Losses cost resources but never end the run; only losing every region or the boss fight does.", "params": {"limit": 0}},
+				{"id": "scaled", "name": "Scaled to the act's length", "description": "As three_per_act, but each act allows ceil(expected_fights[act] / fights_per_loss) losses, at least min_limit: longer acts allow more. expected_fights per act come from auto-played campaigns (tools/compare_variants.gd -- --decision loss-limit). TODO(decision: loss-limit).", "params": {"expected_fights": [9, 16, 16], "fights_per_loss": 4, "min_limit": 3}}
+			]
+		},
+		{
+			"id": "loss-count",
+			"name": "What counts as a loss",
+			"layer": "campaign",
+			"applies": "next_run",
+			"default": "all",
+			"options": [
+				{"id": "all", "name": "Every lost battle", "description": "A lost attack and a lost forced defense both count toward the loss limit and cost stakes.loss_cost."},
+				{"id": "attacks_only", "name": "Lost attacks only", "description": "A lost forced defense costs the region but is not a loss: it neither counts toward the loss limit nor costs stakes.loss_cost. TODO(decision: loss-limit)."}
 			]
 		},
 		{

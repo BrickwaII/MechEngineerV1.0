@@ -11,8 +11,19 @@ extends RefCounted
 ##      order on a tie), if the grid holds that attack's expected cost.
 ##   4. Otherwise wait.
 ##
+## With `policy` POLICY_CAREFUL step 3 plays the map's odds as a person would
+## (OddsEstimator, the odds the map shows): attack the in-range region with
+## the best odds if they are Favored or Even; else breach the Risky region
+## whose breached odds are best, when the breach can be paid; else wait. It
+## retreats from a forced defense at Risky or Outmatched odds when it can pay
+## the retreat (the region is lost, not the battle).
+## POLICY_BLIND (the default) is the rule above. TODO(decision: loss-limit):
+## the careful rule is a stand-in for how a person picks fights.
+##
 ## The run drafts its squad from the seed (BotFactory, with the squad size
-## under test) and keeps it; bots do not change between fights. Act 1 starts
+## under test) and keeps it; bots do not change between fights unless `grow`
+## is set: then every fight is applied to them (PostFight, the fight-side
+## defaults), so skills rank up and personalities drift as in a real run. Act 1 starts
 ## where RunFlow's seeded start would. Fights play with AutoFightService at
 ## the fight-side defaults, each with its own seed from the run seed and the
 ## fight's number, so a run is the same every time for a given seed and
@@ -21,6 +32,14 @@ extends RefCounted
 ## default map.
 
 const ACTS_FILE := "res://data/tuning/acts.json"
+const POLICY_BLIND := "blind"
+const POLICY_CAREFUL := "careful"
+const POLICIES: Array[String] = [POLICY_BLIND, POLICY_CAREFUL]
+## Odds labels the careful policy attacks at (data/combat/odds.json bands).
+const CAREFUL_ATTACK_LABELS: Array[String] = ["Favored", "Even"]
+const CAREFUL_BREACH_LABELS: Array[String] = ["Risky"]
+## Forced defenses at these odds the careful policy retreats from, when it can.
+const CAREFUL_RETREAT_LABELS: Array[String] = ["Risky", "Outmatched"]
 
 ## One played campaign.
 class Record:
@@ -36,6 +55,16 @@ class Record:
 	var defenses_lost := 0
 	## Regions auto-expansion took.
 	var expansion_claims := 0
+	## Per act played, in order: lost battles, battles fought, and the loss
+	## limit that act had (0 for none).
+	var losses_per_act: Array[int] = []
+	var fights_per_act: Array[int] = []
+	var limit_per_act: Array[int] = []
+	var breaches := 0
+	## Forced defenses the careful policy retreated from.
+	var retreats := 0
+	## Why the run ended (Stakes.END_*), or "".
+	var ended := ""
 	var boss_fought := false
 	var boss_won := false
 	## Grid percent when the run ended.
@@ -51,6 +80,13 @@ var fight_variants: CampaignVariants
 var reinforce_at: float
 ## Stops an act that somehow never ends.
 var max_actions_per_act: int
+## POLICY_BLIND or POLICY_CAREFUL.
+var policy := POLICY_BLIND
+## Applies every fight to the squad's bots (PostFight) when true.
+var grow := false
+var _squad: BotSquad
+var _ledger := SkillUseLedger.new()
+var odds := OddsEstimator.new()
 
 var _service := AutoFightService.new()
 var _fight_count := 0
@@ -79,7 +115,10 @@ func play(run_seed: int) -> Record:
 	if not plan.is_valid():
 		r.problems.append_array(plan.errors)
 		return r
-	var provider := BotSquadProvider.new(BotFactory.new(bot_tuning()).build_squad(run_seed))
+	_squad = BotFactory.new(bot_tuning()).build_squad(run_seed)
+	_ledger = SkillUseLedger.new()
+	odds = OddsEstimator.new()
+	var provider := BotSquadProvider.new(_squad)
 	var map := plan.load_map(0)
 	var tuning := plan.load_tuning(0)
 	var starts := map.start_options()
@@ -87,7 +126,12 @@ func play(run_seed: int) -> Record:
 	var state := Campaign.new_run_state(map, tuning, start, run_variants)
 	var c := _campaign(map, tuning, provider, state)
 	while true:
+		var fights_before := r.fights
 		_play_act(c, r, run_seed)
+		r.losses_per_act.append(c.state.losses)
+		r.fights_per_act.append(r.fights - fights_before)
+		r.limit_per_act.append(c.stakes.loss_limit)
+		r.ended = c.state.ended
 		r.days_used += ceili(float(c.state.time_points) / c.tuning.points_per_day)
 		if c.is_defeated() or not r.problems.is_empty():
 			break
@@ -136,11 +180,46 @@ func _play_act(c: Campaign, r: Record, run_seed: int) -> void:
 		var hot := _most_pressed(c)
 		if not hot.is_empty() and c.reinforce(hot):
 			continue
+		if policy == POLICY_CAREFUL:
+			if _careful_attack(c, r, run_seed):
+				continue
+			c.wait()
+			continue
 		var target := _weakest_in_range(c)
 		if not target.is_empty() and c.state.grid >= c.attack_grid_cost(target):
 			_attack(c, r, run_seed, target)
 			continue
 		c.wait()
+
+
+## The careful policy's attack: true when it fought.
+func _careful_attack(c: Campaign, r: Record, run_seed: int) -> bool:
+	var squad := c.squad_provider.get_squad()
+	var best := ""
+	var best_rate := -1.0
+	var breach := ""
+	var breach_rate := -1.0
+	for region in c.map.regions:
+		if c.standing(region.id) != Campaign.Standing.IN_RANGE or c.state.grid < c.attack_grid_cost(region.id):
+			continue
+		var est := odds.estimate(squad, region.id, c.attack_level(region.id), run_seed)
+		if est.label in CAREFUL_ATTACK_LABELS and est.win_rate() > best_rate:
+			best = region.id
+			best_rate = est.win_rate()
+		elif est.label in CAREFUL_BREACH_LABELS and c.can_breach(region.id):
+			var breached := odds.estimate(squad, region.id, c.attack_level(region.id, true), run_seed)
+			if breached.win_rate() > breach_rate:
+				breach = region.id
+				breach_rate = breached.win_rate()
+	if not best.is_empty():
+		_attack(c, r, run_seed, best)
+		return true
+	if not breach.is_empty():
+		c.stakes.pay(Stakes.USE_BREACH, c.state)
+		r.breaches += 1
+		_attack(c, r, run_seed, breach, true)
+		return true
+	return false
 
 
 ## The held region with the most pressure at or above reinforce_at, or "".
@@ -162,9 +241,10 @@ func _weakest_in_range(c: Campaign) -> String:
 	return best.id if best != null else ""
 
 
-func _attack(c: Campaign, r: Record, run_seed: int, region_id: String) -> void:
+func _attack(c: Campaign, r: Record, run_seed: int, region_id: String, breach := false) -> void:
 	c.set_focus(region_id)
-	var request := FightRequest.new(FightRequest.Kind.ATTACK, region_id, c.map.get_region(region_id).defense,
+	c.breached = breach
+	var request := FightRequest.new(FightRequest.Kind.ATTACK, region_id, c.attack_level(region_id, breach),
 		c.squad_provider.get_squad())
 	var result := _fight(request, run_seed)
 	if result.is_victory():
@@ -177,7 +257,14 @@ func _attack(c: Campaign, r: Record, run_seed: int, region_id: String) -> void:
 
 func _defend(c: Campaign, r: Record, run_seed: int, region_id: String) -> void:
 	var attacker := c.attacker_of(region_id)
-	var level := attacker.defense if attacker != null else c.tuning.uprising_defense_level
+	# The level Campaign.defend() fights at: the attacker's, escalation included.
+	var level := c.defense_of(attacker.id) if attacker != null else c.tuning.uprising_defense_level
+	if policy == POLICY_CAREFUL and c.can_retreat(region_id):
+		var est := odds.estimate(c.squad_provider.get_squad(), region_id, level, run_seed, FightRequest.Kind.DEFEND)
+		if est.label in CAREFUL_RETREAT_LABELS:
+			c.retreat(region_id)
+			r.retreats += 1
+			return
 	var result := _fight(FightRequest.new(FightRequest.Kind.DEFEND, region_id, level, c.squad_provider.get_squad()), run_seed)
 	r.fights += 1
 	r.forced_defenses += 1
@@ -200,4 +287,7 @@ func _fight_boss(c: Campaign, r: Record, run_seed: int) -> void:
 func _fight(request: FightRequest, run_seed: int) -> FightResult:
 	_service.fixed_seed = hash([run_seed, _fight_count]) & 0x7fffffff
 	_fight_count += 1
-	return GridCostOwner.service_result(request.kind, _service.resolve(request), fight_variants)
+	var result := _service.resolve(request)
+	if grow:
+		PostFight.apply(_service.last_fight, _squad.get_fielded(), _ledger)
+	return GridCostOwner.service_result(request.kind, result, fight_variants)

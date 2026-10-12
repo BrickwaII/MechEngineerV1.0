@@ -10,7 +10,7 @@
 	},
 	"pressure": {
 		"scale": 1.0,
-		"reference_regions": 20
+		"reference_regions": 8
 	},
 	"view": {
 		"node_style": "full"

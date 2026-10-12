@@ -9,7 +9,12 @@ extends RefCounted
 ##   auto-reinforce.
 ## - The switchboard (data/variants/variants.json, F4):
 ##   loss-limit: lost battles per act before the run ends (0 = no limit).
-##   TODO(decision: loss-limit). Default three_per_act.
+##   The scaled option sets it per act: ceil(expected_fights[act] /
+##   fights_per_loss), at least min_limit. TODO(decision: loss-limit).
+##   Default three_per_act.
+##   loss-count: all lost battles count (default), or attacks_only: a lost
+##   forced defense costs the region but is not a loss (no loss count, no
+##   loss cost). TODO(decision: loss-limit).
 ##   resource-uses: what each use costs, as {energy, material}.
 ##   TODO(decision: resource-uses). Default split.
 ##   resource-cap: capped (default) stores at most stakes.cap's base plus
@@ -42,6 +47,8 @@ const END_WON := "won"
 
 ## Lost battles per act before the run ends; 0 means no limit.
 var loss_limit := 0
+## False under loss-count attacks_only: a lost forced defense is no loss.
+var defense_losses_count := true
 ## What a lost battle takes, {energy, material}.
 var loss_cost: Dictionary[String, float] = {}
 ## Time points a retreat from an attack, and from a forced defense, costs.
@@ -65,10 +72,12 @@ var _shared_pool := false
 var _energy_to_pool := 0.0
 
 
-static func make(tuning: MapTuning, v: CampaignVariants) -> Stakes:
+## `act` (0 for act 1) picks the scaled loss limit's expected fights.
+static func make(tuning: MapTuning, v: CampaignVariants, act := 0) -> Stakes:
 	var s := Stakes.new()
 	s._read(tuning.source.get("stakes", {}))
-	s.loss_limit = v.param_int(CampaignVariants.LOSS_LIMIT, "limit", 0)
+	s.loss_limit = loss_limit_for(v, act)
+	s.defense_losses_count = not v.is_chosen(CampaignVariants.LOSS_COUNT, CampaignVariants.LOSS_COUNT_ATTACKS_ONLY)
 	if not v.is_chosen(CampaignVariants.RESOURCE_CAP, CampaignVariants.CAP_UNCAPPED):
 		var cap: Variant = tuning.source.get("stakes", {}).get("cap", {})
 		for key in [ENERGY, MATERIAL]:
@@ -87,6 +96,17 @@ static func make(tuning: MapTuning, v: CampaignVariants) -> Stakes:
 	s._shared_pool = EnergyGridRules.is_shared(v)
 	s._energy_to_pool = v.param_float(CampaignVariants.ENERGY_GRID, "energy_to_pool", 0.0)
 	return s
+
+
+## Lost battles act `act` allows under the loss-limit switch; 0 is no limit.
+static func loss_limit_for(v: CampaignVariants, act: int) -> int:
+	if not v.is_chosen(CampaignVariants.LOSS_LIMIT, CampaignVariants.LOSSES_SCALED):
+		return v.param_int(CampaignVariants.LOSS_LIMIT, "limit", 0)
+	var p := v.params(CampaignVariants.LOSS_LIMIT)
+	var expected: Array = p.get("expected_fights", [])
+	var fights := float(expected[clampi(act, 0, expected.size() - 1)]) if not expected.is_empty() else 0.0
+	var per := maxf(1.0, float(p.get("fights_per_loss", 4)))
+	return maxi(int(p.get("min_limit", 3)), ceili(fights / per))
 
 
 func _read(d: Variant) -> void:
