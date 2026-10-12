@@ -37,9 +37,10 @@ func test_the_panel_shows_the_simulated_label_and_rate() -> void:
 	assert_str(_odds_line(screen)).is_equal("SIMULATING...")
 	screen.odds.finish_all()
 	await _runner.simulate_frames(1)
-	var region: MapRegion = screen.campaign.map.get_region("hydro_dam")
+	# The panel estimates at the level the fight would use (escalation included).
 	var e: OddsEstimator.Estimate = OddsEstimator.new().estimate(
-		screen.campaign.squad_provider.get_squad(), "hydro_dam", region.defense, screen.odds.run_seed)
+		screen.campaign.squad_provider.get_squad(), "hydro_dam", screen.campaign.defense_of("hydro_dam"),
+		screen.odds.run_seed)
 	assert_str(_odds_line(screen)).is_equal("%s · %d%%" % [e.label.to_upper(), e.percent()])
 	assert_bool(OverworldTestHelpers.panel_has_text(screen, "auto-player fights differently")).is_true()
 

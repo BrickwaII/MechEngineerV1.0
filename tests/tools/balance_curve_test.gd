@@ -60,3 +60,15 @@ func test_command_line_rejects_bad_options() -> void:
 	assert_int(main.main(PackedStringArray(["--bogus", "1"]))).is_equal(1)
 	assert_int(main.main(PackedStringArray(["--set", "nonsense"]))).is_equal(1)
 	assert_int(main.main(PackedStringArray(["--runs", "2", "--old", "1"]))).is_equal(0)
+
+
+## An act case with region_defense fights where escalation puts that region.
+func test_act_cases_take_their_level_from_escalation() -> void:
+	var problems: Array[String] = []
+	var cases := BalanceCurve.parse_cases({"cases": [
+		{"id": "a", "act": "act2", "alert": 2, "region_defense": 3, "fortify": 1},
+		{"id": "b", "act": "", "defense_level": 5}]}, problems)
+	assert_array(problems).is_empty()
+	assert_int(cases[0].defense_level).is_equal(Escalation.level_for(1, 3, 2, 1))
+	assert_int(cases[1].defense_level).is_equal(5)
+	assert_int(BalanceCurve.act_index("act3")).is_equal(2)

@@ -14,6 +14,12 @@ Layer 3. Map, time, pressure, run state. May import contracts only until the int
   and what carries across the zoom between them, from data/tuning/acts.json.
 - `campaign.gd`: the rules. Ownership, adjacency, time, pressure, grid, and
   fights through SquadProvider and FightService. Runs headless.
+- `escalation.gd`: alert tiers (three per act, raised by holding 1/3 and 2/3
+  of the map, never dropping), the defense level each hostile region fights
+  at by tier, fortifying of regions left alone on alert, and news cards.
+  Numbers and headlines in data/tuning/escalation.json; state in
+  RunState.escalation; the `escalation` variant turns it off or lowers the
+  thresholds.
 - `stakes.gd` (R2-A): what losing costs and what Energy and Material buy.
   Numbers from the tuning's "stakes" section (data/tuning/overworld.json) and
   the switchboard's loss-limit and resource-uses decisions. Campaign uses it

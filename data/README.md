@@ -13,5 +13,8 @@ Region files and tuning tables. Hand-edited, no code.
 - `tuning/acts.json`: the acts, their map variants and the zoom between them.
 - `tuning/overworld.json`: every overworld number; `tuning/act1.json` to
   `act3.json` lay each act's pacing over it (countdown, action costs, pressure).
+- `tuning/escalation.json`: escalation (campaign/escalation.gd). Each act's three
+  alert tiers and their enemy level bands, the held share that raises the tier,
+  fortifying, the news headlines, and the alert meter and news card sizes.
 - `feel/`: presentation tables. `palette.json` (every screen's colors), `feel.json` (tween presets, hit pause, shake, popups, ghost bar), `audio.json` (sounds, variation, throttling, music tracks and the music director's contexts), `settings.json` (settings defaults), `sprite_manifest.json` (unit sheets and tiers, format in `assets/README.md`).
 - `run/run_data.json`: run data. Where run folders go, the old save path, autosave points, the F8 form's categories and mood range, the load list length, the replay's number tolerance, and the act length target in real minutes.

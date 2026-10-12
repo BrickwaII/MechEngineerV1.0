@@ -13,8 +13,10 @@ extends RefCounted
 ## every variant set meets the same squads. A case's enemies are one of its
 ## act's factions at the act's tier for the defense level (tier_by_act, by the
 ## difficulty-curve switch); a case with no factions fights the generic roster
-## (the boss stub). Each case is one alert tier of an act, at the defense level
-## escalation puts a typical region at (data/tuning/escalation.json bands). skill_ranks_added stands in for a squad's growth by then.
+## (the boss stub). Each case is one alert tier of an act: a case with
+## region_defense fights at Escalation.level_for(act, region_defense, alert,
+## fortify), the level escalation (R2-B, data/tuning/escalation.json) puts a
+## region of that defense at; a case without one names its defense_level. skill_ranks_added stands in for a squad's growth by then.
 ## The fight is fought over the case's territory (default: its act id), which
 ## picks the difficulty-curve scaling.
 ## `choices` (decision id -> option id) override fight switches, so the old
@@ -45,8 +47,12 @@ class Case:
 	## scaling (DifficultyRules). Defaults to the act.
 	var territory := ""
 	var defense_level := 0
-	## The act's alert tier the case stands for (0, 1, 2), or -1. A label.
+	## The act's alert tier the case stands for (0, 1, 2), or -1.
 	var alert := -1
+	## The region's own defense before escalation, or -1 when defense_level
+	## is given directly.
+	var region_defense := -1
+	var fortify := 0
 	var skill_ranks_added := 0
 	var target_low := 0.0
 	var target_high := 100.0
@@ -125,6 +131,10 @@ static func parse_cases(data: Dictionary, out_problems: Array[String]) -> Array[
 		c.territory = str(entry.get("territory", c.act))
 		c.defense_level = int(entry.get("defense_level", 0))
 		c.alert = int(entry.get("alert", -1))
+		c.region_defense = int(entry.get("region_defense", -1))
+		c.fortify = int(entry.get("fortify", 0))
+		if c.region_defense >= 0:
+			c.defense_level = Escalation.level_for(act_index(c.act), c.region_defense, maxi(0, c.alert), c.fortify)
 		c.skill_ranks_added = int(entry.get("skill_ranks_added", 0))
 		var target: Array = entry.get("target", [0, 100])
 		c.target_low = float(target[0]) if target.size() > 0 else 0.0
@@ -137,6 +147,11 @@ static func parse_cases(data: Dictionary, out_problems: Array[String]) -> Array[
 	if out.is_empty():
 		out_problems.append("no cases")
 	return out
+
+
+## 0 for "act1", 1 for "act2" ...; 0 when the id names no act number.
+static func act_index(act_id: String) -> int:
+	return maxi(0, act_id.trim_prefix("act").to_int() - 1)
 
 
 ## The tier `c` fights in `factions`: the act's tier for its level, by the

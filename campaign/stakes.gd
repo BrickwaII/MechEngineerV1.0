@@ -17,6 +17,10 @@ extends RefCounted
 ##   loss cost). TODO(decision: loss-limit).
 ##   resource-uses: what each use costs, as {energy, material}.
 ##   TODO(decision: resource-uses). Default split.
+##   resource-cap: capped (default) stores at most stakes.cap's base plus
+##   per_region for each region held, per resource; income past it is lost,
+##   and the zoom carries at most the cap. uncapped stores any amount.
+##   TODO(decision: resource-cap).
 ##
 ## The uses (each cost is the resource-uses option's params):
 ##   reinforce  lowers pressure on a held region (also costs grid, as before)
@@ -58,6 +62,8 @@ var breach_levels := 0
 ## reinforce_per_day regions a day, while it can pay.
 var ff_reinforce_at := 0.0
 var ff_reinforce_per_day := 0
+## Resource key -> {base, per_region}; empty when the run is uncapped.
+var caps: Dictionary[String, Dictionary] = {}
 ## Use id -> {energy, material}.
 var costs: Dictionary[String, Dictionary] = {}
 var errors: Array[String] = []
@@ -72,6 +78,14 @@ static func make(tuning: MapTuning, v: CampaignVariants, act := 0) -> Stakes:
 	s._read(tuning.source.get("stakes", {}))
 	s.loss_limit = loss_limit_for(v, act)
 	s.defense_losses_count = not v.is_chosen(CampaignVariants.LOSS_COUNT, CampaignVariants.LOSS_COUNT_ATTACKS_ONLY)
+	if not v.is_chosen(CampaignVariants.RESOURCE_CAP, CampaignVariants.CAP_UNCAPPED):
+		var cap: Variant = tuning.source.get("stakes", {}).get("cap", {})
+		for key in [ENERGY, MATERIAL]:
+			var c: Variant = (cap as Dictionary).get(key) if cap is Dictionary else null
+			if c is Dictionary:
+				s.caps[key] = {"base": float(c.get("base", 0)), "per_region": float(c.get("per_region", 0))}
+			else:
+				s.errors.append("tuning is missing 'stakes.cap.%s'" % key)
 	var p := v.params(CampaignVariants.RESOURCE_USES)
 	for use in USES:
 		var c: Variant = p.get(use, {})
@@ -110,6 +124,14 @@ func _read(d: Variant) -> void:
 	var ff: Dictionary = d.get("fast_forward", {})
 	ff_reinforce_at = float(ff.get("reinforce_at", 0))
 	ff_reinforce_per_day = int(ff.get("reinforce_per_day", 0))
+
+
+## Most of `key` the run can store while holding `held` regions; INF
+## when uncapped.
+func cap(key: String, held: int) -> float:
+	if not caps.has(key):
+		return INF
+	return caps[key].base + caps[key].per_region * held
 
 
 ## {energy, material} a use costs.
