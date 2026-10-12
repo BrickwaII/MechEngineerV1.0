@@ -49,6 +49,8 @@ const LOSS_LIMIT := "loss-limit"
 const LOSSES_THREE_PER_ACT := "three_per_act"
 const LOSSES_ONE := "one_loss"
 const LOSSES_UNLIMITED := "unlimited"
+## The limit grows with the act's length. TODO(decision: loss-limit).
+const LOSSES_SCALED := "scaled"
 
 const RESOURCE_USES := "resource-uses"
 const USES_SPLIT := "split"
@@ -61,7 +63,7 @@ const KNOWN := {
 	SQUAD_SIZE: [SQUAD_DRAFT5_FIELD3, SQUAD_DRAFT4_FIELD3, SQUAD_DRAFT6_FIELD4],
 	ACT_PACING: [PACING_CURRENT, PACING_EVEN, PACING_FASTER_LATER],
 	AUTO_EXPANSION: [EXPANSION_OFF, EXPANSION_SIMPLE],
-	LOSS_LIMIT: [LOSSES_THREE_PER_ACT, LOSSES_ONE, LOSSES_UNLIMITED],
+	LOSS_LIMIT: [LOSSES_THREE_PER_ACT, LOSSES_ONE, LOSSES_UNLIMITED, LOSSES_SCALED],
 	RESOURCE_USES: [USES_SPLIT, USES_SWAPPED],
 }
 ## The decisions a run keeps from its start (applies: next_run).

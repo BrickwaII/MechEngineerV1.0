@@ -73,7 +73,7 @@ func _init(
 	state = p_state if p_state != null else new_run_state(p_map, p_tuning)
 	variants = CampaignVariants.for_run(state.variants)
 	tuning = ActPacing.paced(p_tuning, state.act, variants)
-	stakes = Stakes.make(tuning, variants)
+	stakes = Stakes.make(tuning, variants, state.act)
 
 
 ## The state a fresh run starts from. `start` is one of the map's

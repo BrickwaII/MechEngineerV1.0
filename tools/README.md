@@ -75,6 +75,18 @@ switches before the combat-economy pass; `--set d=o,...` any fight switches.
 godot --headless --path . -s res://tools/balance_sim.gd -- --runs 200 [--old 1] [--markdown 1]
 ```
 
+## Loss report
+
+Expected losses per act for auto-played campaigns: blind autoplay (the
+weakest region in range) and careful autoplay (attacks only at Favored or
+Even odds, breaches Risky regions it can pay for, else waits), under the
+default loss limit and the `scaled` one. The autoplay squad never grows, so
+the numbers are floors.
+
+```sh
+godot --headless --path . -s res://tools/check_losses.gd -- --runs 40 [--markdown 1]
+```
+
 ## Fight stats log
 
 Every simulated fight appends one JSON line to `user://fight_stats.jsonl`
@@ -94,6 +106,7 @@ dealt, energy spent and hp left.
 | `fight_stats_log.gd` | The JSON-lines log |
 | `variant_comparison.gd`, `compare_variants.gd` | Every option of one decision on the same seeded fights |
 | `faction_win_rates.gd`, `check_factions.gd` | Win rates per enemy faction, act tier and defense level |
+| `loss_report.gd`, `check_losses.gd` | Losses per act and loss-limit hits, blind vs careful autoplay |
 | `balance_curve.gd`, `balance_sim.gd` | Win rates per act and alert tier against the difficulty targets |
 | `odds_calibration.gd`, `odds_calibration_cli.gd` | The map's simulated odds labels next to real auto-fight outcomes, per defense level |
 | `bot_library.gd`, `bot_json.gd` | Saved bots (one BotSquadStorage file each) and inline bots |

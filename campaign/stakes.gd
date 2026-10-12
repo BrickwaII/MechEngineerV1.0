@@ -9,7 +9,9 @@ extends RefCounted
 ##   auto-reinforce.
 ## - The switchboard (data/variants/variants.json, F4):
 ##   loss-limit: lost battles per act before the run ends (0 = no limit).
-##   TODO(decision: loss-limit). Default three_per_act.
+##   The scaled option sets it per act: ceil(expected_fights[act] /
+##   fights_per_loss), at least min_limit. TODO(decision: loss-limit).
+##   Default three_per_act.
 ##   resource-uses: what each use costs, as {energy, material}.
 ##   TODO(decision: resource-uses). Default split.
 ##
@@ -59,10 +61,11 @@ var _shared_pool := false
 var _energy_to_pool := 0.0
 
 
-static func make(tuning: MapTuning, v: CampaignVariants) -> Stakes:
+## `act` (0 for act 1) picks the scaled loss limit's expected fights.
+static func make(tuning: MapTuning, v: CampaignVariants, act := 0) -> Stakes:
 	var s := Stakes.new()
 	s._read(tuning.source.get("stakes", {}))
-	s.loss_limit = v.param_int(CampaignVariants.LOSS_LIMIT, "limit", 0)
+	s.loss_limit = loss_limit_for(v, act)
 	var p := v.params(CampaignVariants.RESOURCE_USES)
 	for use in USES:
 		var c: Variant = p.get(use, {})
@@ -73,6 +76,17 @@ static func make(tuning: MapTuning, v: CampaignVariants) -> Stakes:
 	s._shared_pool = EnergyGridRules.is_shared(v)
 	s._energy_to_pool = v.param_float(CampaignVariants.ENERGY_GRID, "energy_to_pool", 0.0)
 	return s
+
+
+## Lost battles act `act` allows under the loss-limit switch; 0 is no limit.
+static func loss_limit_for(v: CampaignVariants, act: int) -> int:
+	if not v.is_chosen(CampaignVariants.LOSS_LIMIT, CampaignVariants.LOSSES_SCALED):
+		return v.param_int(CampaignVariants.LOSS_LIMIT, "limit", 0)
+	var p := v.params(CampaignVariants.LOSS_LIMIT)
+	var expected: Array = p.get("expected_fights", [])
+	var fights := float(expected[clampi(act, 0, expected.size() - 1)]) if not expected.is_empty() else 0.0
+	var per := maxf(1.0, float(p.get("fights_per_loss", 4)))
+	return maxi(int(p.get("min_limit", 3)), ceili(fights / per))
 
 
 func _read(d: Variant) -> void:

@@ -102,6 +102,21 @@ func test_unlimited_losses_never_end_the_run() -> void:
 	assert_bool(c.is_defeated()).is_false()
 
 
+## loss-limit scaled: longer acts allow more losses, never fewer than min_limit.
+func test_the_scaled_limit_grows_with_the_act() -> void:
+	var v := CampaignVariants.defaults()
+	assert_bool(v.choose(CampaignVariants.LOSS_LIMIT, CampaignVariants.LOSSES_SCALED)).is_true()
+	var p := v.params(CampaignVariants.LOSS_LIMIT)
+	for act in 3:
+		var expected := ceili(float(p.expected_fights[act]) / float(p.fights_per_loss))
+		assert_int(Stakes.loss_limit_for(v, act)).is_equal(maxi(int(p.min_limit), expected))
+		assert_int(Stakes.loss_limit_for(v, act)).is_greater_equal(int(p.min_limit))
+	assert_int(Stakes.loss_limit_for(v, 1)).is_greater_equal(Stakes.loss_limit_for(v, 0))
+	var c := _campaign({CampaignVariants.LOSS_LIMIT: CampaignVariants.LOSSES_SCALED})
+	assert_int(c.stakes.loss_limit).is_equal(Stakes.loss_limit_for(v, c.state.act))
+	assert_int(Stakes.loss_limit_for(CampaignVariants.defaults(), 1)).is_equal(3)
+
+
 func test_losing_the_boss_fight_ends_the_run_and_winning_wins_it() -> void:
 	var c := _campaign()
 	c.state.time_points = _tuning.total_points
