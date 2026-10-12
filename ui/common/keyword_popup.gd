@@ -14,6 +14,9 @@ static var hovered := ""
 static var pinned := ""
 static var _source: Control
 static var _popup: KeywordPopup
+## Labels whose keywords took part in a hover or pin, restyled on each change
+## so the hovered and pinned keywords show in the active look.
+static var _labels: Array[RichTextLabel] = []
 
 var _hover_box: Control
 var _pin_box: Control
@@ -30,16 +33,20 @@ static func shown() -> Array[String]:
 
 static func hover(meta: Variant, label: Control = null) -> void:
 	var k := UiGlossary.link_keyword(meta)
-	if k.is_empty():
+	# Restyling the label resets its text, which can report the same hover
+	# again: nothing changes then.
+	if k.is_empty() or (k == hovered and label == _source):
 		return
 	hovered = k
 	_source = label
+	_track(label)
 	_render(label, true)
 
 
 static func unhover(meta: Variant, label: Control = null) -> void:
 	if UiGlossary.link_keyword(meta) == hovered:
 		hovered = ""
+		_restyle_all()
 		_render(label, false)
 
 
@@ -49,6 +56,7 @@ static func click(meta: Variant, label: Control = null) -> void:
 		return
 	pinned = k
 	hovered = ""
+	_track(label)
 	# The click is the keyword's, not the card's or button's under it.
 	if label != null and label.is_inside_tree():
 		label.accept_event()
@@ -59,8 +67,27 @@ static func click(meta: Variant, label: Control = null) -> void:
 static func dismiss() -> void:
 	pinned = ""
 	hovered = ""
+	_restyle_all()
 	if _popup != null and is_instance_valid(_popup):
 		_popup._refresh(false)
+
+
+static func _track(label: Control) -> void:
+	if label is RichTextLabel and not label in _labels:
+		_labels.append(label)
+	_restyle_all()
+
+
+static func _restyle_all() -> void:
+	var active := shown()
+	var keep: Array[RichTextLabel] = []
+	for l in _labels:
+		if is_instance_valid(l):
+			UiGlossary.restyle(l, active)
+			if not active.is_empty():
+				keep.append(l)
+	# With nothing active, every label is back to normal: forget them.
+	_labels = keep
 
 
 ## A keyword's box: icon, the keyword, its lines (whose keywords link too).

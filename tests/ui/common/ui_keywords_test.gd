@@ -30,11 +30,36 @@ func test_every_form_names_one_keyword_with_lines() -> void:
 
 func test_highlight_links_each_keyword_to_its_box() -> void:
 	var out := UiGlossary.highlight("Piercing shot. Low Energy.", Color.RED)
-	assert_str(out).contains("[url=kw:Pierce][color=#ff0000][u]Piercing[/u][/color][/url]")
+	assert_str(out).contains("[url=kw:Pierce][hint=][color=#ff0000]Piercing[/color][/hint][/url]")
 	# The longer keyword wins over the one inside it.
 	assert_str(out).contains("[url=kw:Low Energy]")
 	assert_str(out).not_contains("[url=kw:Energy]")
 	assert_array(UiGlossary.find_keywords("Piercing, then Guarded.")).is_equal(["Pierce", "Guard"])
+
+
+func test_links_have_a_dotted_underline_and_no_tooltip_of_their_own() -> void:
+	var r: RichTextLabel = auto_free(UiGlossary.rich("Gain Guard 40%.", 10))
+	assert_bool(r.hint_underlined).is_true()
+	assert_bool(r.meta_underlined).is_false()
+	assert_str(r.text).contains("[hint=]")
+	assert_str(r.get_tooltip(Vector2.ZERO)).is_empty()
+
+
+func test_hovered_and_pinned_keywords_take_the_active_look() -> void:
+	var active := UiGlossary.highlight("Pierce and Guard", Color.RED, ["Guard"])
+	assert_str(active).contains("[url=kw:Guard][hint=][bgcolor=")
+	assert_str(active).contains("[url=kw:Pierce][hint=][color=#ff0000]Pierce")
+	var r: RichTextLabel = auto_free(UiGlossary.rich("Pierce and Guard", 10))
+	add_child(r)
+	KeywordPopup.hover("kw:Guard", r)
+	assert_str(r.text).contains("[url=kw:Guard][hint=][bgcolor=")
+	KeywordPopup.click("kw:Guard", r)
+	KeywordPopup.unhover("kw:Guard", r)
+	# Pinned: still active after the pointer leaves.
+	assert_str(r.text).contains("[url=kw:Guard][hint=][bgcolor=")
+	KeywordPopup.dismiss()
+	assert_str(r.text).not_contains("[bgcolor=")
+	assert_str(r.get_parsed_text()).is_equal("Pierce and Guard")
 
 
 func test_link_meta_names_the_keyword() -> void:

@@ -86,7 +86,7 @@ func _fill() -> void:
 	var won := bool(summary.get("won", false))
 	title_label.text = "VICTORY" if won else "DEFEAT"
 	title_label.add_theme_color_override("font_color", FeelData.color("accent" if won else "danger"))
-	reason_label.text = UiGlossary.highlight(reason_text(str(summary.get("end_reason", "")), won), UiGlossary.color())
+	UiGlossary.set_text(reason_label, reason_text(str(summary.get("end_reason", "")), won))
 	for child in details.get_children():
 		child.queue_free()
 	var stats := HBoxContainer.new()

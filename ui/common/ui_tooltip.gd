@@ -130,9 +130,9 @@ func _rich(label_name: String, text: String, width: float) -> RichTextLabel:
 	r.custom_minimum_size = Vector2(width, 0)
 	r.add_theme_font_size_override("normal_font_size", PixelTheme.font_size("small"))
 	r.add_theme_color_override("default_color", FeelData.color("text"))
-	r.text = UiGlossary.highlight(text, _keyword_color())
 	# Keywords are links: hover shows their box, click pins it.
 	UiGlossary.wire(r)
+	UiGlossary.set_text(r, text)
 	return r
 
 
