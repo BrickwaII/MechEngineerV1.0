@@ -107,8 +107,15 @@ send a playtest to Claude, upload the run folder (or one `reports/` folder).
 - Replay and timeline: `tools/replay_run.gd` (see tools/README.md).
 
 Main menu (`ui/main/`): CONTINUE (the latest run that is not over), LOAD
-(every run, newest first, with its one-line summary; finished runs are listed
-but cannot be loaded) and NEW RUN. The old `user://run.res` is offered once as
+(every run, newest first, with its one-line summary; a finished run is
+read-only: VIEW shows its run-over screen) and NEW RUN.
+
+Run over (R2-A): when a run ends (every region lost, the act's loss limit,
+or the boss fight), the map's end message leads to `RunOverScreen`
+(`ui/main/run_over_screen.gd`): result, act, day, fights won and lost, play
+time and the run folder, from `summary.json` (marked `finished`, with
+`end_reason` and `losses`). MAIN MENU goes back to the menu. Screenshots:
+`ui/main/demo/capture_stakes.gd` (needs a display, see its header). The old `user://run.res` is offered once as
 an imported run.
 
 Screenshots: `ui/main/demo/capture_run_data.gd` (needs a display, see the

@@ -1,5 +1,7 @@
 # ui/common/
 
+The style rules every screen follows are in `ui/README.md`.
+
 The presentation foundation every screen shares: theme, sound, settings and
 the feel kit. Timings, colors and sounds live in `data/feel/`; nothing here
 holds a tunable number.
@@ -19,7 +21,13 @@ holds a tunable number.
 | `number_popup.gd` | `NumberPopup.spawn(parent, at, 12, "damage")`; kinds damage, crit, heal, energy |
 | `ghost_bar.gd` | `GhostBar`: meter with trailing ghost, flash and low-health stripes |
 | `sprite_manifest.gd`, `unit_sprite.gd`, `palette_swap.gdshader` | Units from `data/feel/sprite_manifest.json` (format in `assets/README.md`) |
-| `demo/` | `theme_demo`, `feel_demo`, `sprite_demo` scenes; `capture_screenshots.gd` renders them |
+| `ui_icons.gd` | `UiIcons`: icon ids -> texture, name, color, tooltip lines from `data/ui/icons.json`; kit layout from `data/ui/ui_kit.json` |
+| `ui_glossary.gd` | `UiGlossary`: keywords from `data/ui/glossary.json`, found and highlighted in any text |
+| `ui_tooltip.gd` | `UiTooltip`: the standard tooltip; `UiTooltip.attach(control, name, lines, numbers, icon_id)` |
+| `icon_stat.gd` | `IconStat.make("atk", 12)`: icon + number + tooltip |
+| `skill_card.gd` | `SkillCard.make("Beam", 3, "Deal 12. Pierce 20%.", "+2")`: a skill as a card-like button |
+| `action_button.gd` | `ActionButton.make("action_reinforce", "Reinforce", "material", 2)`: icon + label + cost |
+| `demo/` | `theme_demo`, `feel_demo`, `sprite_demo`, `ui_kit_demo` scenes; `capture_screenshots.gd` and `capture_ui_kit.gd` render them |
 
 ## Adopting it on a screen
 

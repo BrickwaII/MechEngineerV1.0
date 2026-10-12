@@ -1,0 +1,16 @@
+{
+	"_comment": "UI kit layout and timing (ui/common/ui_*.gd). Colors are palette names from data/feel/palette.json.",
+	"icon_scale": 2,
+	"tooltip": {
+		"delay_seconds": 0.35,
+		"width": 260,
+		"offset": [16, 16],
+		"keyword_color": "preview",
+		"number_color": "text_bright"
+	},
+	"skill_card": {
+		"size": [176, 96],
+		"cost_color": "energy",
+		"rank_color": "preview"
+	}
+}
