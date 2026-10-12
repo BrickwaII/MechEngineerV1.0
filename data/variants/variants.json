@@ -261,6 +261,17 @@
 			]
 		},
 		{
+			"id": "loss-count",
+			"name": "What counts as a loss",
+			"layer": "campaign",
+			"applies": "next_run",
+			"default": "all",
+			"options": [
+				{"id": "all", "name": "Every lost battle", "description": "A lost attack and a lost forced defense both count toward the loss limit and cost stakes.loss_cost."},
+				{"id": "attacks_only", "name": "Lost attacks only", "description": "A lost forced defense costs the region but is not a loss: it neither counts toward the loss limit nor costs stakes.loss_cost. TODO(decision: loss-limit)."}
+			]
+		},
+		{
 			"id": "resource-uses",
 			"name": "What Energy and Material buy",
 			"layer": "campaign",

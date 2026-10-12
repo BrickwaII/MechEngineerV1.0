@@ -19,7 +19,9 @@ extends RefCounted
 ## the careful rule is a stand-in for how a person picks fights.
 ##
 ## The run drafts its squad from the seed (BotFactory, with the squad size
-## under test) and keeps it; bots do not change between fights. Act 1 starts
+## under test) and keeps it; bots do not change between fights unless `grow`
+## is set: then every fight is applied to them (PostFight, the fight-side
+## defaults), so skills rank up and personalities drift as in a real run. Act 1 starts
 ## where RunFlow's seeded start would. Fights play with AutoFightService at
 ## the fight-side defaults, each with its own seed from the run seed and the
 ## fight's number, so a run is the same every time for a given seed and
@@ -74,6 +76,10 @@ var reinforce_at: float
 var max_actions_per_act: int
 ## POLICY_BLIND or POLICY_CAREFUL.
 var policy := POLICY_BLIND
+## Applies every fight to the squad's bots (PostFight) when true.
+var grow := false
+var _squad: BotSquad
+var _ledger := SkillUseLedger.new()
 var odds := OddsEstimator.new()
 
 var _service := AutoFightService.new()
@@ -103,7 +109,10 @@ func play(run_seed: int) -> Record:
 	if not plan.is_valid():
 		r.problems.append_array(plan.errors)
 		return r
-	var provider := BotSquadProvider.new(BotFactory.new(bot_tuning()).build_squad(run_seed))
+	_squad = BotFactory.new(bot_tuning()).build_squad(run_seed)
+	_ledger = SkillUseLedger.new()
+	odds = OddsEstimator.new()
+	var provider := BotSquadProvider.new(_squad)
 	var map := plan.load_map(0)
 	var tuning := plan.load_tuning(0)
 	var starts := map.start_options()
@@ -265,4 +274,7 @@ func _fight_boss(c: Campaign, r: Record, run_seed: int) -> void:
 func _fight(request: FightRequest, run_seed: int) -> FightResult:
 	_service.fixed_seed = hash([run_seed, _fight_count]) & 0x7fffffff
 	_fight_count += 1
-	return GridCostOwner.service_result(request.kind, _service.resolve(request), fight_variants)
+	var result := _service.resolve(request)
+	if grow:
+		PostFight.apply(_service.last_fight, _squad.get_fielded(), _ledger)
+	return GridCostOwner.service_result(request.kind, result, fight_variants)

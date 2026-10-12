@@ -12,6 +12,9 @@ extends RefCounted
 ##   The scaled option sets it per act: ceil(expected_fights[act] /
 ##   fights_per_loss), at least min_limit. TODO(decision: loss-limit).
 ##   Default three_per_act.
+##   loss-count: all lost battles count (default), or attacks_only: a lost
+##   forced defense costs the region but is not a loss (no loss count, no
+##   loss cost). TODO(decision: loss-limit).
 ##   resource-uses: what each use costs, as {energy, material}.
 ##   TODO(decision: resource-uses). Default split.
 ##
@@ -40,6 +43,8 @@ const END_WON := "won"
 
 ## Lost battles per act before the run ends; 0 means no limit.
 var loss_limit := 0
+## False under loss-count attacks_only: a lost forced defense is no loss.
+var defense_losses_count := true
 ## What a lost battle takes, {energy, material}.
 var loss_cost: Dictionary[String, float] = {}
 ## Time points a retreat from an attack, and from a forced defense, costs.
@@ -66,6 +71,7 @@ static func make(tuning: MapTuning, v: CampaignVariants, act := 0) -> Stakes:
 	var s := Stakes.new()
 	s._read(tuning.source.get("stakes", {}))
 	s.loss_limit = loss_limit_for(v, act)
+	s.defense_losses_count = not v.is_chosen(CampaignVariants.LOSS_COUNT, CampaignVariants.LOSS_COUNT_ATTACKS_ONLY)
 	var p := v.params(CampaignVariants.RESOURCE_USES)
 	for use in USES:
 		var c: Variant = p.get(use, {})

@@ -438,7 +438,8 @@ func apply_defense_result(region_id: String, result: FightResult) -> void:
 	else:
 		_set_owned(region_id, false)
 		_log("Lost %s. It is hostile again." % region.name)
-		_record_loss()
+		if stakes.defense_losses_count:
+			_record_loss()
 	state.grid = maxf(0.0, state.grid - fight_grid_charge(FightRequest.Kind.DEFEND, result))
 	_end_fight_variants()
 	_add_rewards(result)

@@ -102,6 +102,20 @@ func test_unlimited_losses_never_end_the_run() -> void:
 	assert_bool(c.is_defeated()).is_false()
 
 
+## loss-count attacks_only: a lost forced defense costs the region, not a loss.
+func test_attacks_only_does_not_count_a_lost_defense() -> void:
+	var c := _campaign({CampaignVariants.LOSS_COUNT: CampaignVariants.LOSS_COUNT_ATTACKS_ONLY})
+	assert_bool(c.stakes.defense_losses_count).is_false()
+	var held: String = c.state.owned[0]
+	c.apply_defense_result(held, FightResult.new(FightResult.Outcome.DEFEAT, 0.0, {} as Dictionary[String, int]))
+	assert_bool(held in c.state.owned).is_false()
+	assert_int(c.state.losses).is_equal(0)
+	var d := _campaign()
+	var held_d: String = d.state.owned[0]
+	d.apply_defense_result(held_d, FightResult.new(FightResult.Outcome.DEFEAT, 0.0, {} as Dictionary[String, int]))
+	assert_int(d.state.losses).is_equal(1)
+
+
 ## loss-limit scaled: longer acts allow more losses, never fewer than min_limit.
 func test_the_scaled_limit_grows_with_the_act() -> void:
 	var v := CampaignVariants.defaults()

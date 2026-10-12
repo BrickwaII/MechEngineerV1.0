@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 func test_reports_every_act_reached_per_policy_and_limit() -> void:
 	var report := LossReport.run(2, 1, [CampaignAutoplay.POLICY_BLIND] as Array[String])
 	assert_array(report.problems).is_empty()
-	assert_int(report.cells.size()).is_equal(LossReport.LIMIT_OPTIONS.size())
+	assert_int(report.cells.size()).is_equal(LossReport.DEFAULT_SETS.size())
 	for cell in report.cells:
 		assert_int(cell.acts[0].reached).is_equal(2)
 		assert_int(cell.acts[0].limit).is_equal(3)
@@ -16,7 +16,7 @@ func test_reports_every_act_reached_per_policy_and_limit() -> void:
 
 func test_the_same_seeds_give_the_same_report() -> void:
 	var one: Array[String] = [CampaignAutoplay.POLICY_BLIND]
-	var limit: Array[String] = [CampaignVariants.LOSSES_THREE_PER_ACT]
+	var limit: Array[Dictionary] = [{}]
 	var a := LossReport.run(2, 3, one, limit)
 	var b := LossReport.run(2, 3, one, limit)
 	assert_int(a.cells[0].acts[0].losses).is_equal(b.cells[0].acts[0].losses)
@@ -36,5 +36,8 @@ func test_careful_autoplay_records_per_act_numbers() -> void:
 
 func test_rejects_unknown_policies_and_options() -> void:
 	assert_array(LossReport.run(1, 1, ["reckless"] as Array[String]).problems).is_not_empty()
-	assert_array(LossReport.run(1, 1, [CampaignAutoplay.POLICY_BLIND] as Array[String], ["nope"] as Array[String]).problems).is_not_empty()
+	assert_array(LossReport.run(1, 1, [CampaignAutoplay.POLICY_BLIND] as Array[String],
+		[{"loss-limit": "nope"}] as Array[Dictionary]).problems).is_not_empty()
+	assert_str(LossReport.set_name({})).is_equal("default")
+	assert_str(LossReport.set_name({"loss-count": "attacks_only"})).is_equal("loss-count=attacks_only")
 	assert_int(preload("res://tools/check_losses.gd").main(PackedStringArray(["--bogus", "1"]))).is_equal(1)

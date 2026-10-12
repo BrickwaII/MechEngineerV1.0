@@ -32,7 +32,7 @@
 			"id": "act2",
 			"name": "North America",
 			"tuning_file": "res://data/tuning/act2.json",
-			"default_variant": "north_america_33",
+			"default_variant": "north_america_19",
 			"variants": [
 				{
 					"id": "north_america_19",
