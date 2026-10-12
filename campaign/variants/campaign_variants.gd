@@ -10,7 +10,7 @@ extends RefCounted
 ##
 ## When each takes effect:
 ## - next_run (energy-grid, squad-size, act-pacing, auto-expansion,
-##   loss-limit, resource-uses): read once
+##   loss-limit, resource-uses, resource-cap, escalation): read once
 ##   when a run starts and kept in RunState.variants, so a saved run plays on
 ##   with the choices it began with. for_run() rebuilds them from a state.
 ## - next_fight (grid-cost-owner): read when each fight starts.
@@ -41,6 +41,11 @@ const PACING_CURRENT := "current"
 const PACING_EVEN := "even"
 const PACING_FASTER_LATER := "faster_later"
 
+const ESCALATION := "escalation"
+const ESCALATION_ON := "on"
+const ESCALATION_OFF := "off"
+const ESCALATION_QUARTERS := "quarters"
+
 const AUTO_EXPANSION := "auto-expansion"
 const EXPANSION_OFF := "off"
 const EXPANSION_SIMPLE := "simple"
@@ -54,6 +59,10 @@ const RESOURCE_USES := "resource-uses"
 const USES_SPLIT := "split"
 const USES_SWAPPED := "swapped"
 
+const RESOURCE_CAP := "resource-cap"
+const CAP_CAPPED := "capped"
+const CAP_UNCAPPED := "uncapped"
+
 ## Every campaign decision this class knows, with the options code implements.
 const KNOWN := {
 	ENERGY_GRID: [ENERGY_SEPARATE, ENERGY_SHARED_POOL],
@@ -63,12 +72,18 @@ const KNOWN := {
 	AUTO_EXPANSION: [EXPANSION_OFF, EXPANSION_SIMPLE],
 	LOSS_LIMIT: [LOSSES_THREE_PER_ACT, LOSSES_ONE, LOSSES_UNLIMITED],
 	RESOURCE_USES: [USES_SPLIT, USES_SWAPPED],
+	RESOURCE_CAP: [CAP_CAPPED, CAP_UNCAPPED],
+	ESCALATION: [ESCALATION_ON, ESCALATION_OFF, ESCALATION_QUARTERS],
 }
 ## The decisions a run keeps from its start (applies: next_run).
-const RUN_DECISIONS: Array[String] = [ENERGY_GRID, SQUAD_SIZE, ACT_PACING, AUTO_EXPANSION, LOSS_LIMIT, RESOURCE_USES]
+const RUN_DECISIONS: Array[String] = [ENERGY_GRID, SQUAD_SIZE, ACT_PACING, AUTO_EXPANSION, LOSS_LIMIT, RESOURCE_USES, RESOURCE_CAP, ESCALATION]
 
 ## The player's choices file; "" reads the defaults only. See the class notes.
 static var user_path := ""
+
+## The option a run plays for a run decision added after it began: a save or
+## journal from before escalation keeps the difficulty it was played with.
+const BEFORE_DECISION := {ESCALATION: ESCALATION_OFF}
 
 ## Decision id -> its default option id.
 var defaults_by_decision: Dictionary[String, String] = {}
@@ -105,9 +120,13 @@ static func load_active(path := "") -> CampaignVariants:
 
 
 ## The defaults with a run's kept choices (RunState.variants) on top. A save
-## from before variants keeps none, so it plays every default.
+## from before variants keeps none, so it plays every default, except that a
+## run from before a decision in BEFORE_DECISION plays the option given there.
 static func for_run(run_choices: Dictionary) -> CampaignVariants:
 	var v := defaults()
+	for decision: String in BEFORE_DECISION:
+		if not run_choices.has(decision):
+			v.choose(decision, BEFORE_DECISION[decision])
 	for decision: Variant in run_choices:
 		if str(decision) in RUN_DECISIONS:
 			v.choose(str(decision), str(run_choices[decision]))

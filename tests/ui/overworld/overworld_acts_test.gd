@@ -93,7 +93,7 @@ func test_zooming_out_loads_north_america_and_plays_the_transition() -> void:
 	assert_str(screen.campaign.map.id).is_equal("north_america_33")
 	assert_int(screen.campaign.state.act).is_equal(1)
 	assert_array(Array(screen.campaign.state.owned)).contains_exactly(["washington"])
-	assert_float(screen.campaign.state.energy).is_greater_equal(42.0)
+	assert_float(screen.campaign.state.energy).is_greater_equal(minf(42.0, screen.campaign.resource_cap(Stakes.ENERGY)))
 	assert_int(screen.campaign.income_per_day()[MapRegion.POWER]).is_equal(1 + 3)
 	assert_bool(screen.zooming).is_true()
 	# The zoom starts with the Lake Washington map filling the view, in Washington.

@@ -157,8 +157,10 @@ func test_a_breach_lowers_the_fight_and_costs_material() -> void:
 	c.state.material = 10.0
 	assert_bool(c.can_breach("hydro_dam")).is_true()
 	_service.win = true
+	# Breach lowers the level the region fights at, escalation included.
+	var level := c.defense_of("hydro_dam")
 	assert_bool(await c.attack("hydro_dam", true)).is_true()
-	assert_int(_service.requests[0].defense_level).is_equal(3 - c.stakes.breach_levels)
+	assert_int(_service.requests[0].defense_level).is_equal(maxi(0, level - c.stakes.breach_levels))
 	assert_bool(c.breached).is_true()
 	assert_float(c.state.material).is_less(10.0)
 
@@ -260,3 +262,38 @@ func test_shared_pool_pays_energy_from_the_pool() -> void:
 	c.state.grid = 60.0
 	assert_bool(c.retreat("hydro_dam")).is_true()
 	assert_float(c.state.grid).is_less(60.0)
+
+
+func test_income_past_the_storage_cap_is_lost() -> void:
+	var c := _campaign()
+	var cap := c.resource_cap(Stakes.ENERGY)
+	assert_float(cap).is_equal(c.stakes.caps[Stakes.ENERGY].base + c.stakes.caps[Stakes.ENERGY].per_region * c.state.owned.size())
+	c.state.energy = cap - 0.1
+	c.state.material = c.resource_cap(Stakes.MATERIAL)
+	c.wait()
+	assert_float(c.state.energy).is_equal(cap)
+	assert_float(c.state.material).is_equal(c.resource_cap(Stakes.MATERIAL))
+
+
+func test_the_cap_grows_with_regions_held() -> void:
+	var c := _campaign()
+	var before := c.resource_cap(Stakes.MATERIAL)
+	_service.win = true
+	await c.attack("hydro_dam")
+	assert_float(c.resource_cap(Stakes.MATERIAL)).is_equal(before + c.stakes.caps[Stakes.MATERIAL].per_region)
+
+
+func test_a_new_act_or_load_keeps_at_most_the_cap() -> void:
+	var map := RegionMap.load_file(ACT1)
+	var state := Campaign.new_run_state(map, _tuning, null, CampaignVariants.defaults())
+	state.energy = 5000.0
+	var c := Campaign.new(map, _tuning, StubSquadProvider.new(), _service, state)
+	assert_float(c.state.energy).is_equal(c.resource_cap(Stakes.ENERGY))
+
+
+func test_uncapped_stores_any_amount() -> void:
+	var c := _campaign({CampaignVariants.RESOURCE_CAP: CampaignVariants.CAP_UNCAPPED})
+	assert_float(c.resource_cap(Stakes.ENERGY)).is_equal(INF)
+	c.state.energy = 5000.0
+	c.wait()
+	assert_float(c.state.energy).is_greater(5000.0)

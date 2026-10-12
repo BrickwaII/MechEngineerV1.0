@@ -34,6 +34,8 @@ extends RefCounted
 ##   fight_end   fight, outcome, actions, timed_out, grid_cost, rewards, seconds
 ##   post_fight  fight, changes: {bot id: {field: [before, after]}}
 ##   expanded    region, region_name
+##   escalation  event: "tier" | "fortified", tier, tier_name, region,
+##               regions, headline (Escalation's news card)
 ##   fast_forward days, reinforced, energy, material, grid, stopped (what
 ##               Campaign.fast_forward() did; the action line comes first)
 ##   feedback    folder, category, rating
@@ -59,6 +61,7 @@ const KIND_RESOLVED := "resolved"
 const KIND_FIGHT_END := "fight_end"
 const KIND_POST_FIGHT := "post_fight"
 const KIND_EXPANDED := "expanded"
+const KIND_ESCALATION := "escalation"
 const KIND_FAST_FORWARD := "fast_forward"
 const KIND_FEEDBACK := "feedback"
 const KIND_RUN_END := "run_end"
@@ -83,7 +86,7 @@ const SNAPSHOT_LOAD := "load"
 const SNAPSHOT_FAST_FORWARD := "fast_forward"
 ## State snapshot keys added after journal version 1 first shipped; a
 ## journal written before them has none, and the replay does not ask for them.
-const LATER_STATE_KEYS: Array[String] = ["losses", "ended"]
+const LATER_STATE_KEYS: Array[String] = ["losses", "ended", "escalation"]
 
 var path := ""
 var _file: FileAccess
@@ -163,6 +166,7 @@ static func state_snapshot(c: Campaign) -> Dictionary:
 		"pressure": Dictionary(s.pressure),
 		"expansion": Dictionary(s.expansion),
 		"focus_id": s.focus_id,
+		"escalation": s.escalation.duplicate(true),
 		"losses": s.losses,
 		"ended": s.ended,
 	}

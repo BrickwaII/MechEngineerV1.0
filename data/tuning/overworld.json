@@ -62,6 +62,10 @@
 		"retreat": {"attack_time": 2, "defense_time": 1},
 		"repair_grid": 10.0,
 		"breach_levels": 1,
+		"cap": {
+			"energy": {"base": 30, "per_region": 6},
+			"material": {"base": 20, "per_region": 4}
+		},
 		"fast_forward": {"reinforce_at": 60.0, "reinforce_per_day": 2}
 	},
 	"event_log_length": 5,

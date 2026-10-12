@@ -12,6 +12,8 @@
 		"Material": {"icon": "material", "text": "From held regions and won fights. Pays for Breach and Repair."},
 		"Breach": {"icon": "action_breach", "text": "Pay before an attack to fight at a lower Defense level."},
 		"Retreat": {"icon": "action_retreat", "text": "Back out of a fight before it starts, for time and Energy. No loss counted."},
+		"Alert": {"icon": "alert", "text": "How much the world has noticed you. Holding 1/3 and 2/3 of the map raises it; it never drops."},
+		"Fortify": {"icon": "fortify", "text": "Hostile regions left alone on Alert gain Defense every few days, up to a cap."},
 		"Rank": {"icon": "intent_buff", "text": "A skill grows with use: +1 to +5, then Mega, then Ultra."}
 	}
 }

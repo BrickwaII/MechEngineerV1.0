@@ -98,16 +98,15 @@ func _fill() -> void:
 		["time", "A%d D%d" % [int(summary.get("act", 1)), int(summary.get("day", 1))], "Where the run ended: %s, day %d." % [act_tip, int(summary.get("day", 1))]],
 		["defense_level", "%d/%d" % [int(summary.get("regions_held", 0)), int(summary.get("regions_total", 0))], "Regions held at the end."],
 		["action_attack", "%d-%d" % [int(summary.get("fights_won", 0)), int(summary.get("fights_lost", 0))], "Fights won and lost in the whole run."],
-		["losses", maxi(0, int(summary.get("loss_limit", 0)) - int(summary.get("losses", 0))) if int(summary.get("loss_limit", 0)) > 0 else "-",
-			"Lost battles left in the last act: %d lost there." % int(summary.get("losses", 0))],
+		["losses", "%d/%d" % [int(summary.get("losses", 0)), int(summary.get("loss_limit", 0))] if int(summary.get("loss_limit", 0)) > 0
+			else str(int(summary.get("losses", 0))), "Battles lost in the last act, over the loss limit."],
 		["status_waiting", RunFolder.play_time_text(float(summary.get("play_s", 0.0))), "Real time played."],
 	]:
 		var stat := IconStat.make(entry[0], entry[1], entry[2])
 		stat.name = "Stat_%s" % entry[0]
 		stats.add_child(stat)
-	var folder := _label(ProjectSettings.globalize_path(run_dir) if not run_dir.is_empty() else "", "text_dim", 8)
-	folder.name = "FolderLabel"
-	details.add_child(folder)
+	UiTooltip.attach(folder_button, "Run folder", "The run's save, journal and F8 reports.",
+		ProjectSettings.globalize_path(run_dir) if not run_dir.is_empty() else "", "")
 	leave_button.text = leave_text
 
 

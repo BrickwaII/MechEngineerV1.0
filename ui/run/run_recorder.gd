@@ -3,7 +3,7 @@ extends RefCounted
 ## Writes the run journal (tools/run_journal.gd) and keeps the run folder's
 ## summary up to date. RunFlow makes one per run and points it at the
 ## campaign and battle screen in play; the recorder listens to their signals
-## (Campaign.acted, fight_started, fight_finished, expanded, changed;
+## (Campaign.acted, fight_started, fight_finished, expanded, escalated, changed;
 ## BattleScreen.command_sent; FightCommandHandler.action_resolved with the
 ## Fight's FightEvents) and writes a line for each.
 ##
@@ -184,7 +184,8 @@ func watch_campaign(c: Campaign) -> void:
 
 func _campaign_handlers() -> Array:
 	return [["acted", _on_acted], ["fight_started", _on_fight_started], ["fight_finished", _on_fight_finished],
-		["expanded", _on_expanded], ["changed", _on_changed], ["fast_forwarded", _on_fast_forwarded]]
+		["expanded", _on_expanded], ["escalated", _on_escalated], ["changed", _on_changed],
+		["fast_forwarded", _on_fast_forwarded]]
 
 
 ## A map action that is not a Campaign call: focus, save, load, act_zoom.
@@ -246,6 +247,13 @@ func _on_fast_forwarded(result: Dictionary) -> void:
 
 func _on_expanded(region_id: String) -> void:
 	write({"kind": RunJournal.KIND_EXPANDED, "region": region_id, "region_name": _region_name(region_id)})
+
+
+
+func _on_escalated(card: Dictionary) -> void:
+	write({"kind": RunJournal.KIND_ESCALATION, "event": card.kind, "tier": card.tier,
+		"tier_name": card.tier_name, "region": card.region, "regions": card.get("regions", []),
+		"headline": card.headline})
 
 
 # --- Fights ---------------------------------------------------------------------------
