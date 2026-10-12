@@ -1497,10 +1497,10 @@ func _text(text: String, font_size: int, color: Color) -> Label:
 	return label
 
 
-func _note(text: String, font_size := 13) -> Label:
-	var label := _text(text, font_size, Palette.TEXT_BODY)
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.custom_minimum_size.x = 100
+## A description line; its keywords are links to their glossary boxes.
+func _note(text: String, font_size := 13) -> RichTextLabel:
+	var label := UiGlossary.rich(text, ScreenTheme.size(font_size), Palette.TEXT_BODY, 100)
+	label.name = "Note"
 	return label
 
 

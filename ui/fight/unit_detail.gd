@@ -63,13 +63,9 @@ static func card(unit: Combatant, statuses := "", intent := "", change := "", ta
 	col.custom_minimum_size = Vector2(ReadoutStyle.number("detail.width_px", 300), 0)
 	panel.add_child(col)
 	for line in lines(unit, statuses, intent, change, tag):
-		var label := Label.new()
-		label.text = line
-		label.theme_type_variation = &"SmallLabel"
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		var heading := line in ["SKILLS", "STATUS", "NEXT"]
 		var first := col.get_child_count() == 0
-		label.add_theme_color_override("font_color", ReadoutStyle.color(
-			"detail.title" if first else ("detail.heading" if heading else "stats.text")))
-		col.add_child(label)
+		var color := ReadoutStyle.color("detail.title" if first else ("detail.heading" if heading else "stats.text"))
+		# Keywords (Guard, Charge, traits) are highlighted, as in every description.
+		col.add_child(UiGlossary.rich(line, PixelTheme.font_size("small"), color))
 	return panel

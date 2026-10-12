@@ -15,6 +15,9 @@ static var _layer: CanvasLayer
 
 var title: String
 var body: String
+## The control whose hover shows this tooltip (when shown by hover).
+var _source: Control
+var _away := 0.0
 var numbers: String
 var icon_id: String
 
@@ -48,6 +51,17 @@ static func spec(control: Control) -> Dictionary:
 	return control.get_meta(META, {})
 
 
+func _process(delta: float) -> void:
+	if _source == null:
+		return
+	var mouse := get_global_mouse_position()
+	var over := get_global_rect().grow(4).has_point(mouse) or \
+		(is_instance_valid(_source) and _source.is_visible_in_tree() and _source.get_global_rect().has_point(mouse))
+	_away = 0.0 if over else _away + delta
+	if _away > float(UiIcons.kit("tooltip.grace_seconds", 0.25)):
+		UiTooltip._hide()
+
+
 ## Glossary keywords this tooltip explains, in order of first use.
 func keywords() -> Array[String]:
 	return UiGlossary.find_keywords(body + " " + numbers)
@@ -58,6 +72,7 @@ func _compose() -> void:
 	theme = PixelTheme.theme()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_theme_constant_override("separation", 4)
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	var width := float(UiIcons.kit("tooltip.width", 260))
 	var main := _box("Main")
 	var head := HBoxContainer.new()
@@ -113,10 +128,11 @@ func _rich(label_name: String, text: String, width: float) -> RichTextLabel:
 	r.scroll_active = false
 	r.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	r.custom_minimum_size = Vector2(width, 0)
-	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	r.add_theme_font_size_override("normal_font_size", PixelTheme.font_size("small"))
 	r.add_theme_color_override("default_color", FeelData.color("text"))
 	r.text = UiGlossary.highlight(text, _keyword_color())
+	# Keywords are links: hover shows their box, click pins it.
+	UiGlossary.wire(r)
 	return r
 
 
@@ -130,7 +146,7 @@ static func _bold(label: Label, color: Color) -> void:
 
 
 static func _keyword_color() -> Color:
-	return FeelData.color(str(UiIcons.kit("tooltip.keyword_color", "preview")))
+	return UiGlossary.color()
 
 
 static func _on_enter(control: Control) -> void:
@@ -143,9 +159,13 @@ static func _on_enter(control: Control) -> void:
 	_show(control)
 
 
+## Leaving the control does not close its tooltip at once: the pointer may
+## cross to the tooltip to reach its keywords. _process closes it once the
+## pointer is over neither for the grace time.
 static func _on_exit(control: Control) -> void:
 	if _hovered == control:
 		_hovered = null
+	if not is_instance_valid(control) or not control.is_inside_tree():
 		_hide()
 
 
@@ -165,6 +185,7 @@ static func show_at(control: Control, at: Vector2) -> void:
 	_layer.layer = 100
 	control.get_tree().root.add_child(_layer)
 	var tip := build(s["title"], s["body"], s["numbers"], s["icon"])
+	tip._source = control
 	_layer.add_child(tip)
 	tip.reset_size()
 	var view := control.get_viewport().get_visible_rect().size

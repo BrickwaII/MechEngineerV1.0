@@ -53,7 +53,7 @@ func test_keywords_are_found_as_whole_words_ignoring_case_in_order() -> void:
 
 func test_highlight_colors_keywords_and_escapes_brackets() -> void:
 	var out := UiGlossary.highlight("[x] Gain Guard.", Color.RED)
-	assert_str(out).is_equal("[lb]x] Gain [color=#ff0000]Guard[/color].")
+	assert_str(out).is_equal("[lb]x] Gain [url=kw:Guard][color=#ff0000][u]Guard[/u][/color][/url].")
 
 
 func test_a_tooltip_has_a_name_lines_numbers_and_a_box_per_keyword() -> void:

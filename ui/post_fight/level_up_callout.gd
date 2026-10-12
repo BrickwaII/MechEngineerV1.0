@@ -58,7 +58,7 @@ static func numbers_line(c: SkillChange) -> String:
 static func bonus_line(c: SkillChange) -> String:
 	if c.new_bonuses.is_empty():
 		return ""
-	return "now " + ", ".join(c.new_bonuses)
+	return "+ " + ", ".join(c.new_bonuses)
 
 
 ## The whole callout on one line, for logs and tests:
