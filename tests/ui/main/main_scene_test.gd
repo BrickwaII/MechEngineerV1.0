@@ -78,9 +78,16 @@ func test_continue_and_the_load_list() -> void:
 	menu.load_button.pressed.emit()
 	assert_bool(menu.load_list.visible).is_true()
 	assert_int(menu.load_buttons.size()).is_equal(2)
-	# A finished run stays listed with its result but cannot be loaded.
-	assert_bool(menu.load_buttons[dirs[1]].disabled).is_true()
-	assert_str(menu.load_buttons[dirs[1]].text).is_equal("WON")
+	# A finished run stays listed, read-only: VIEW shows how it ended.
+	assert_bool(menu.load_buttons[dirs[1]].disabled).is_false()
+	assert_str(menu.load_buttons[dirs[1]].text).is_equal("VIEW")
+	menu.load_buttons[dirs[1]].pressed.emit()
+	assert_object(menu.run_over).is_not_null()
+	assert_str(menu.run_over.title_label.text).is_equal("VICTORY")
+	assert_str(menu.run_over.leave_button.text).is_equal("BACK")
+	menu.run_over.leave_button.pressed.emit()
+	assert_object(menu.run_over).is_null()
+	assert_object(menu.flow).is_null()
 	assert_bool(menu.load_buttons[dirs[0]].disabled).is_false()
 	menu.load_buttons[dirs[0]].pressed.emit()
 	await get_tree().process_frame

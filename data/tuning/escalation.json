@@ -1,5 +1,5 @@
 {
-  "_comment": "Escalation (R2-B), read by campaign/escalation.gd. Each act has three alert tiers, from tiers[0]. Holding thresholds[i].held / thresholds[i].of of the act's regions (rounded up) raises the alert to tier i + 1; the escalation variant (data/variants/variants.json) may give its own thresholds. Tiers never drop within an act; each act starts at tiers[0]. A hostile region fights at its own defense plus its tier's level_offset, kept within min_level and max_level, plus its fortification, at most 5. The faction tables (data/combat/factions.json tier_by_act) turn that level into the enemy unit tier, so the bands below are what tie alert tier to enemy tier. fortify: from tier from_tier on (0 is the first tier), each hostile region left alone gains one fortification level every days_per_level days, at most max_levels; attacking it restarts its count, capturing it clears it. news: headlines per act and tier (tier 0 has none, a run starts there) and for a region reaching max_levels; {map}, {tier}, {region} and {count} are filled in. The headline shown is picked by the day, so a run is deterministic. ui: how long a news card stays up. Every number here is a first guess, not balance.",
+  "_comment": "Escalation (R2-B), read by campaign/escalation.gd. Each act has three alert tiers, from tiers[0]. Holding thresholds[i].held / thresholds[i].of of the act's regions (rounded up) raises the alert to tier i + 1; the escalation variant (data/variants/variants.json) may give its own thresholds. Tiers never drop within an act; each act starts at tiers[0]. A hostile region fights at its own defense plus its tier's level_offset, kept within min_level and max_level, plus its fortification, at most 5. The faction tables (data/combat/factions.json tier_by_act) turn that level into the enemy unit tier, so the bands below are what tie alert tier to enemy tier. fortify: from tier from_tier on (0 is the first tier), each hostile region left alone gains one fortification level every days_per_level days, at most max_levels; attacking it restarts its count, capturing it clears it. news: headlines per act and tier (tier 0 has none, a run starts there) and for a region reaching max_levels; {map}, {tier}, {region} and {count} are filled in. The headline shown is picked by the day, so a run is deterministic. ui: how long a news card stays up and how wide it is. Every number here is a first guess, not balance.",
   "thresholds": [
     {"held": 1, "of": 3},
     {"held": 2, "of": 3}
@@ -36,7 +36,7 @@
     "max_levels": 2
   },
   "news": {
-    "tier_body": "Every hostile region in {map} is now at {tier}. Their units fight at a higher tier, and regions left alone will dig in.",
+    "tier_body": "{tier}: stronger enemies everywhere you have not taken.",
     "tiers": [
       [
         [],
@@ -83,11 +83,10 @@
       "{region} Barrier Contract Finishes on Time and on Budget, Experts Baffled",
       "{region} Building Inspector Approves Fortifications in Record Time"
     ],
-    "fortified_body": "{region} has dug in while you looked elsewhere: its defense is up {count} levels. Strike neglected regions before they fortify."
+    "fortified_body": "{region} dug in: Defense +{count}."
   },
   "ui": {
     "news_seconds": 6.0,
-    "news_width": 360,
-    "meter_width": 230
+    "news_width": 360
   }
 }

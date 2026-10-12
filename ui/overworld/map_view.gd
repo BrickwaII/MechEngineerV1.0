@@ -192,6 +192,7 @@ func _hover_at(point: Variant) -> void:
 	if id == fx.hovered_id:
 		return
 	fx.set_hovered(id)
+	_tip_fortify(id)
 	mouse_default_cursor_shape = Control.CURSOR_ARROW if id.is_empty() else Control.CURSOR_POINTING_HAND
 	queue_redraw()
 
@@ -491,6 +492,7 @@ func _draw_node(region: MapRegion, center: Vector2) -> void:
 		_draw_ring(Vector2(center.x, top + top_h / 2.0), region.id, RING_RADIUS, RING_WIDTH, true)
 	else:
 		_draw_pips(font, Vector2(center.x, top), campaign.defense_of(region.id), campaign.escalation.fortify_of(region.id))
+		_draw_fortify_mark(font, region.id, Vector2(center.x, top))
 	top += top_h + GAP
 	_label(font, region.name.to_upper(), center.x, top, FONT_NAME, Palette.TEXT_BRIGHT, 18.0)
 	top += 18.0 + GAP
@@ -570,6 +572,36 @@ func _draw_pips(font: Font, top_center: Vector2, defense: int, fortified := 0) -
 			draw_rect(pip, FORTIFY if i >= defense - fortified else Palette.DEFENSE)
 		else:
 			draw_rect(pip, Palette.DEFENSE, false, 1.0)
+
+
+## The fortify icon and its levels to the right of the pips, on a fortified
+## hostile region.
+func _draw_fortify_mark(font: Font, region_id: String, top_center: Vector2) -> void:
+	var levels := campaign.escalation.fortify_of(region_id)
+	if levels <= 0:
+		return
+	var label_w := font.get_string_size("DEF", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x
+	var x := top_center.x + (label_w + 5.0 + MapRegion.MAX_DEFENSE * (PIP + 2.0) - 2.0 + 12.0) / 2.0 + 2.0
+	var text := "+%d" % levels
+	var w := 16.0 + font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x + 6.0
+	draw_rect(Rect2(x, top_center.y, w, 16.0), Palette.LABEL_BACK)
+	draw_texture_rect(UiIcons.texture("fortify"), Rect2(x + 2.0, top_center.y + 2.0, 12.0, 12.0), false)
+	draw_string(font, Vector2(x + 16.0, top_center.y + 12.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL, FORTIFY)
+
+
+## The hover tooltip over a fortified hostile region; none elsewhere.
+func _tip_fortify(region_id: String) -> void:
+	if region_id.is_empty() or campaign == null or campaign.is_owned(region_id) \
+			or campaign.escalation.fortify_of(region_id) <= 0:
+		if has_meta(UiTooltip.META):
+			remove_meta(UiTooltip.META)
+			UiTooltip.hide_tooltip()
+		return
+	var levels := campaign.escalation.fortify_of(region_id)
+	UiTooltip.attach(self, "Fortified", "%s dug in while left alone on Alert. Attack it to stop the digging." %
+		campaign.map.get_region(region_id).name,
+		"Defense +%d of %d, now %d" % [levels, campaign.escalation.max_fortify(), campaign.defense_of(region_id)], "fortify")
+	UiTooltip.show_at(self, get_global_mouse_position() + Vector2(16, 16))
 
 
 func _chips(region: MapRegion) -> Array:

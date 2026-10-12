@@ -1,6 +1,6 @@
 extends PanelContainer
-## A news card over the map (R2-B escalation): a headline when the alert tier
-## rises or a region fortifies. Cards queue and show one at a time, only while
+## A news card over the map (R2-B escalation): an icon (alert or fortify), a
+## headline and one line, when the alert tier rises or a region fortifies. Cards queue and show one at a time, only while
 ## can_show() says the map is in view; each stays up ui.news_seconds
 ## (data/tuning/escalation.json) or until clicked.
 
@@ -9,14 +9,12 @@ const AlertMeter := preload("res://ui/overworld/alert_meter.gd")
 
 ## Callable() -> bool: true when a card may show now. Unset always shows.
 var can_show: Callable
-## The scope word for the eyebrow, "Local" in act 1.
-var scope := ""
 ## The card on screen, or {} when none is.
 var shown: Dictionary = {}
 
 var _queue: Array[Dictionary] = []
 var _left := 0.0
-var _eyebrow: Label
+var _icon: TextureRect
 var _headline: Label
 var _body: Label
 
@@ -32,13 +30,23 @@ func _ready() -> void:
 	style.border_width_left = 4
 	style.set_content_margin_all(12)
 	add_theme_stylebox_override("panel", style)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	add_child(row)
+	_icon = TextureRect.new()
+	_icon.custom_minimum_size = Vector2(12, 12) * float(UiIcons.kit("icon_scale", 2))
+	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_icon.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	row.add_child(_icon)
 	var rows := VBoxContainer.new()
-	rows.add_theme_constant_override("separation", 6)
-	add_child(rows)
-	_eyebrow = _label(11, Palette.WARNING)
+	rows.add_theme_constant_override("separation", 4)
+	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(rows)
 	_headline = _label(16, Palette.TEXT_BRIGHT)
 	_body = _label(12, Palette.TEXT_BODY)
-	for label in [_eyebrow, _headline, _body]:
+	for label in [_headline, _body]:
 		rows.add_child(label)
 	gui_input.connect(func(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.pressed:
@@ -77,8 +85,7 @@ func _show(card: Dictionary) -> void:
 	var fortified := str(card.get("kind", "")) == Escalation.NEWS_FORTIFIED
 	var color := Palette.DEFENSE if fortified else AlertMeter.tier_color(int(card.get("tier", 0)))
 	(get_theme_stylebox("panel") as StyleBoxFlat).border_color = color
-	_eyebrow.add_theme_color_override("font_color", color)
-	_eyebrow.text = ("BREAKING · %s NEWS · %s" % [scope, "FORTIFIED" if fortified else str(card.get("tier_name", ""))]).to_upper()
+	_icon.texture = UiIcons.texture("fortify" if fortified else "alert")
 	_headline.text = str(card.get("headline", ""))
 	_body.text = str(card.get("body", ""))
 	_left = float(Escalation.load_data().get("ui", {}).get("news_seconds", 6.0))

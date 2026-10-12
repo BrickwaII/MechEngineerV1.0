@@ -9,8 +9,8 @@ extends RefCounted
 ##   if v.is_chosen(CampaignVariants.AUTO_EXPANSION, CampaignVariants.EXPANSION_SIMPLE): ...
 ##
 ## When each takes effect:
-## - next_run (energy-grid, squad-size, act-pacing, auto-expansion, escalation):
-##   read once
+## - next_run (energy-grid, squad-size, act-pacing, auto-expansion,
+##   loss-limit, resource-uses, escalation): read once
 ##   when a run starts and kept in RunState.variants, so a saved run plays on
 ##   with the choices it began with. for_run() rebuilds them from a state.
 ## - next_fight (grid-cost-owner): read when each fight starts.
@@ -50,6 +50,15 @@ const AUTO_EXPANSION := "auto-expansion"
 const EXPANSION_OFF := "off"
 const EXPANSION_SIMPLE := "simple"
 
+const LOSS_LIMIT := "loss-limit"
+const LOSSES_THREE_PER_ACT := "three_per_act"
+const LOSSES_ONE := "one_loss"
+const LOSSES_UNLIMITED := "unlimited"
+
+const RESOURCE_USES := "resource-uses"
+const USES_SPLIT := "split"
+const USES_SWAPPED := "swapped"
+
 ## Every campaign decision this class knows, with the options code implements.
 const KNOWN := {
 	ENERGY_GRID: [ENERGY_SEPARATE, ENERGY_SHARED_POOL],
@@ -57,10 +66,12 @@ const KNOWN := {
 	SQUAD_SIZE: [SQUAD_DRAFT5_FIELD3, SQUAD_DRAFT4_FIELD3, SQUAD_DRAFT6_FIELD4],
 	ACT_PACING: [PACING_CURRENT, PACING_EVEN, PACING_FASTER_LATER],
 	AUTO_EXPANSION: [EXPANSION_OFF, EXPANSION_SIMPLE],
+	LOSS_LIMIT: [LOSSES_THREE_PER_ACT, LOSSES_ONE, LOSSES_UNLIMITED],
+	RESOURCE_USES: [USES_SPLIT, USES_SWAPPED],
 	ESCALATION: [ESCALATION_ON, ESCALATION_OFF, ESCALATION_QUARTERS],
 }
 ## The decisions a run keeps from its start (applies: next_run).
-const RUN_DECISIONS: Array[String] = [ENERGY_GRID, SQUAD_SIZE, ACT_PACING, AUTO_EXPANSION, ESCALATION]
+const RUN_DECISIONS: Array[String] = [ENERGY_GRID, SQUAD_SIZE, ACT_PACING, AUTO_EXPANSION, LOSS_LIMIT, RESOURCE_USES, ESCALATION]
 
 ## The player's choices file; "" reads the defaults only. See the class notes.
 static var user_path := ""

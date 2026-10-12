@@ -30,6 +30,12 @@ extends Control
 ## each fight starts. Selecting a region on the map makes it the
 ## auto-expansion focus.
 ##
+## Run over (R2-A): when the run ends (every region lost, the act's loss
+## limit, or the boss fight), the map's end message leads to the run-over
+## screen (ui/main/run_over_screen.gd) with the folder's summary; MAIN MENU
+## emits exit_requested (the main menu closes the flow), or starts a new run
+## when nothing listens.
+##
 ## Every change of screen plays the ScreenTransition wipe over the swap. The
 ## readout counts up; CONTINUE skips the count-up first, then goes back to
 ## the map.
@@ -48,6 +54,8 @@ const VARIANT_LAYER := 50
 enum Stage { DRAFT, MAP, FIGHT, POST_FIGHT }
 
 signal stage_changed(stage: Stage)
+## The player left a finished run for the main menu.
+signal exit_requested
 
 ## Set before the flow enters the tree. NO_SEED draws a new seed per run.
 @export var run_seed := NO_SEED
@@ -106,6 +114,8 @@ var transition: ScreenTransition
 var _variant_layer: CanvasLayer
 ## The F8 form while it shows, or null.
 var feedback_form: FeedbackForm
+## The run-over screen once the run has ended, or null.
+var run_over_screen: RunOverScreen
 ## The folder of the last F8 report written.
 var last_report_dir := ""
 ## The map's RUN FOLDER button, in the row with WAIT, SAVE, LOAD and NEW RUN.
@@ -410,6 +420,7 @@ func _open_overworld() -> void:
 	overworld.save_action = func() -> void: save_run()
 	overworld.load_action = func() -> void: load_run()
 	overworld.new_run_action = new_run
+	overworld.run_over_action = show_run_over
 	if not choose_start:
 		overworld.start_picker = seeded_start
 	overworld.campaign_started.connect(_on_campaign_started)
@@ -556,8 +567,9 @@ func _close_readout_and_show_map() -> void:
 
 
 func _close_all() -> void:
-	for node: Node in [draft_screen, overworld, readout, battle_screen]:
+	for node: Node in [draft_screen, overworld, readout, battle_screen, run_over_screen]:
 		_free(node)
+	run_over_screen = null
 	draft_screen = null
 	overworld = null
 	folder_button = null
@@ -570,6 +582,34 @@ func _close_all() -> void:
 func _set_stage(p_stage: Stage) -> void:
 	stage = p_stage
 	stage_changed.emit(stage)
+
+
+# --- Run over ---------------------------------------------------------------------
+
+## Shows the run-over screen over the map, from the run folder's summary.
+func show_run_over() -> void:
+	if run_over_screen != null:
+		return
+	transition.cover()
+	if recorder != null:
+		recorder.snapshot_summary()
+	run_over_screen = RunOverScreen.new()
+	run_over_screen.name = "RunOverScreen"
+	run_over_screen.show_run(run_dir, RunFolder.read_summary(run_dir))
+	run_over_screen.main_menu_requested.connect(leave_to_menu)
+	run_over_screen.folder_requested.connect(open_run_folder)
+	if overworld != null:
+		overworld.visible = false
+	add_child(run_over_screen)
+
+
+## Leaves the finished run: back to the main menu when one is listening,
+## otherwise a new run.
+func leave_to_menu() -> void:
+	if exit_requested.get_connections().is_empty():
+		new_run()
+	else:
+		exit_requested.emit()
 
 
 # --- F8 feedback ------------------------------------------------------------------

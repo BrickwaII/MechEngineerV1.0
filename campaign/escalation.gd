@@ -148,7 +148,23 @@ func level_of(region: MapRegion) -> int:
 
 ## A region of `defense` at alert tier `t`, before fortification.
 func band_level(defense: int, t: int) -> int:
-	var tiers := _tiers()
+	return _band(data, state.act, defense, t)
+
+
+## The mapping from alert tier to fight level, for tools such as a balance
+## sim: the defense level a region of `defense` fights at in act `act` (0 for
+## act 1) at alert tier `alert`, with `fortify` levels, from the shipped data.
+## Equal to level_of() with escalation on.
+static func level_for(act: int, defense: int, alert: int, fortify := 0) -> int:
+	return clampi(_band(load_data(), act, defense, alert) + fortify,
+		FightRequest.MIN_DEFENSE_LEVEL, FightRequest.MAX_DEFENSE_LEVEL)
+
+
+static func _band(p_data: Dictionary, act: int, defense: int, t: int) -> int:
+	var acts: Array = p_data.get("acts", [])
+	if acts.is_empty():
+		return defense
+	var tiers: Array = (acts[clampi(act, 0, acts.size() - 1)] as Dictionary).get("tiers", [])
 	if tiers.is_empty():
 		return defense
 	var band: Dictionary = tiers[clampi(t, 0, tiers.size() - 1)]

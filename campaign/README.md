@@ -20,6 +20,11 @@ Layer 3. Map, time, pressure, run state. May import contracts only until the int
   Numbers and headlines in data/tuning/escalation.json; state in
   RunState.escalation; the `escalation` variant turns it off or lowers the
   thresholds.
+- `stakes.gd` (R2-A): what losing costs and what Energy and Material buy.
+  Numbers from the tuning's "stakes" section (data/tuning/overworld.json) and
+  the switchboard's loss-limit and resource-uses decisions. Campaign uses it
+  for the loss limit (state.losses, state.ended), retreat, breach, repair,
+  reinforce costs and fast_forward().
 - `run_state.gd`: what a save keeps, including the act and the start's
   traits; saves and loads exactly.
 - `variants/`: the campaign side of the variant switchboard

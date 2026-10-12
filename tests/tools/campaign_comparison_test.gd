@@ -39,6 +39,8 @@ func test_a_default_campaign_plays_to_its_end() -> void:
 func test_auto_expansion_claims_ground_in_later_acts() -> void:
 	var v := CampaignVariants.defaults()
 	v.choose(CampaignVariants.AUTO_EXPANSION, CampaignVariants.EXPANSION_SIMPLE)
+	# Reach the later acts even when the auto-player loses often.
+	v.choose(CampaignVariants.LOSS_LIMIT, CampaignVariants.LOSSES_UNLIMITED)
 	var claims := 0
 	for run_seed in [1, 2, 3]:
 		claims += CampaignAutoplay.new(v, v).play(run_seed).expansion_claims

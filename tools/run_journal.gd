@@ -23,8 +23,10 @@ extends RefCounted
 ##   draft_open  offered: [bot]
 ##   draft_done  picks: [bot id] in pick order, seconds
 ##   map_start   start_id, run_variants (RunState.variants)
-##   snapshot    reason: "run_start" | "fight" | "act" | "load", state, squad
-##   action      action: one of the ACTION_ constants, region, region_name
+##   snapshot    reason: "run_start" | "fight" | "act" | "load" |
+##               "fast_forward", state, squad
+##   action      action: one of the ACTION_ constants, region, region_name;
+##               an attack that was breached has breach: true
 ##   fight_start fight (number in the run, from 1), kind, territory,
 ##               territory_name, level, seed, fight_variants, campaign_variants
 ##   command     cmd, arg, ticks, problem ("" when accepted)
@@ -34,6 +36,8 @@ extends RefCounted
 ##   expanded    region, region_name
 ##   escalation  event: "tier" | "fortified", tier, tier_name, region,
 ##               regions, headline (Escalation's news card)
+##   fast_forward days, reinforced, energy, material, grid, stopped (what
+##               Campaign.fast_forward() did; the action line comes first)
 ##   feedback    folder, category, rating
 ##   run_end     won, reason
 ##
@@ -58,6 +62,7 @@ const KIND_FIGHT_END := "fight_end"
 const KIND_POST_FIGHT := "post_fight"
 const KIND_EXPANDED := "expanded"
 const KIND_ESCALATION := "escalation"
+const KIND_FAST_FORWARD := "fast_forward"
 const KIND_FEEDBACK := "feedback"
 const KIND_RUN_END := "run_end"
 
@@ -70,11 +75,18 @@ const ACTION_FOCUS := "focus"
 const ACTION_SAVE := "save"
 const ACTION_LOAD := "load"
 const ACTION_ACT_ZOOM := "act_zoom"
+const ACTION_RETREAT := "retreat"
+const ACTION_REPAIR := "repair"
+const ACTION_FAST_FORWARD := "fast_forward"
 
 const SNAPSHOT_RUN_START := "run_start"
 const SNAPSHOT_FIGHT := "fight"
 const SNAPSHOT_ACT := "act"
 const SNAPSHOT_LOAD := "load"
+const SNAPSHOT_FAST_FORWARD := "fast_forward"
+## State snapshot keys added after journal version 1 first shipped; a
+## journal written before them has none, and the replay does not ask for them.
+const LATER_STATE_KEYS: Array[String] = ["losses", "ended", "escalation"]
 
 var path := ""
 var _file: FileAccess
@@ -155,6 +167,8 @@ static func state_snapshot(c: Campaign) -> Dictionary:
 		"expansion": Dictionary(s.expansion),
 		"focus_id": s.focus_id,
 		"escalation": s.escalation.duplicate(true),
+		"losses": s.losses,
+		"ended": s.ended,
 	}
 
 

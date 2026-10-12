@@ -1,30 +1,53 @@
-extends Control
-## The alert meter over the map (R2-B escalation): the act's alert tier by
-## name, one segment per tier with the current one filling toward the next,
-## and how many more held territories raise it. Hidden with escalation off.
+extends PanelContainer
+## The alert meter over the map (R2-B escalation), icon first: the alert icon
+## with the tier number, then one pip bar per tier, the current one filling
+## toward the next. The tier name, the thresholds and fortifying are in the
+## hover tooltip. Hidden with escalation off.
 
 const Palette := preload("res://ui/overworld/palette.gd")
 
-const HEIGHT := 62.0
-const FONT_SMALL := 10
-const FONT_TIER := 13
-const SEGMENT_GAP := 3.0
+const PIP_SIZE := Vector2(26, 8)
+const PIP_GAP := 3.0
 
 var escalation: Escalation:
 	set(value):
 		escalation = value
 		refresh()
 
+var stat: IconStat
+var _pips: Control
+
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	custom_minimum_size = Vector2(float(Escalation.load_data().get("ui", {}).get("meter_width", 210)), HEIGHT)
-	size = custom_minimum_size
+	var style := StyleBoxFlat.new()
+	style.bg_color = Palette.LABEL_BACK
+	style.set_content_margin_all(6)
+	add_theme_stylebox_override("panel", style)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(row)
+	stat = IconStat.make("alert", 1)
+	row.add_child(stat)
+	_pips = Control.new()
+	_pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_pips.draw.connect(_draw_pips)
+	row.add_child(_pips)
+	refresh()
 
 
 func refresh() -> void:
 	visible = escalation != null and escalation.on
-	queue_redraw()
+	if not visible or stat == null:
+		return
+	var t := escalation.tier()
+	stat.set_value(t + 1)
+	stat.set_tip_text(tip_body())
+	UiTooltip.attach(self, "%s Alert: %s" % [escalation.scope(), escalation.tier_name()], tip_body(), tip_numbers(), "alert")
+	_pips.custom_minimum_size = Vector2(escalation.tier_count() * (PIP_SIZE.x + PIP_GAP) - PIP_GAP, PIP_SIZE.y)
+	_pips.queue_redraw()
+	reset_size()
 
 
 ## The color of alert tier `t`: calm, then warning, then danger.
@@ -37,39 +60,33 @@ static func tier_color(t: int) -> Color:
 	return Palette.DANGER
 
 
-## The line under the bar: what raises the alert next, or that it is maxed.
-func next_text() -> String:
-	var more := escalation.to_next()
-	if more < 0:
-		return "MAXIMUM ALERT"
-	return "%d MORE HELD TO %s" % [more, escalation.tier_name(escalation.tier() + 1).to_upper()]
+## The tooltip's lines: what the tier means and what raises it next.
+func tip_body() -> String:
+	var next := escalation.needed_for(escalation.tier() + 1)
+	var text := "The highest tier."
+	if next >= 0:
+		text = "Hold %d regions for %s." % [next, escalation.tier_name(escalation.tier() + 1)]
+	if escalation.is_fortifying():
+		text += " Hostile regions left alone Fortify."
+	return text
 
 
-func _draw() -> void:
-	if escalation == null or not escalation.on:
+## The tooltip's numbers: held and every threshold.
+func tip_numbers() -> String:
+	var marks: Array[String] = []
+	for t in range(1, escalation.tier_count()):
+		marks.append(str(escalation.needed_for(t)))
+	return "Held %d/%d, tiers at %s" % [escalation.state.owned.size(), escalation.map.regions.size(), " and ".join(marks)]
+
+
+func _draw_pips() -> void:
+	if escalation == null:
 		return
-	var font := get_theme_default_font()
-	var w := size.x
 	var t := escalation.tier()
-	draw_rect(Rect2(Vector2.ZERO, size), Palette.LABEL_BACK)
-	draw_rect(Rect2(Vector2.ZERO, Vector2(3.0, size.y)), tier_color(t))
-	var x := 10.0
-	draw_string(font, Vector2(x, 14.0), "%s ALERT" % escalation.scope().to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL, Palette.TEXT_DIM)
-	draw_string(font, Vector2(x, 14.0), escalation.tier_name().to_upper(), HORIZONTAL_ALIGNMENT_RIGHT, w - x - 8.0, FONT_TIER, tier_color(t))
-	var count := maxi(1, escalation.tier_count())
-	var bar_w := (w - x - 8.0 - SEGMENT_GAP * (count - 1)) / count
-	for i in count:
-		var seg := Rect2(x + i * (bar_w + SEGMENT_GAP), 21.0, bar_w, 8.0)
-		draw_rect(seg, Palette.BAR_BACKGROUND)
-		var fill := 0.0
-		if i < t:
-			fill = 1.0
-		elif i == t:
-			fill = escalation.progress() if t + 1 < count else 1.0
-		if i <= t and fill > 0.0:
-			draw_rect(Rect2(seg.position, Vector2(seg.size.x * fill, seg.size.y)), tier_color(i) if i < t else Color(tier_color(t), 0.75))
-		draw_rect(seg, Color(tier_color(i), 0.5), false, 1.0)
-	draw_string(font, Vector2(x, 43.0), next_text(), HORIZONTAL_ALIGNMENT_LEFT, w - x - 6.0, FONT_SMALL, Palette.TEXT_BODY)
-	var fortify := "HOSTILES LEFT ALONE FORTIFY" if escalation.is_fortifying() else "NO FORTIFYING YET"
-	draw_string(font, Vector2(x, 56.0), fortify, HORIZONTAL_ALIGNMENT_LEFT, w - x - 6.0, FONT_SMALL,
-		Palette.DEFENSE_TEXT if escalation.is_fortifying() else Palette.TEXT_DIM)
+	for i in escalation.tier_count():
+		var pip := Rect2(Vector2(i * (PIP_SIZE.x + PIP_GAP), 0), PIP_SIZE)
+		_pips.draw_rect(pip, Palette.BAR_BACKGROUND)
+		var fill := 1.0 if i < t else (escalation.progress() if i == t and t + 1 < escalation.tier_count() else (1.0 if i == t else 0.0))
+		if fill > 0.0:
+			_pips.draw_rect(Rect2(pip.position, Vector2(pip.size.x * fill, pip.size.y)), tier_color(mini(i, t)))
+		_pips.draw_rect(pip, Color(tier_color(i), 0.6), false, 1.0)

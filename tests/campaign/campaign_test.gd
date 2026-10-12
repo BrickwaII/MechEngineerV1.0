@@ -129,8 +129,8 @@ func test_waiting_builds_pressure_and_accrues_income() -> void:
 	assert_float(c.pressure_of("substation_9")).is_equal_approx(2.7, 1e-9)
 	# Held grid power is 2 + 4; it regenerates by that divided by 4 each point.
 	assert_float(c.state.grid).is_equal_approx(51.5, 1e-9)
-	# Energy 3 a day is 3/4 a point.
-	assert_float(c.state.energy).is_equal_approx(0.75, 1e-9)
+	# Energy 3 a day is 3/4 a point, on top of the starting stock.
+	assert_float(c.state.energy).is_equal_approx(_tuning.start_energy + 0.75, 1e-9)
 	assert_float(c.state.material).is_equal(0.0)
 
 
@@ -234,7 +234,7 @@ func test_winning_an_attack_captures_the_region() -> void:
 	assert_float(c.pressure_of("hydro_dam")).is_equal_approx(15.0 + 3 * 2.7, 1e-9)
 	# 100 - (4 + 2 x 3), then 3 points of (2 + 4 + 5) / 4.
 	assert_float(c.state.grid).is_equal_approx(90.0 + 3 * 11.0 / 4.0, 1e-9)
-	assert_float(c.state.energy).is_equal_approx(10.0 + 3 * 3.0 / 4.0, 1e-9)
+	assert_float(c.state.energy).is_equal_approx(_tuning.start_energy + 10.0 + 3 * 3.0 / 4.0, 1e-9)
 	assert_float(c.state.material).is_equal_approx(5.0, 1e-9)
 	assert_int(c.standing("ridge_relay")).is_equal(Campaign.Standing.IN_RANGE)
 	assert_array(Array(c.state.owned)).contains_exactly(["hydro_dam", "aurora_data_center", "substation_9"])
@@ -247,7 +247,9 @@ func test_losing_an_attack_costs_one_and_a_half_times_the_grid() -> void:
 	assert_int(c.state.time_points).is_equal(3)
 	# (4 + 2 x 4) x 1.5 = 18, then 3 points of 6 / 4.
 	assert_float(c.state.grid).is_equal_approx(82.0 + 3 * 1.5, 1e-9)
-	assert_float(c.state.energy).is_equal_approx(3 * 0.75, 1e-9)
+	# A lost battle also takes stakes.loss_cost and counts toward the limit.
+	assert_float(c.state.energy).is_equal_approx(_tuning.start_energy - c.stakes.loss_cost["energy"] + 3 * 0.75, 1e-9)
+	assert_int(c.state.losses).is_equal(1)
 
 
 func test_the_attack_request_carries_the_squad_and_defense() -> void:

@@ -93,6 +93,7 @@ func test_each_tier_gained_brings_a_news_card() -> void:
 	assert_int(int(_cards[0].tier)).is_equal(1)
 	assert_str(str(_cards[0].headline)).is_not_empty()
 	assert_str(str(_cards[0].body)).contains("Local Concern")
+	assert_bool(str(_cards[0].body).contains("{")).is_false()
 	_hold(c, 8)
 	assert_int(_cards.size()).is_equal(2)
 	assert_int(int(_cards[1].tier)).is_equal(2)
@@ -134,6 +135,17 @@ func test_enemy_levels_follow_the_alert_tier() -> void:
 	_hold(c, 8)
 	assert_int(c.defense_of(_hostile(c).id)).is_equal(e.band_level(_hostile(c).defense, 2))
 	assert_int(e.band_level(region.defense, 2)).is_greater(before)
+
+
+func test_the_static_mapping_matches_the_live_one() -> void:
+	var c := _campaign()
+	_hold(c, 4)
+	for i in 6:
+		c.escalation.advance_day()
+	for region in _map.regions:
+		if not c.is_owned(region.id):
+			assert_int(Escalation.level_for(0, region.defense, c.escalation.tier(), c.escalation.fortify_of(region.id))) \
+				.is_equal(c.defense_of(region.id))
 
 
 func test_act_one_alert_tiers_map_to_rising_enemy_unit_tiers() -> void:

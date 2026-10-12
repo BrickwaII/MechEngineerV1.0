@@ -37,6 +37,10 @@ var expansion: Dictionary[String, float] = {}
 var focus_id: String = ""
 ## Escalation's alert tier, fortification and days left alone; see Escalation.
 var escalation: Dictionary = {}
+## Battles lost in this act (Stakes: the loss limit counts them).
+var losses: int = 0
+## Why the run ended (one of Stakes.END_*), or "" while it goes on.
+var ended: String = ""
 
 
 func duplicate_state() -> RunState:
@@ -64,14 +68,17 @@ func to_dict() -> Dictionary:
 		"expansion": Dictionary(expansion),
 		"focus_id": focus_id,
 		"escalation": escalation.duplicate(true),
+		"losses": losses,
+		"ended": ended,
 	}
 
 
 ## Builds a state from to_dict() output. Returns null if a field is missing or
 ## has the wrong type. A version 1 save, from before acts and starts, loads as
-## act 1 with the default start. variants, expansion, focus_id and escalation
-## are optional: a save from before them plays every default with no
-## expansion progress, and Escalation works out its tier when it loads.
+## act 1 with the default start. variants, expansion, focus_id, losses, ended
+## and escalation are optional: a save from before them plays every default
+## with no expansion progress and no losses, and Escalation works out its tier
+## when it loads.
 static func from_dict(d: Dictionary) -> RunState:
 	var version := int(d.get("version", -1))
 	if version != FORMAT_VERSION and version != 1:
@@ -118,6 +125,8 @@ static func from_dict(d: Dictionary) -> RunState:
 	if not escalation is Dictionary:
 		return null
 	state.escalation = (escalation as Dictionary).duplicate(true)
+	state.losses = int(d.get("losses", 0))
+	state.ended = str(d.get("ended", ""))
 	return state
 
 

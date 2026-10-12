@@ -183,11 +183,12 @@ func _check_snapshot(line: Dictionary) -> void:
 		_mismatch(line, "a snapshot before the map started")
 		return
 	snapshots_checked += 1
-	var actual_state := RunJournal.state_snapshot(campaign)
-	# A journal from before escalation has no escalation in its snapshots.
-	if not (line.get("state", {}) as Dictionary).has("escalation"):
-		actual_state.erase("escalation")
-	_compare(line, "state", line.get("state", {}), actual_state)
+	var expected: Dictionary = line.get("state", {})
+	var actual := RunJournal.state_snapshot(campaign)
+	for key in RunJournal.LATER_STATE_KEYS:
+		if not expected.has(key):
+			actual.erase(key)
+	_compare(line, "state", expected, actual)
 	_compare(line, "squad", line.get("squad", {}), RunJournal.squad_snapshot(squad, ledger))
 
 
@@ -210,7 +211,13 @@ func _action(line: Dictionary) -> void:
 		RunJournal.ACTION_FOCUS:
 			campaign.set_focus(region)
 		RunJournal.ACTION_ATTACK:
-			done = await campaign.attack(region)
+			done = await campaign.attack(region, bool(line.get("breach", false)))
+		RunJournal.ACTION_RETREAT:
+			done = campaign.retreat(region)
+		RunJournal.ACTION_REPAIR:
+			done = campaign.repair()
+		RunJournal.ACTION_FAST_FORWARD:
+			done = not campaign.fast_forward().is_empty()
 		RunJournal.ACTION_DEFEND:
 			done = await campaign.defend()
 		RunJournal.ACTION_BOSS:

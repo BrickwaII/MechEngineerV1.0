@@ -36,7 +36,6 @@ func use(c: Campaign) -> void:
 			campaign.escalated.disconnect(news.push)
 	campaign = c
 	news.clear()
-	news.scope = c.escalation.scope()
 	meter.escalation = c.escalation
 	c.changed.connect(meter.refresh)
 	c.escalated.connect(news.push)
