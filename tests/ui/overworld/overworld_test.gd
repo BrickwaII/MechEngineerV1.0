@@ -150,4 +150,4 @@ func test_losses_resources_and_actions_show_as_icons_with_tooltips() -> void:
 	screen.show_pre_fight("hydro_dam")
 	var labels: Array = screen._modal_buttons.get_children().map(func(b: ActionButton) -> String: return b.label_text)
 	assert_array(labels).is_equal(["Fight", "Breach", "Retreat"])
-	assert_str((screen._modal_buttons.get_child(2) as ActionButton).cost_icon_id).is_equal("energy")
+	assert_str((screen._modal_buttons.get_child(2) as ActionButton).cost_icon_id).is_equal(screen.ENERGY_ICON)
