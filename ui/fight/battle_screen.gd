@@ -638,10 +638,15 @@ func _build_layout() -> void:
 		button.toggle_mode = true
 		button.pressed.connect(on_skill_pressed.bind(skill_id))
 		skill_buttons[skill_id] = button
+	# Wait and Cancel stack in a column beside the cards.
+	var moves := VBoxContainer.new()
+	moves.name = "Moves"
+	moves.alignment = BoxContainer.ALIGNMENT_CENTER
+	moves.add_theme_constant_override("separation", 6)
+	buttons.add_child(moves)
 	wait_button = ActionButton.make("action_wait", "Wait")
 	wait_button.custom_minimum_size.y = 34
-	wait_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	buttons.add_child(wait_button)
+	moves.add_child(wait_button)
 	wait_button.name = "WaitButton"
 	wait_button.pressed.connect(on_wait_pressed)
 	wait_button.mouse_entered.connect(on_wait_hovered.bind(true))
@@ -655,11 +660,10 @@ func _build_layout() -> void:
 	wait_ticks_box.tooltip_text = "Exact wait length (d-wait-length variant). 0 waits until the skill is affordable."
 	wait_ticks_box.visible = WaitRules.exact_waits_allowed(fight.tuning)
 	wait_ticks_box.value_changed.connect(func(_v: float) -> void: _refresh_commands())
-	buttons.add_child(wait_ticks_box)
+	moves.add_child(wait_ticks_box)
 	cancel_button = ActionButton.make("action_cancel", "Cancel")
 	cancel_button.custom_minimum_size.y = 34
-	cancel_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	buttons.add_child(cancel_button)
+	moves.add_child(cancel_button)
 	cancel_button.name = "CancelButton"
 	cancel_button.pressed.connect(on_cancel_pressed)
 	message_label = _label(commands, "", "SmallLabel")
