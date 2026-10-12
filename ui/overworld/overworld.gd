@@ -41,6 +41,10 @@ const MAP_SIZE := Vector2(880, 620)
 const PANEL_WIDTH := 400.0
 const TOP_BAR_HEIGHT := 56.0
 const CHOICE_CARD_WIDTH := 290.0
+## The icon of the campaign's Energy resource (data/ui/icons.json).
+## TODO: "map_energy" (the power cell) once R2-D's #32 is on main; "energy"
+## is the battle lightning for skill costs.
+const ENERGY_ICON := "energy"
 const RESOURCE_LABELS := {MapRegion.POWER: "Grid power", MapRegion.ENERGY: "Energy", MapRegion.MATERIAL: "Material"}
 
 ## The acts of a run: each act's region and tuning file, and the zoom between.
@@ -1062,7 +1066,7 @@ func _show_payload_zoom() -> void:
 	var bonus := plan.bonus_region_count(held)
 	var body := "The boss fight is not built yet, so the payload passes. You held %d of %d territories in %s. " % [
 		held, campaign.map.regions.size(), plan.act_name(act)]
-	body += "The network zooms out to %s: you carry %d energy and %d material, the grid recovers %s%%, and you hold %s%s." % [
+	body += "The network zooms out to %s: you carry %d energy and %d material (up to the storage cap), the grid recovers %s%%, and you hold %s%s." % [
 		plan.act_name(act + 1), floori(campaign.state.energy * plan.energy_kept),
 		floori(campaign.state.material * plan.material_kept), _number(plan.grid_restore), plan.act_name(act),
 		"" if bonus == 0 else " plus %d neighboring territor%s" % [bonus, "y" if bonus == 1 else "ies"]]
@@ -1301,7 +1305,7 @@ func _losses_stat() -> IconStat:
 func _use_cost(use: String) -> Array:
 	var c := campaign.stakes.cost(use)
 	if c[Stakes.ENERGY] > 0.0:
-		return ["energy", roundi(c[Stakes.ENERGY])]
+		return [ENERGY_ICON, roundi(c[Stakes.ENERGY])]
 	if c[Stakes.MATERIAL] > 0.0:
 		return ["material", roundi(c[Stakes.MATERIAL])]
 	return ["", null]
@@ -1331,7 +1335,7 @@ func _use_action(use: String, icon_id: String, label: String, on_press: Callable
 func _resource_stat(key: String, stock: int, per_day: int) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
-	var stat := IconStat.make(key, stock, resource_tooltip(key))
+	var stat := IconStat.make(ENERGY_ICON if key == Stakes.ENERGY else key, stock, resource_tooltip(key))
 	row.add_child(stat)
 	row.add_child(_text("+%d/day" % per_day, 10, Palette.TEXT_DIM))
 	row.set_meta("resource", key)
@@ -1351,7 +1355,12 @@ func resource_tooltip(key: String) -> String:
 			uses.append("%s %s" % [names[use], _number(amount)])
 	var text := "From held regions and won fights. "
 	text += ("Pays for %s." % ", ".join(uses)) if not uses.is_empty() else "Nothing spends it this run."
-	return text + " A lost battle takes %s." % _number(stakes.loss_cost[key])
+	text += " A lost battle takes %s." % _number(stakes.loss_cost[key])
+	var cap := campaign.resource_cap(key)
+	if cap < INF:
+		var stock := campaign.state.energy if key == Stakes.ENERGY else campaign.state.material
+		text += " Stored %d / %d: more is lost. The cap grows with regions held." % [floori(stock), floori(cap)]
+	return text
 
 
 ## A number of time points as days: "1 day", "0.75 day".
@@ -1411,7 +1420,7 @@ func show_pre_fight(region_id: String) -> void:
 			IconStat.make("grid_power", "-%s%%" % _number(campaign.attack_grid_cost(region_id)),
 				"Grid the attack takes if it wins; a defeat takes %s times that." % _number(campaign.tuning.defeat_grid_multiplier)),
 			_losses_stat()],
-		["DEFEAT COSTS", IconStat.make("energy", "-%s" % _number(loss[Stakes.ENERGY]), "Energy a lost battle takes."),
+		["DEFEAT COSTS", IconStat.make(ENERGY_ICON, "-%s" % _number(loss[Stakes.ENERGY]), "Energy a lost battle takes."),
 			IconStat.make("material", "-%s" % _number(loss[Stakes.MATERIAL]), "Material a lost battle takes.")],
 	])
 
@@ -1439,7 +1448,7 @@ func _on_fast_forward() -> void:
 	_show_message("FAST-FORWARD", "Day %d" % campaign.day(), body, _check_forced)
 	_show_stat_row([
 		IconStat.make("time", "+%s" % _number(summary.days), "Days that passed."),
-		IconStat.make("energy", "%+d" % roundi(summary.energy), "Energy gained, after auto-reinforcing."),
+		IconStat.make(ENERGY_ICON, "%+d" % roundi(summary.energy), "Energy gained, after auto-reinforcing."),
 		IconStat.make("material", "%+d" % roundi(summary.material), "Material gained."),
 		IconStat.make("grid_power", "%+d%%" % roundi(summary.grid), "Grid capacity change."),
 		IconStat.make("action_reinforce", int(summary.reinforced), "Regions auto-reinforced at %s Pressure or more." % _number(campaign.stakes.ff_reinforce_at)),

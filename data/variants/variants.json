@@ -230,6 +230,17 @@
 			]
 		},
 		{
+			"id": "resource-cap",
+			"name": "Resource storage cap",
+			"layer": "campaign",
+			"applies": "next_run",
+			"default": "capped",
+			"options": [
+				{"id": "capped", "name": "Capped storage", "description": "Energy and Material each store at most stakes.cap base + per_region x regions held (data/tuning/overworld.json). Income past the cap is lost; the act zoom carries at most the new act's cap."},
+				{"id": "uncapped", "name": "Uncapped", "description": "Stock grows without limit."}
+			]
+		},
+		{
 			"id": "tier-rule",
 			"name": "Bot tier rule",
 			"layer": "bot_data",

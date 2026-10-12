@@ -82,6 +82,8 @@ func _init(
 	escalation = Escalation.new(map, state, variants)
 	escalation.update(false)
 	escalation.news.connect(_on_escalation_news)
+	# A new act (the zoom carries stock over) or a load keeps at most the cap.
+	_cap_stock()
 
 
 ## The state a fresh run starts from. `start` is one of the map's
@@ -475,6 +477,7 @@ func _advance(points: int) -> void:
 			state.pressure[region_id] = minf(tuning.forces_defense_at, pressure_of(region_id) + rates[region_id])
 		EnergyGridRules.accrue_point(state, income, tuning, variants)
 		state.material += float(income[MapRegion.MATERIAL]) / tuning.points_per_day
+		_cap_stock()
 		state.time_points += 1
 		if state.time_points % tuning.points_per_day == 0:
 			_expand()
@@ -537,6 +540,7 @@ func _set_owned(region_id: String, held: bool) -> void:
 func _add_rewards(result: FightResult) -> void:
 	EnergyGridRules.add_energy(state, result.rewards.get(FightResult.ENERGY, 0), tuning, variants)
 	state.material += result.rewards.get(FightResult.MATERIAL, 0)
+	_cap_stock()
 
 
 func _on_escalation_news(card: Dictionary) -> void:
@@ -712,3 +716,15 @@ func _record_loss() -> void:
 	if stakes.loss_limit > 0 and state.losses >= stakes.loss_limit and state.ended.is_empty():
 		state.ended = Stakes.END_LOSS_LIMIT
 		_log("That was loss %d of %d this act. The run is over." % [state.losses, stakes.loss_limit])
+
+
+## Most Energy or Material (Stakes key) the run can store now: grows with
+## the regions held. INF when the run is uncapped.
+func resource_cap(key: String) -> float:
+	return stakes.cap(key, state.owned.size())
+
+
+## Drops stock above the storage caps. TODO(decision: resource-cap).
+func _cap_stock() -> void:
+	state.energy = minf(state.energy, resource_cap(Stakes.ENERGY))
+	state.material = minf(state.material, resource_cap(Stakes.MATERIAL))
