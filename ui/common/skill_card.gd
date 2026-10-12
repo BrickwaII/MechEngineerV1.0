@@ -41,10 +41,11 @@ func _init() -> void:
 	var col := VBoxContainer.new()
 	col.name = "Face"
 	col.set_anchors_preset(Control.PRESET_FULL_RECT)
-	col.offset_left = 6
-	col.offset_top = 4
-	col.offset_right = -6
-	col.offset_bottom = -4
+	var pad := UiIcons.kit_vector("skill_card.padding", Vector2(12, 8))
+	col.offset_left = pad.x
+	col.offset_top = pad.y
+	col.offset_right = -pad.x
+	col.offset_bottom = -pad.y
 	col.add_theme_constant_override("separation", 2)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(col)

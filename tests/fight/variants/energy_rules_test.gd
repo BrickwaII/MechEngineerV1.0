@@ -24,7 +24,8 @@ func test_costs_puts_the_cost_on_strike_only() -> void:
 	assert_int(t.skills["strike"].energy_cost).is_equal(0)
 	# A unit's own (ranked) Strike costs the same, so the skill card shows it.
 	assert_int(t.skill_at("strike", 4).energy_cost).is_equal(cost)
-	assert_str(BattleScreen.skill_button_text(t.skill("strike"))).contains("[%d]" % cost)
+	var card: SkillCard = auto_free(SkillCard.make(t.skill("strike").display_name, t.skill("strike").energy_cost, ""))
+	assert_str(card.cost_label.text).is_equal(str(cost))
 
 
 func test_costs_uses_its_own_recharge() -> void:

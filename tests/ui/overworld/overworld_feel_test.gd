@@ -123,12 +123,12 @@ func test_the_territory_panel_names_the_faction_when_the_data_has_one() -> void:
 
 func test_the_shared_pool_shows_one_meter_and_no_energy_count() -> void:
 	var screen := _screen()
-	assert_str(screen._grid_title.text).is_equal("GRID CAPACITY")
+	assert_str(screen._grid_title.tip_text).starts_with("Grid capacity")
 	assert_object(screen._income_label("energy")).is_not_null()
 	screen.campaign.variants.choose(CampaignVariants.ENERGY_GRID, CampaignVariants.ENERGY_SHARED_POOL)
 	screen._refresh()
 	assert_bool(screen.is_shared_pool()).is_true()
-	assert_str(screen._grid_title.text).is_equal("POWER POOL")
+	assert_str(screen._grid_title.tip_text).starts_with("Power pool")
 	assert_object(screen._income_label("energy")).is_null()
 	assert_object(screen._income_label("material")).is_not_null()
 	# A pool change pops as a pool number.

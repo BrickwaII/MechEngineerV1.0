@@ -11,6 +11,9 @@ const MARGIN := 12.0
 var campaign: Campaign
 var meter: AlertMeter
 var news: NewsCard
+## True once the overworld docks the news card elsewhere (dock_news): the hud
+## stops placing it over the map.
+var news_docked := false
 
 
 func _ready() -> void:
@@ -42,4 +45,16 @@ func use(c: Campaign) -> void:
 
 
 func _place_news() -> void:
+	if news_docked:
+		return
 	news.position = Vector2(size.x - news.size.x - MARGIN, MARGIN)
+
+
+## Moves the news card into `parent` at `at`, `width` wide, so it no longer
+## covers the map (ui/README.md rule 5: a toast, the event log keeps the text).
+func dock_news(parent: Control, at: Vector2, width: float) -> void:
+	news_docked = true
+	news.get_parent().remove_child(news)
+	parent.add_child(news)
+	news.position = at
+	news.custom_minimum_size.x = width

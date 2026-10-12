@@ -7,6 +7,9 @@ extends PanelContainer
 const Palette := preload("res://ui/overworld/palette.gd")
 const AlertMeter := preload("res://ui/overworld/alert_meter.gd")
 
+## Fade in and out, in seconds.
+const FADE_SECONDS := 0.3
+
 ## Callable() -> bool: true when a card may show now. Unset always shows.
 var can_show: Callable
 ## The card on screen, or {} when none is.
@@ -74,6 +77,8 @@ func _process(delta: float) -> void:
 		if size.y > get_combined_minimum_size().y + 1.0:
 			reset_size()
 		_left -= delta
+		if _left < FADE_SECONDS:
+			modulate.a = clampf(_left / FADE_SECONDS, 0.0, 1.0)
 		if _left <= 0.0:
 			_next()
 	elif not _queue.is_empty() and (not can_show.is_valid() or can_show.call()):
@@ -90,6 +95,9 @@ func _show(card: Dictionary) -> void:
 	_body.text = str(card.get("body", ""))
 	_left = float(Escalation.load_data().get("ui", {}).get("news_seconds", 6.0))
 	visible = true
+	# A toast: fades in, and fades out over its last moments (see _process).
+	modulate.a = 0.0
+	create_tween().tween_property(self, "modulate:a", 1.0, FADE_SECONDS)
 
 
 func _next() -> void:
