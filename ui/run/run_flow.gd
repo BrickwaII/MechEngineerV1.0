@@ -206,6 +206,7 @@ func new_run() -> void:
 	draft_screen = DRAFT_SCENE.instantiate()
 	draft_screen.draft_seed = current_seed
 	draft_screen.bot_tuning = bot_tuning
+	draft_screen.combat_tuning = CombatTuning.load_default().with_variants(FightVariants.load_active(variants_path))
 	draft_screen.squad_chosen.connect(_on_squad_chosen)
 	add_child(draft_screen)
 	draft_screen.start_button.text = "DEPLOY SQUAD"
