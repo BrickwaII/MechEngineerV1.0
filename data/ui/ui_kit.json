@@ -10,6 +10,7 @@
 	},
 	"skill_card": {
 		"size": [196, 136],
+		"padding": [12, 8],
 		"cost_color": "energy",
 		"rank_color": "preview"
 	}
