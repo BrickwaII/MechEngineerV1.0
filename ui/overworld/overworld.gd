@@ -31,6 +31,7 @@ const Palette := preload("res://ui/overworld/palette.gd")
 const MapView := preload("res://ui/overworld/map_view.gd")
 const GlobeView := preload("res://ui/overworld/globe_view.gd")
 const MeterBar := preload("res://ui/overworld/meter_bar.gd")
+const EscalationHud := preload("res://ui/overworld/escalation_hud.gd")
 
 ## A new Campaign took over the map: a new run, the next act, or a load.
 signal campaign_started(campaign: Campaign)
@@ -100,6 +101,8 @@ var _act_title: Control
 ## The panels dimmed while the act zoom plays.
 var _hud: Array[Control] = []
 var _popups: Control
+## The alert meter and news cards over the map (R2-B).
+var escalation_hud: EscalationHud
 
 var _grid_bar: MeterBar
 var _grid_text: Label
@@ -282,6 +285,7 @@ func _use_campaign(c: Campaign) -> void:
 	campaign.changed.connect(_refresh)
 	campaign.event_logged.connect(_event)
 	campaign.fight_started.connect(_on_fight_started)
+	escalation_hud.use(campaign)
 	_use_view_for(campaign.map)
 	map_view.campaign = campaign
 	map_view.selected_id = ""
@@ -417,6 +421,12 @@ func _build_layout() -> void:
 	_popups.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_popups.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_popups)
+	escalation_hud = EscalationHud.new()
+	escalation_hud.name = "EscalationHud"
+	escalation_hud.position = Vector2(0, TOP_BAR_HEIGHT)
+	escalation_hud.size = MAP_SIZE
+	add_child(escalation_hud)
+	escalation_hud.news.can_show = can_show_changes
 	_build_act_title()
 	_build_modal()
 
@@ -819,11 +829,14 @@ func _panel_defense(region: MapRegion) -> void:
 	var pips := HBoxContainer.new()
 	pips.add_theme_constant_override("separation", 4)
 	for i in MapRegion.MAX_DEFENSE:
-		pips.add_child(_pip(i < region.defense))
+		pips.add_child(_pip(i < campaign.defense_of(region.id)))
 	line.add_child(pips)
-	line.add_child(_text(campaign.tuning.defense_label(region.defense).to_upper(), 16, Palette.TEXT))
+	line.add_child(_text(campaign.tuning.defense_label(campaign.defense_of(region.id)).to_upper(), 16, Palette.TEXT))
 	rows.add_child(line)
-	rows.add_child(_note(campaign.tuning.opposition(region.defense), 14))
+	rows.add_child(_note(campaign.tuning.opposition(campaign.defense_of(region.id)), 14))
+	if campaign.escalation.fortify_of(region.id) > 0:
+		rows.add_child(IconStat.make("fortify", "+%d" % campaign.escalation.fortify_of(region.id),
+			"Dug in while left alone on Alert. Attack it to stop the digging."))
 	var line_odds := HBoxContainer.new()
 	line_odds.name = "Odds"
 	line_odds.add_theme_constant_override("separation", 10)
@@ -1391,12 +1404,13 @@ func show_pre_fight(region_id: String) -> void:
 	if stakes.is_offered(Stakes.USE_BREACH) and stakes.breach_levels > 0:
 		buttons.append(_use_action(Stakes.USE_BREACH, "action_breach", "Breach",
 			_close_modal_then.bind(_on_attack.bind(region_id, true)), campaign.can_breach(region_id),
-			"Fight at Defense %d instead of %d." % [campaign.attack_level(region_id, true), region.defense]))
+			"Fight at Defense %d instead of %d." % [campaign.attack_level(region_id, true), campaign.defense_of(region_id)]))
 	buttons.append(_use_action(Stakes.USE_RETREAT, "action_retreat", "Retreat", _on_retreat.bind(region_id),
 		campaign.can_retreat(region_id), "Call it off. Takes %s. No fight, no loss." % _points_text(stakes.retreat_attack_time)))
 	_show_modal("ASSAULT", region.name, "", buttons)
-	var defense := IconStat.make("defense_level", region.defense, "%s. %s" % [
-		campaign.tuning.defense_label(region.defense), campaign.tuning.opposition(region.defense)])
+	var level := campaign.defense_of(region_id)
+	var defense := IconStat.make("defense_level", level, "%s. %s" % [
+		campaign.tuning.defense_label(level), campaign.tuning.opposition(level)])
 	var odds_label := _text(odds_text(region_id), 13, _odds_color(odds.label_for(campaign, region_id)))
 	UiTooltip.attach(odds_label, "Your odds", "From auto-fights against this region's enemies." if odds.is_simulated()
 		else "Squad strength against the Defense level.")

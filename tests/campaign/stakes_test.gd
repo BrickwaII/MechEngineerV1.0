@@ -157,8 +157,10 @@ func test_a_breach_lowers_the_fight_and_costs_material() -> void:
 	c.state.material = 10.0
 	assert_bool(c.can_breach("hydro_dam")).is_true()
 	_service.win = true
+	# Breach lowers the level the region fights at, escalation included.
+	var level := c.defense_of("hydro_dam")
 	assert_bool(await c.attack("hydro_dam", true)).is_true()
-	assert_int(_service.requests[0].defense_level).is_equal(3 - c.stakes.breach_levels)
+	assert_int(_service.requests[0].defense_level).is_equal(maxi(0, level - c.stakes.breach_levels))
 	assert_bool(c.breached).is_true()
 	assert_float(c.state.material).is_less(10.0)
 

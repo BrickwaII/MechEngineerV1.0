@@ -195,6 +195,18 @@
 			]
 		},
 		{
+			"id": "escalation",
+			"name": "Escalation",
+			"layer": "campaign",
+			"applies": "next_run",
+			"default": "on",
+			"options": [
+				{"id": "on", "name": "On, at 1/3 and 2/3 held (current)", "description": "Each act has three alert tiers (data/tuning/escalation.json). Holding 1/3 of the act's map raises every hostile region one tier, 2/3 raises it again; tiers never drop. Enemy units follow the tier, and hostile regions left alone on alert fortify."},
+				{"id": "off", "name": "Off", "description": "Every region fights at its own defense all act and nothing fortifies: the difficulty before escalation."},
+				{"id": "quarters", "name": "On, at 1/4 and 1/2 held", "description": "As on, but the alert rises sooner: at 1/4 and then 1/2 of the act's map held.", "params": {"thresholds": [{"held": 1, "of": 4}, {"held": 1, "of": 2}]}}
+			]
+		},
+		{
 			"id": "loss-limit",
 			"name": "Loss limit",
 			"layer": "campaign",

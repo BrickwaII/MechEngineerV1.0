@@ -10,16 +10,33 @@ const PLACEHOLDER := "res://data/regions/act1_placeholder.json"
 
 var _runner: GdUnitSceneRunner
 
+## These suites test the rules before escalation; escalation_test.gd covers it.
+const ESCALATION_OFF_PATH := "user://escalation_off_test.json"
+
+
+func _escalation_off() -> void:
+	var file := FileAccess.open(ESCALATION_OFF_PATH, FileAccess.WRITE)
+	file.store_string(JSON.stringify({"choices": {CampaignVariants.ESCALATION: CampaignVariants.ESCALATION_OFF}}))
+	file.close()
+	CampaignVariants.user_path = ESCALATION_OFF_PATH
+
+
+func _escalation_default() -> void:
+	CampaignVariants.user_path = ""
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(ESCALATION_OFF_PATH))
+
 
 func before_test() -> void:
 	_runner = scene_runner(SCENE)
 	await _runner.simulate_frames(2)
 	_screen().region_file = PLACEHOLDER
+	_escalation_off()
 	assert_str(_screen().start_new_run()).is_empty()
 	await _runner.simulate_frames(1)
 
 
 func after_test() -> void:
+	_escalation_default()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
 
 

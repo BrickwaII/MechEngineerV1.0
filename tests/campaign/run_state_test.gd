@@ -103,7 +103,8 @@ func test_a_save_from_before_variants_loads_with_every_default() -> void:
 	assert_dict(loaded.expansion).is_empty()
 	assert_str(loaded.focus_id).is_empty()
 	var c := _campaign(loaded)
-	assert_dict(c.variants.non_default()).is_empty()
+	# Every default, except escalation: a save from before it plays without it.
+	assert_dict(c.variants.non_default()).is_equal({CampaignVariants.ESCALATION: CampaignVariants.ESCALATION_OFF})
 
 
 func test_a_new_run_keeps_its_variant_choices() -> void:
