@@ -103,12 +103,12 @@
 						"act1": {"hp_percent": 114, "attack_percent": 90, "defense_percent": 100},
 						"act2": {"hp_percent": 122, "attack_percent": 117, "defense_percent": 100},
 						"act3": {"hp_percent": 118, "attack_percent": 116, "defense_percent": 100},
-						"boss": {"hp_percent": 57, "attack_percent": 70, "defense_percent": 85}
+						"boss": {"hp_percent": 55, "attack_percent": 65, "defense_percent": 85}
 					},
 					"tier_scaling": {
 						"beginner": {"hp_percent": 120, "attack_percent": 115, "defense_percent": 100},
 						"medium": {"hp_percent": 105, "attack_percent": 100, "defense_percent": 100},
-						"advanced": {"hp_percent": 68, "attack_percent": 78, "defense_percent": 85}
+						"advanced": {"hp_percent": 90, "attack_percent": 92, "defense_percent": 90}
 					}
 				}}
 			]
