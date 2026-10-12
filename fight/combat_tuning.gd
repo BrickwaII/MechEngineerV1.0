@@ -155,8 +155,23 @@ func combat_skill_for_effect(effect_id: String) -> String:
 	return bot_skill_effects.get(effect_id, "")
 
 
+## Skill `id` as this tuning's switches have it: the strike-cost switch may
+## change the basic attack's cost (EnergyRules). Null for an unknown id.
 func skill(id: String) -> CombatSkill:
-	return skills.get(id)
+	var s: CombatSkill = skills.get(id)
+	if s == null:
+		return null
+	var cost := EnergyRules.cost_of(id, s.energy_cost, self)
+	if cost == s.energy_cost:
+		return s
+	var c := s.at_level(s.level, "", 0, 100)
+	c.energy_cost = cost
+	return c
+
+
+## Gauge a unit must fill before it acts, by the speed-range switch (SpeedRules).
+func turn_threshold() -> int:
+	return SpeedRules.threshold(self)
 
 
 ## True when bot skills grow by named ranks rather than flat levels.

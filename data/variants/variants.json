@@ -54,10 +54,62 @@
 			"name": "Personality tag weight",
 			"layer": "fight",
 			"applies": "next_fight",
-			"default": "per_action",
+			"default": "per_turn_time",
 			"options": [
-				{"id": "per_action", "name": "Per action (current)", "description": "Every tagged decision pushes its personality end once, so a bot that acts more often grows more."},
-				{"id": "per_energy", "name": "Per energy spent", "description": "A tagged decision pushes energy spent / energy_per_push times, at least min_weight times (a free action or a wait counts min_weight). Slow bots act less but spend more per action, so growth follows energy, not turn count.", "params": {"energy_per_push": 3.0, "min_weight": 0.25}}
+				{"id": "per_action", "name": "Per action (old)", "description": "Every tagged decision pushes its personality end once, so a bot that acts more often grows more."},
+				{"id": "per_energy", "name": "Per energy spent", "description": "A tagged decision pushes energy spent / energy_per_push times, at least min_weight times (a free action or a wait counts min_weight). Slow bots act less but spend more per action, so growth follows energy, not turn count.", "params": {"energy_per_push": 3.0, "min_weight": 0.25}},
+				{"id": "per_turn_time", "name": "Per unit of turn time", "description": "A decision counts the ticks since the bot's previous decision (or the fight's start) / ticks_per_push pushes, so a turn weighs the time it took: every bot that fights the whole fight gets the same total, fast or slow. Skill uses count the same way, rounded per fight. TODO(decision: tag-fairness).", "params": {"ticks_per_push": 16.0}},
+				{"id": "per_fight", "name": "Normalised per fight", "description": "Each bot's decisions in a fight share pushes_per_fight pushes, however many it made (a bot downed before deciding gets none). Skill uses are scaled the same way, rounded per fight. TODO(decision: tag-fairness).", "params": {"pushes_per_fight": 3.0}}
+			]
+		},
+		{
+			"id": "speed-range",
+			"name": "Speed range",
+			"layer": "fight",
+			"applies": "next_fight",
+			"default": "compressed",
+			"options": [
+				{"id": "wide", "name": "Wide (old)", "description": "Gauge per tick = speed: speed 3 to 11 acts up to 3.7 times as often as the slowest. No power for slow units."},
+				{"id": "compressed", "name": "Compressed, slow hits harder", "description": "Speed speed_low..speed_high maps onto charge_low..charge_high gauge per tick (threshold x gauge_scale), so the fastest acts at most 1.6 times as often as the slowest. A slower unit's damage skills deal slow_power_percent of the tempo it gives up as extra damage. TODO(decision: speed-range).", "params": {"speed_low": 3, "speed_high": 11, "charge_low": 50, "charge_high": 80, "gauge_scale": 10, "slow_power_percent": 80}}
+			]
+		},
+		{
+			"id": "strike-cost",
+			"name": "Strike cost",
+			"layer": "fight",
+			"applies": "next_fight",
+			"default": "costs",
+			"options": [
+				{"id": "free", "name": "Free Strike (old)", "description": "Strike costs nothing; energy recharges by energy in data/combat/combat_tuning.json."},
+				{"id": "costs", "name": "Strike costs energy", "description": "Strike (the basic attack) costs energy_cost; energy recharges recharge_milli_per_battery_per_tick per battery point a tick (at least recharge_floor_milli_per_tick), so a bot chooses between Strike, a bigger skill and waiting. TODO(decision: strike-cost).", "params": {"energy_cost": 1, "recharge_milli_per_battery_per_tick": 10, "recharge_floor_milli_per_tick": 60}}
+			]
+		},
+		{
+			"id": "difficulty-curve",
+			"name": "Difficulty curve",
+			"layer": "fight",
+			"applies": "next_fight",
+			"default": "tuned",
+			"options": [
+				{"id": "flat", "name": "Flat (old)", "description": "Enemy tiers from tier_by_act in data/combat/factions.json; enemy stats as listed in data/combat/enemy_tables.json."},
+				{"id": "tuned", "name": "Tuned to target win rates", "description": "tier_by_act here replaces the factions file's; every enemy fought in an act's territory gets that act's scaling (the boss stub: scaling.boss), times its tier's tier_scaling. Tuned with tools/balance_sim.gd against data/combat/difficulty_targets.json. TODO(decision: difficulty-targets).", "params": {
+					"tier_by_act": {
+						"act1": ["beginner", "beginner", "beginner", "beginner", "medium", "advanced"],
+						"act2": ["beginner", "beginner", "beginner", "beginner", "medium", "advanced"],
+						"act3": ["beginner", "beginner", "medium", "medium", "advanced", "advanced"]
+					},
+					"scaling": {
+						"act1": {"hp_percent": 107, "attack_percent": 106, "defense_percent": 100},
+						"act2": {"hp_percent": 122, "attack_percent": 117, "defense_percent": 100},
+						"act3": {"hp_percent": 110, "attack_percent": 112, "defense_percent": 100},
+						"boss": {"hp_percent": 63, "attack_percent": 70, "defense_percent": 85}
+					},
+					"tier_scaling": {
+						"beginner": {"hp_percent": 120, "attack_percent": 115, "defense_percent": 100},
+						"medium": {"hp_percent": 100, "attack_percent": 100, "defense_percent": 100},
+						"advanced": {"hp_percent": 68, "attack_percent": 78, "defense_percent": 85}
+					}
+				}}
 			]
 		},
 		{

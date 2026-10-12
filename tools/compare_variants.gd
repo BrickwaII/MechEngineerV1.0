@@ -9,7 +9,8 @@ extends SceneTree
 ##
 ## Options (defaults in data/scenarios/_dev_tools.json):
 ##   --decision ID   d-wait, d-wait-length, d-elasticity, d-personality-map,
-##                   hp-carryover, skill-progression, tag-weight or draft-rule; or a campaign decision:
+##                   hp-carryover, skill-progression, tag-weight, speed-range, strike-cost
+##                   or draft-rule; or a campaign decision:
 ##                   energy-grid, grid-cost-owner, squad-size, act-pacing,
 ##                   auto-expansion (required)
 ##   --runs N        runs per option (campaigns: campaign_compare_runs)

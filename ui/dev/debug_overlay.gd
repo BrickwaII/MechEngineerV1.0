@@ -122,7 +122,7 @@ static func snapshot(p_fight: Fight, count: int, p_intent_source: Callable = Cal
 		p_personality_source: Callable = Callable()) -> Dictionary:
 	if p_fight == null:
 		return {"header": "Debug · no fight", "units": [], "timeline": []}
-	var threshold := p_fight.tuning.action_threshold
+	var threshold := p_fight.tuning.turn_threshold()
 	var pending := p_fight.pending_actor
 	var state_text := "over: %s" % ("victory" if p_fight.outcome == FightResult.Outcome.VICTORY else "defeat") \
 		if p_fight.is_over() else ("waiting on %s" % pending.display_name if pending != null else "running")

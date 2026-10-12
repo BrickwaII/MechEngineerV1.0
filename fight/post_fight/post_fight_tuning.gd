@@ -27,10 +27,15 @@ var drift_per_push: float
 var max_drift_per_end_per_fight: float
 ## What one tagged decision counts for: FightVariants.TAG_WEIGHT_PER_ACTION
 ## (one push) or TAG_WEIGHT_PER_ENERGY (energy spent / energy_per_push pushes,
-## at least min_weight). Set from the tag-weight switch by for_variants().
+## at least min_weight), TAG_WEIGHT_PER_TURN_TIME (the ticks since the bot's
+## previous decision / ticks_per_push pushes) or TAG_WEIGHT_PER_FIGHT (each
+## bot's decisions share pushes_per_fight pushes). Set from the tag-weight
+## switch by for_variants().
 var tag_weight := FightVariants.TAG_WEIGHT_PER_ACTION
 var energy_per_push := 1.0
 var min_weight := 0.0
+var ticks_per_push := 1.0
+var pushes_per_fight := 1.0
 ## FightVariants.PROGRESSION_RANKS or PROGRESSION_FLAT, from the
 ## skill-progression switch. Ranks read `ranks`; flat levels the three below.
 var progression := FightVariants.PROGRESSION_RANKS
@@ -109,6 +114,8 @@ func apply_variants(variants: FightVariants) -> void:
 	tag_weight = variants.option(FightVariants.TAG_WEIGHT)
 	energy_per_push = variants.param_float(FightVariants.TAG_WEIGHT, "energy_per_push", 1.0)
 	min_weight = variants.param_float(FightVariants.TAG_WEIGHT, "min_weight", 0.0)
+	ticks_per_push = variants.param_float(FightVariants.TAG_WEIGHT, "ticks_per_push", 1.0)
+	pushes_per_fight = variants.param_float(FightVariants.TAG_WEIGHT, "pushes_per_fight", 1.0)
 	progression = variants.option(FightVariants.SKILL_PROGRESSION)
 
 
@@ -157,6 +164,10 @@ func validate() -> Array[String]:
 		problems.append("drift max_per_end_per_fight may not be negative")
 	if tag_weight == FightVariants.TAG_WEIGHT_PER_ENERGY and energy_per_push <= 0.0:
 		problems.append("tag-weight energy_per_push must be above 0")
+	if tag_weight == FightVariants.TAG_WEIGHT_PER_TURN_TIME and ticks_per_push <= 0.0:
+		problems.append("tag-weight ticks_per_push must be above 0")
+	if tag_weight == FightVariants.TAG_WEIGHT_PER_FIGHT and pushes_per_fight < 0.0:
+		problems.append("tag-weight pushes_per_fight may not be negative")
 	if ranks != null:
 		problems.append_array(ranks.validate())
 	if uses_per_level < 1:

@@ -21,7 +21,10 @@ extends RefCounted
 ## Each push grows its end by drift.per_push; one end grows at most
 ## drift.max_per_end_per_fight in one fight. With the tag-weight switch on
 ## per_energy, a decision counts energy spent / energy_per_push pushes (at
-## least min_weight) instead of one. The d-personality-map switch
+## least min_weight) instead of one; with per_turn_time it counts the ticks
+## since the bot's previous decision / ticks_per_push, so every bot that
+## fought the whole fight gets the same total whatever its speed; with
+## per_fight a bot's decisions share pushes_per_fight pushes. The d-personality-map switch
 ## (data/variants/variants.json) can swap the mapping for
 ## drift_rule_sets.by_target or turn drift off; see PostFightTuning.for_variants().
 
@@ -43,14 +46,40 @@ static func direction_of_pole(pole: String) -> int:
 
 
 ## What one decision counts for: 1, or by energy spent with per_energy.
+## Only for the per-decision rules (per_action, per_energy); weights() covers
+## every rule.
 ## TODO(decision: tag-weight): per_energy counts energy *spent*; a free action
 ## or a wait counts min_weight. compare_variants shows it does not close the
-## slow/fast gap (see the PR); energy gained between turns would.
+## slow/fast gap; per_turn_time and per_fight do (TODO(decision: tag-fairness)).
 static func weight_of(tag: ActionTag, tuning: PostFightTuning) -> float:
 	if tuning.tag_weight != FightVariants.TAG_WEIGHT_PER_ENERGY:
 		return 1.0
 	var spent := float(tag.energy_cost_milli) / Combatant.MILLI if tag.kind == FightAction.Kind.SKILL else 0.0
 	return maxf(tuning.min_weight, spent / maxf(tuning.energy_per_push, 0.001))
+
+
+## The weight of each of `actor_id`'s decisions in `tags`, in order.
+## TODO(decision: tag-fairness): which rule closes the slow/fast gap, and its
+## numbers (ticks_per_push, pushes_per_fight), are stand-ins.
+static func weights(tags: Array[ActionTag], actor_id: String, tuning: PostFightTuning) -> Array[float]:
+	var mine: Array[ActionTag] = []
+	for tag in tags:
+		if tag.actor_id == actor_id:
+			mine.append(tag)
+	var out: Array[float] = []
+	match tuning.tag_weight:
+		FightVariants.TAG_WEIGHT_PER_TURN_TIME:
+			var previous := 0
+			for tag in mine:
+				out.append(float(maxi(0, tag.tick - previous)) / maxf(tuning.ticks_per_push, 0.001))
+				previous = tag.tick
+		FightVariants.TAG_WEIGHT_PER_FIGHT:
+			for tag in mine:
+				out.append(maxf(0.0, tuning.pushes_per_fight) / mine.size())
+		_:
+			for tag in mine:
+				out.append(weight_of(tag, tuning))
+	return out
 
 
 ## Weighted pushes per end from `actor_id`'s decisions in `tags`. Every end
@@ -59,10 +88,13 @@ static func tally(tags: Array[ActionTag], actor_id: String, tuning: PostFightTun
 	var pushes: Dictionary[String, float] = {}
 	for pole in Personality.ENDS:
 		pushes[pole] = 0.0
+	var each := weights(tags, actor_id, tuning)
+	var i := 0
 	for tag in tags:
 		if tag.actor_id != actor_id:
 			continue
-		var weight := weight_of(tag, tuning)
+		var weight := each[i]
+		i += 1
 		for rule in tuning.drift_rules:
 			if rule.matches(tag) and pushes.has(rule.pole):
 				pushes[rule.pole] += weight

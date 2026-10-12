@@ -10,12 +10,14 @@ extends RefCounted
 ## bonus, see SkillRanks).
 ## A guarded target takes max(min_damage, damage x (100 - guard%) / 100) from
 ## its next hit; see damage_to(). `bonus_percent` raises the raw damage (the
-## d-wait "bonus_damage" option); elasticity applies by the d-elasticity
-## switch, see ElasticityRules.
+## d-wait "bonus_damage" option), and a slow attacker hits harder under the
+## speed-range "compressed" option (SpeedRules); elasticity applies by the
+## d-elasticity switch, see ElasticityRules.
 
 
 @warning_ignore("integer_division")
 static func damage(attacker: UnitStats, defender: UnitStats, skill: CombatSkill, tuning: CombatTuning, bonus_percent := 0) -> int:
+	bonus_percent += SpeedRules.power_bonus_percent(attacker.speed, tuning)
 	var raw := (attacker.attack * skill.power_percent * (100 + bonus_percent) / 100
 		- defender.defense * tuning.defense_percent * (100 - clampi(skill.pierce_percent, 0, 100)) / 100)
 	var base := maxi(tuning.min_damage, raw / 100)

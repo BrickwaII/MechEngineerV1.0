@@ -55,7 +55,7 @@ static func _apply_to_bot(bot: Bot, all_tags: Array[ActionTag], ledger: SkillUse
 	r.pole_pushes = PersonalityDrift.tally(all_tags, bot.id, tuning)
 	PersonalityDrift.apply(bot.personality, PersonalityDrift.growth(r.pole_pushes, tuning))
 	r.personality_after = PersonalityDrift.values_of(bot.personality)
-	r.skill_changes = SkillProgress.apply(bot, SkillProgress.count_uses(all_tags, bot.id), ledger, tuning, combat)
+	r.skill_changes = SkillProgress.apply(bot, SkillProgress.count_uses(all_tags, bot.id, tuning), ledger, tuning, combat)
 	return r
 
 

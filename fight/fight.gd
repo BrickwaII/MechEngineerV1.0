@@ -52,7 +52,7 @@ func _init(p_request: FightRequest, p_seed: int, p_tuning: CombatTuning = null, 
 		_invalid_reason = "no enemy table entry for defense level %d" % request.defense_level
 	else:
 		_build_roster(rng)
-	timeline = Timeline.new(combatants, tuning.action_threshold)
+	timeline = Timeline.new(combatants, tuning.turn_threshold())
 	_log("fight start: %s level %d, seed %d" % [
 		FightRequest.Kind.keys()[request.kind].to_lower(), request.defense_level, fight_seed])
 	for c in combatants:
@@ -202,7 +202,7 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 	if skill.is_heal():
 		var hp_before := target.hp
 		target.hp += DamageRules.heal(actor.stats, target.hp, target.max_hp, skill)
-		actor.finish_action(tuning.action_threshold)
+		actor.finish_action(tuning.turn_threshold())
 		var healed := _event(FightEvent.Kind.HEAL, actor, target, skill)
 		healed.amount = target.hp - hp_before
 		healed.hp_before = hp_before
@@ -222,7 +222,7 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 	if skill.is_guard():
 		target.guard_percent = maxi(target.guard_percent, skill.power_percent)
 		target.reflect_percent = maxi(target.reflect_percent, skill.reflect_percent)
-		actor.finish_action(tuning.action_threshold)
+		actor.finish_action(tuning.turn_threshold())
 		var guarded := _event(FightEvent.Kind.GUARD, actor, target, skill)
 		guarded.amount = target.guard_percent
 		_raise(guarded)
@@ -235,7 +235,7 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 		targets = opponents_of(actor)
 	var bonus := WaitRules.damage_bonus_percent(actor.is_waiting(), tuning)
 	var weakest := DamageRules.weakest(targets) if skill.weakest_bonus_percent > 0 else null
-	actor.finish_action(tuning.action_threshold)
+	actor.finish_action(tuning.turn_threshold())
 	for t in targets:
 		_hit(actor, t, skill, energy_before, bonus + (skill.weakest_bonus_percent if t == weakest else 0))
 
@@ -353,9 +353,9 @@ func _build_roster(rng: RandomNumberGenerator) -> void:
 			SquadSkills.ids_for(member, tuning), tuning, SquadSkills.overrides_for(member, tuning)))
 		order += 1
 	var counts := {}
-	for enemy_id in enemy_table.pick_for(request, rng, tuning.variants.option(FightVariants.ENEMY_FACTIONS)):
+	for enemy_id in enemy_table.pick_for(request, rng, tuning.variants.option(FightVariants.ENEMY_FACTIONS), tuning):
 		counts[enemy_id] = counts.get(enemy_id, 0) + 1
-		var stats := enemy_table.stats_of(enemy_id)
+		var stats := enemy_table.stats_for(enemy_id, request, tuning)
 		combatants.append(Combatant.new(
 			"%s#%d" % [enemy_id, counts[enemy_id]],
 			"%s %d" % [enemy_table.name_of(enemy_id), counts[enemy_id]],
