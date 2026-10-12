@@ -410,3 +410,18 @@ func test_reaching_the_loss_limit_ends_the_run_on_the_run_over_screen() -> void:
 	# A run journal's replay still matches up to the end.
 	var ended := _journal().filter(func(l: Dictionary) -> bool: return l.kind == "run_end")
 	assert_int(ended.size()).is_equal(1)
+
+
+func test_won_and_lost_fights_count_in_the_summary() -> void:
+	await _open(true)
+	await _draft()
+	var c: Campaign = _flow.overworld.campaign
+	var request := FightRequest.new(FightRequest.Kind.ATTACK, "x", 1, c.squad_provider.get_squad())
+	c.fight_finished.emit(request, FightResult.new(FightResult.Outcome.DEFEAT))
+	c.changed.emit()
+	c.fight_finished.emit(request, FightResult.new(FightResult.Outcome.VICTORY))
+	c.fight_finished.emit(request, FightResult.new(FightResult.Outcome.DEFEAT))
+	c.changed.emit()
+	var summary := RunFolder.read_summary(_flow.run_dir)
+	assert_int(int(summary.fights_won)).is_equal(1)
+	assert_int(int(summary.fights_lost)).is_equal(2)
