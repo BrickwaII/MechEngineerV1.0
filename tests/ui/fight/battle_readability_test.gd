@@ -4,6 +4,7 @@ extends GdUnitTestSuite
 ## card, and the NEXT bar's hover and order preview.
 
 const Helpers := preload("res://tests/ui/fight/fight_ui_helpers.gd")
+const StatusRowScript := preload("res://ui/fight/status_row.gd")
 
 var _runner: GdUnitSceneRunner
 var _screen: BattleScreen
@@ -193,5 +194,17 @@ func test_no_preview_text_sits_under_the_sprites() -> void:
 		assert_bool(panel.preview_label.visible).is_false()
 		if panel.is_enemy:
 			assert_bool(panel.intent_row.visible).is_false()
-	# The log stays.
-	assert_bool(_screen.log_label.visible).is_true()
+	# The log stays, collapsed until opened (ui/README.md rule 5).
+	assert_bool(_screen.log_label.visible).is_false()
+	assert_bool(_screen.log_toggle.visible).is_true()
+
+
+func test_status_icons_show_only_their_number_and_tooltip_the_word() -> void:
+	assert_str(StatusRowScript.number_of("GUARD 40%")).is_equal("40%")
+	assert_str(StatusRowScript.number_of("CHARGE >6")).is_equal(">6")
+	assert_str(StatusRowScript.number_of("LOW EN")).is_empty()
+	var row = auto_free(StatusRowScript.new())
+	row.show_statuses({"guard": "GUARD 40%", "low_energy": "LOW EN"})
+	var guard: Control = row.get_node("Status_guard")
+	assert_str(UiTooltip.spec(guard)["numbers"]).is_equal("GUARD 40%")
+	assert_str(row.text()).is_equal("GUARD 40% · LOW EN")

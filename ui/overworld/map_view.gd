@@ -22,7 +22,10 @@ const Palette := preload("res://ui/overworld/palette.gd")
 
 signal region_selected(region_id: String)
 
-const SHORT_NAMES := {MapRegion.POWER: "PWR", MapRegion.ENERGY: "ENG", MapRegion.MATERIAL: "MAT"}
+## Resource key -> its icon id in data/ui/icons.json (ui/README.md rule 1).
+const CHIP_ICONS := {MapRegion.POWER: "grid_power", MapRegion.ENERGY: "map_energy", MapRegion.MATERIAL: "material"}
+## Label icons are the 12 px art at 1x, to fit the 16 px label strips.
+const LABEL_ICON := 12.0
 const RING_RADIUS := 19.0
 const RING_WIDTH := 6.0
 const PIP := 7.0
@@ -394,7 +397,7 @@ func _node_rect(region: MapRegion, center: Vector2, compact: bool) -> Rect2:
 		w = maxf(w, _chips_width(font, _chips(region)))
 		w = maxf(w, font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x + 14.0)
 		if not owned:
-			w = maxf(w, font.get_string_size("DEF", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x + MapRegion.MAX_DEFENSE * (PIP + 2.0) + 15.0)
+			w = maxf(w, LABEL_ICON + MapRegion.MAX_DEFENSE * (PIP + 2.0) + 15.0)
 	return Rect2(center - Vector2(w, h) / 2.0, Vector2(w, h)).grow(NODE_MARGIN)
 
 
@@ -559,12 +562,12 @@ func _draw_ring(at: Vector2, region_id: String, radius: float, width: float, wit
 ## Defense pips; the last `fortified` of them, gained by fortifying, in the
 ## fortify color.
 func _draw_pips(font: Font, top_center: Vector2, defense: int, fortified := 0) -> void:
-	var label_w := font.get_string_size("DEF", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x
+	var label_w := LABEL_ICON
 	var pips_w := MapRegion.MAX_DEFENSE * (PIP + 2.0) - 2.0
 	var w := label_w + 5.0 + pips_w + 12.0
 	var x := top_center.x - w / 2.0
 	draw_rect(Rect2(x, top_center.y, w, 16.0), Palette.LABEL_BACK)
-	draw_string(font, Vector2(x + 6.0, top_center.y + 12.0), "DEF", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL, Palette.DEFENSE_TEXT)
+	draw_texture_rect(UiIcons.texture("defense_level"), Rect2(x + 6.0, top_center.y + 2.0, LABEL_ICON, LABEL_ICON), false)
 	var px := x + 6.0 + label_w + 5.0
 	for i in MapRegion.MAX_DEFENSE:
 		var pip := Rect2(px + i * (PIP + 2.0), top_center.y + 4.5, PIP, PIP)
@@ -580,7 +583,7 @@ func _draw_fortify_mark(font: Font, region_id: String, top_center: Vector2) -> v
 	var levels := campaign.escalation.fortify_of(region_id)
 	if levels <= 0:
 		return
-	var label_w := font.get_string_size("DEF", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x
+	var label_w := LABEL_ICON
 	var x := top_center.x + (label_w + 5.0 + MapRegion.MAX_DEFENSE * (PIP + 2.0) - 2.0 + 12.0) / 2.0 + 2.0
 	var text := "+%d" % levels
 	var w := 16.0 + font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x + 6.0
@@ -608,7 +611,7 @@ func _chips(region: MapRegion) -> Array:
 	var chips := []
 	for key in MapRegion.RESOURCE_KEYS:
 		if region.provides[key] > 0:
-			chips.append([key, "%s %d" % [SHORT_NAMES[key], region.provides[key]]])
+			chips.append([key, str(region.provides[key])])
 	return chips
 
 
@@ -617,7 +620,7 @@ func _chips_width(font: Font, chips: Array) -> float:
 		return 0.0
 	var total := 6.0
 	for chip: Array in chips:
-		total += 8.0 + 3.0 + font.get_string_size(chip[1], HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x + 6.0
+		total += LABEL_ICON + 2.0 + font.get_string_size(chip[1], HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x + 6.0
 	return total
 
 
@@ -626,14 +629,14 @@ func _draw_chips(font: Font, chips: Array, center_x: float, top: float) -> void:
 		return
 	var widths := []
 	for chip: Array in chips:
-		widths.append(8.0 + 3.0 + font.get_string_size(chip[1], HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x)
+		widths.append(LABEL_ICON + 2.0 + font.get_string_size(chip[1], HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x)
 	var total := _chips_width(font, chips)
 	var x := center_x - total / 2.0
 	draw_rect(Rect2(x, top, total, 16.0), Palette.LABEL_BACK)
 	x += 6.0
 	for i in chips.size():
-		draw_rect(Rect2(x, top + 4.0, 8.0, 8.0), Palette.resource_color(chips[i][0]))
-		draw_string(font, Vector2(x + 11.0, top + 12.0), chips[i][1], HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL, Palette.TEXT)
+		draw_texture_rect(UiIcons.texture(CHIP_ICONS[chips[i][0]]), Rect2(x, top + 2.0, LABEL_ICON, LABEL_ICON), false)
+		draw_string(font, Vector2(x + LABEL_ICON + 2.0, top + 12.0), chips[i][1], HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL, Palette.TEXT)
 		x += widths[i] + 6.0
 
 

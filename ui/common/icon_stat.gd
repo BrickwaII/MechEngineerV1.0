@@ -55,7 +55,8 @@ func value_text() -> String:
 func _build() -> void:
 	name = "IconStat_%s" % icon_id
 	add_theme_constant_override("separation", 2)
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	# PASS: hover shows the tooltip, clicks still reach the card or panel under it.
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	icon_rect = UiIcons.rect(icon_id)
 	add_child(icon_rect)
 	value_label = Label.new()

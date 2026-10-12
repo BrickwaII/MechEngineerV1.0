@@ -42,7 +42,9 @@ func test_the_panel_shows_the_simulated_label_and_rate() -> void:
 		screen.campaign.squad_provider.get_squad(), "hydro_dam", screen.campaign.defense_of("hydro_dam"),
 		screen.odds.run_seed)
 	assert_str(_odds_line(screen)).is_equal("%s · %d%%" % [e.label.to_upper(), e.percent()])
-	assert_bool(OverworldTestHelpers.panel_has_text(screen, "auto-player fights differently")).is_true()
+	# How the odds are made sits in the row's tooltip (ui/README.md rule 5).
+	var row: Control = screen._panel.find_child("Odds", true, false)
+	assert_str(UiTooltip.spec(row).get("body", "")).contains("auto-player fights differently")
 
 
 func test_estimates_play_over_frames_without_being_asked() -> void:

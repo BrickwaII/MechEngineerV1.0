@@ -37,14 +37,15 @@ static func rank_text(step: int) -> String:
 func _init() -> void:
 	focus_mode = Control.FOCUS_NONE
 	clip_contents = true
-	custom_minimum_size = UiIcons.kit_vector("skill_card.size", Vector2(176, 96))
+	custom_minimum_size = UiIcons.kit_vector("skill_card.size", Vector2(196, 136))
 	var col := VBoxContainer.new()
 	col.name = "Face"
 	col.set_anchors_preset(Control.PRESET_FULL_RECT)
-	col.offset_left = 6
-	col.offset_top = 4
-	col.offset_right = -6
-	col.offset_bottom = -4
+	var pad := UiIcons.kit_vector("skill_card.padding", Vector2(12, 8))
+	col.offset_left = pad.x
+	col.offset_top = pad.y
+	col.offset_right = -pad.x
+	col.offset_bottom = -pad.y
 	col.add_theme_constant_override("separation", 2)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(col)
@@ -83,10 +84,13 @@ func _init() -> void:
 	rank_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	UiTooltip._bold(rank_label, FeelData.color(str(UiIcons.kit("skill_card.rank_color", "preview"))))
 	top.add_child(rank_label)
-	# The name on its own line, smaller when it would not fit.
+	# The name on its own line; a long one wraps onto a second line at the
+	# same size (text on cards is never smaller than the body font).
 	name_label = Label.new()
 	name_label.name = "Name"
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.max_lines_visible = 2
 	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	UiTooltip._bold(name_label, FeelData.color("text_bright"))
@@ -99,7 +103,7 @@ func _init() -> void:
 	effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	effect_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	effect_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	effect_label.add_theme_font_size_override("normal_font_size", PixelTheme.font_size("small"))
+	effect_label.add_theme_font_size_override("normal_font_size", PixelTheme.font_size("body"))
 	effect_label.add_theme_color_override("default_color", FeelData.color("text"))
 	col.add_child(effect_label)
 
@@ -110,9 +114,6 @@ func set_skill(p_name: String, p_cost: int, p_effect: String, p_rank := "") -> v
 	effect = p_effect
 	rank = p_rank
 	name_label.text = skill_name
-	var room := custom_minimum_size.x - 16
-	var fits := PixelTheme.font().get_string_size(skill_name, HORIZONTAL_ALIGNMENT_LEFT, -1, PixelTheme.font_size("body")).x <= room
-	name_label.add_theme_font_size_override("font_size", PixelTheme.font_size("body" if fits else "small"))
 	rank_label.text = rank
 	rank_label.visible = not rank.is_empty()
 	cost_label.text = str(cost)

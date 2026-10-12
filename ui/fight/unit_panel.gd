@@ -19,20 +19,11 @@ const UnitDetail := preload("res://ui/fight/unit_detail.gd")
 
 enum Highlight { NONE, ACTIVE, SELECTED, TARGETABLE }
 
-const INTENT_ICONS := {
-	"attack": preload("res://assets/fight/icons/intent_attack.png"),
-	"heal": preload("res://assets/fight/icons/intent_heal.png"),
-	"wait": preload("res://assets/fight/icons/intent_charge.png"),
-	"guard": preload("res://assets/fight/icons/intent_guard.png"),
-}
 const CARD_WIDTH := 320
-## Stat id -> icon, in chip order.
-const STAT_ICONS := {
-	"atk": preload("res://assets/fight/icons/stat_attack.png"),
-	"def": preload("res://assets/fight/icons/stat_defense.png"),
-	"spd": preload("res://assets/fight/icons/stat_speed.png"),
-	"bat": preload("res://assets/fight/icons/stat_battery.png"),
-}
+## Stat id -> its icon id in data/ui/icons.json, in chip order.
+const STAT_ICON_IDS := {"atk": "atk", "def": "def", "spd": "spd", "bat": "battery"}
+## Intent kind -> its icon id in data/ui/icons.json.
+const INTENT_ICON_IDS := {"attack": "intent_attack", "heal": "intent_heal", "wait": "intent_charge", "guard": "intent_guard"}
 
 signal clicked(unit_id: String, button_index: MouseButton)
 signal hovered(unit_id: String, inside: bool)
@@ -65,6 +56,13 @@ var intent_kind := ""
 var intent_would_change := false
 ## Stat id ("atk", "def", "spd", "bat") -> its number label.
 var stat_labels: Dictionary[String, Label] = {}
+## Stat id -> its IconStat (icon, number, tooltip).
+var stat_icons: Dictionary[String, IconStat] = {}
+## The personality tag as its trait icon; the tag word is in its tooltip.
+var trait_icon: IconStat
+## Enemies: the intent as an icon and its number at the top of the card
+## (ui/README.md rule 4). Hidden while there is no intent.
+var intent_chip: IconStat
 ## The row holding the intent icon and words. Hidden: arrows carry intents.
 var intent_row: HBoxContainer
 ## The enemy's intent in words, for the detail card.
@@ -111,26 +109,26 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 	name_label.add_theme_color_override("font_color", FeelData.color("text_bright"))
 	name_label.clip_text = true
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if is_enemy:
+		intent_chip = IconStat.make("intent_attack")
+		intent_chip.name = "IntentChip"
+		intent_chip.visible = false
+		name_row.add_child(intent_chip)
 	var stat_row := HBoxContainer.new()
 	stat_row.name = "StatRow"
 	stat_row.add_theme_constant_override("separation", int(ReadoutStyle.number("stats.gap_px", 6)))
 	stat_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(stat_row)
-	for id: String in STAT_ICONS:
-		var icon := TextureRect.new()
-		icon.texture = STAT_ICONS[id]
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		var icon_px := ReadoutStyle.number("stats.icon_px", 12)
-		icon.custom_minimum_size = Vector2(icon_px, icon_px)
-		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		stat_row.add_child(icon)
-		var value := _label(stat_row, "", "SmallLabel")
-		value.name = "Stat_%s" % id
-		value.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		value.add_theme_color_override("font_color", ReadoutStyle.color("stats.text"))
-		stat_labels[id] = value
+	for id: String in STAT_ICON_IDS:
+		var stat := IconStat.make(STAT_ICON_IDS[id])
+		stat.name = "IconStat_%s" % id
+		stat.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		stat.value_label.name = "Stat_%s" % id
+		stat.value_label.theme_type_variation = &"SmallLabel"
+		stat.value_label.add_theme_color_override("font_color", ReadoutStyle.color("stats.text"))
+		stat_row.add_child(stat)
+		stat_icons[id] = stat
+		stat_labels[id] = stat.value_label
 	hp_bar = PreviewBar.new()
 	hp_bar.name = "HpBar"
 	hp_bar.kind = "hp"
@@ -161,6 +159,10 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 	tag_label = _label(status_line, "", "SmallLabel")
 	tag_label.name = "TagLabel"
 	tag_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	trait_icon = IconStat.make("unknown")
+	trait_icon.name = "TraitIcon"
+	trait_icon.visible = false
+	status_line.add_child(trait_icon)
 	if is_enemy:
 		intent_row = HBoxContainer.new()
 		intent_row.name = "IntentRow"
@@ -234,7 +236,16 @@ func set_meters(hp: int, energy: int) -> void:
 ## `kind` is the intent's kind ("attack", "heal", "wait") or "".
 func show_intent(tag: String, intent: String, change: String, kind := "") -> void:
 	tag_label.text = tag
-	tag_label.visible = not tag.is_empty()
+	# A known trait shows as its icon, the word in the tooltip; anything else
+	# (a "balanced" bot, a mixed tag) keeps the word.
+	var trait_id := "trait_%s" % tag.to_lower()
+	var has_icon := UiIcons.has(trait_id)
+	tag_label.visible = not tag.is_empty() and not has_icon
+	trait_icon.visible = has_icon
+	if has_icon and trait_icon.icon_id != trait_id:
+		trait_icon.icon_id = trait_id
+		trait_icon.icon_rect.texture = UiIcons.texture(trait_id)
+		trait_icon.set_value(null)
 	intent_changed = not change.is_empty()
 	intent_kind = kind if not intent.is_empty() else ""
 	intent_text = intent
@@ -242,13 +253,31 @@ func show_intent(tag: String, intent: String, change: String, kind := "") -> voi
 		intent_label.text = "Intent: %s" % (intent if not intent.is_empty() else "-")
 		intent_label.add_theme_color_override(
 			"font_color", FeelData.color("changed") if intent_changed else FeelData.color("text"))
-		intent_icon.texture = INTENT_ICONS.get(intent_kind)
+		intent_icon.texture = UiIcons.texture(INTENT_ICON_IDS[intent_kind]) if INTENT_ICON_IDS.has(intent_kind) else null
 		intent_icon.visible = intent_icon.texture != null
 		change_label.text = change
 		# The reason shows in the detail card; the status row says CHANGED.
 		change_label.visible = false
 	_update_statuses()
 	_apply_style()
+
+
+## Shows the enemy's intent as an icon and its number at the top of the card:
+## `kind` "attack" | "heal" | "wait" | "guard" | "" (hidden), `amount` the
+## badge's number ("6", "+8", "40%", "?") or "".
+func show_intent_chip(kind: String, amount: String) -> void:
+	if intent_chip == null:
+		return
+	var icon_id: String = INTENT_ICON_IDS.get(kind, "")
+	intent_chip.visible = not icon_id.is_empty()
+	if icon_id.is_empty():
+		return
+	if intent_chip.icon_id != icon_id:
+		intent_chip.icon_id = icon_id
+		intent_chip.icon_rect.texture = UiIcons.texture(icon_id)
+	intent_chip.value_label.add_theme_color_override("font_color", FeelData.color("changed") if intent_changed else UiIcons.color(icon_id))
+	intent_chip.set_tip_text(intent_text if not intent_text.is_empty() else UiIcons.text(icon_id))
+	intent_chip.set_value(amount if not amount.is_empty() else null)
 
 
 ## Holds what the previewed choice would do to this unit in words ("" for
@@ -356,12 +385,12 @@ func _apply_style() -> void:
 ## The stat chips: ATK, DEF (with the guard on top, while guarded), SPD, BAT.
 func _update_stats(unit: Combatant) -> void:
 	var s := unit.stats
-	stat_labels["atk"].text = str(s.attack)
-	stat_labels["def"].text = str(s.defense) if unit.guard_percent <= 0 else "%d+%d%%" % [s.defense, unit.guard_percent]
+	stat_icons["atk"].set_value(s.attack)
+	stat_icons["def"].set_value(str(s.defense) if unit.guard_percent <= 0 else "%d+%d%%" % [s.defense, unit.guard_percent])
 	stat_labels["def"].add_theme_color_override("font_color",
 		ReadoutStyle.color("stats.guarded_text" if unit.guard_percent > 0 else "stats.text"))
-	stat_labels["spd"].text = str(s.speed)
-	stat_labels["bat"].text = str(s.battery_capacity)
+	stat_icons["spd"].set_value(s.speed)
+	stat_icons["bat"].set_value(s.battery_capacity)
 
 
 ## The stat chips as words: "ATK 8 DEF 3 SPD 7 BAT 10".
