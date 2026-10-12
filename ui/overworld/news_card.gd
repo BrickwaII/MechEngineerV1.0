@@ -92,7 +92,7 @@ func _show(card: Dictionary) -> void:
 	(get_theme_stylebox("panel") as StyleBoxFlat).border_color = color
 	_icon.texture = UiIcons.texture("fortify" if fortified else "alert")
 	_headline.text = str(card.get("headline", ""))
-	_body.text = UiGlossary.highlight(str(card.get("body", "")), UiGlossary.color())
+	UiGlossary.set_text(_body, str(card.get("body", "")))
 	_left = float(Escalation.load_data().get("ui", {}).get("news_seconds", 6.0))
 	visible = true
 	# A toast: fades in, and fades out over its last moments (see _process).

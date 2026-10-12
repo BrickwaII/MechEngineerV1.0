@@ -10,6 +10,8 @@ extends RefCounted
 const PATH := "res://data/ui/glossary.json"
 ## Meta prefix of a keyword link.
 const LINK := "kw:"
+## Label meta holding its plain text, for restyle().
+const TEXT_META := &"ui_keyword_text"
 
 static var _forms := {}
 static var _re: RegEx
@@ -40,10 +42,13 @@ static func find_keywords(text: String) -> Array[String]:
 	return found
 
 
-## `text` as BBCode with each keyword a colored, underlined link to its box:
-## [url=kw:Pierce][color=#ffe08a][u]Piercing[/u][/color][/url]. Brackets in
-## `text` are escaped.
-static func highlight(text: String, color: Color) -> String:
+## `text` as BBCode with each keyword a colored link to its box, with a
+## dotted underline that follows wrapped lines (RichTextLabel draws [hint]
+## dashed; the empty hint shows no tooltip of its own):
+##   [url=kw:Pierce][hint=][color=#ffe08a]Piercing[/color][/hint][/url]
+## Keywords in `active` (hovered or pinned) get the active look: bright text
+## on a highlight. Brackets in `text` are escaped.
+static func highlight(text: String, color: Color, active: Array = []) -> String:
 	var escaped := text.replace("[", "[lb]")
 	var out := ""
 	var at := 0
@@ -52,7 +57,11 @@ static func highlight(text: String, color: Color) -> String:
 		if k.is_empty():
 			continue
 		out += escaped.substr(at, m.get_start(1) - at)
-		out += "[url=%s%s][color=#%s][u]%s[/u][/color][/url]" % [LINK, k, color.to_html(false), m.get_string(1)]
+		if k in active:
+			out += "[url=%s%s][hint=][bgcolor=#%s][color=#%s]%s[/color][/bgcolor][/hint][/url]" % [
+				LINK, k, active_back().to_html(false), FeelData.color("text_bright").to_html(false), m.get_string(1)]
+		else:
+			out += "[url=%s%s][hint=][color=#%s]%s[/color][/hint][/url]" % [LINK, k, color.to_html(false), m.get_string(1)]
 		at = m.get_end(1)
 	return out + escaped.substr(at)
 
@@ -68,12 +77,31 @@ static func color() -> Color:
 	return FeelData.color(str(UiIcons.kit("tooltip.keyword_color", "preview")))
 
 
+## The highlight behind a hovered or pinned keyword.
+static func active_back() -> Color:
+	return FeelData.color(str(UiIcons.kit("tooltip.keyword_active_back", "panel_border_light")))
+
+
+## Shows `text` in a wired `label` with its keywords highlighted, and keeps
+## the plain text so the label can restyle when a keyword is hovered or pinned.
+static func set_text(label: RichTextLabel, text: String) -> void:
+	label.set_meta(TEXT_META, text)
+	restyle(label, KeywordPopup.shown() if KeywordPopup.is_tracked(label) else [])
+
+
+## Redraws `label`'s keywords with those in `active` in the active look.
+static func restyle(label: RichTextLabel, active: Array) -> void:
+	if label.has_meta(TEXT_META):
+		label.text = highlight(str(label.get_meta(TEXT_META)), color(), active)
+
+
 ## Makes `label`'s keyword links live: hover shows the keyword's box, click
 ## pins it. The label passes other clicks on to what is under it.
 static func wire(label: RichTextLabel) -> void:
 	if label.meta_hover_started.is_connected(KeywordPopup.hover):
 		return
 	label.meta_underlined = false
+	label.hint_underlined = true
 	# PASS: the label sees its links, other clicks reach the card or button under it.
 	label.mouse_filter = Control.MOUSE_FILTER_PASS
 	label.meta_hover_started.connect(KeywordPopup.hover.bind(label))
@@ -92,8 +120,8 @@ static func rich(text: String, font_size: int, text_color := Color(0, 0, 0, 0), 
 		r.custom_minimum_size.x = width
 	r.add_theme_font_size_override("normal_font_size", font_size)
 	r.add_theme_color_override("default_color", text_color if text_color.a > 0.0 else FeelData.color("text"))
-	r.text = highlight(text, color())
 	wire(r)
+	set_text(r, text)
 	return r
 
 

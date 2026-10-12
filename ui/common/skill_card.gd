@@ -118,7 +118,7 @@ func set_skill(p_name: String, p_cost: int, p_effect: String, p_rank := "") -> v
 	rank_label.text = rank
 	rank_label.visible = not rank.is_empty()
 	cost_label.text = str(cost)
-	effect_label.text = UiGlossary.highlight(effect, UiTooltip._keyword_color())
+	UiGlossary.set_text(effect_label, effect)
 	_retip()
 
 
