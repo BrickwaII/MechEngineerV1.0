@@ -195,6 +195,29 @@
 			]
 		},
 		{
+			"id": "loss-limit",
+			"name": "Loss limit",
+			"layer": "campaign",
+			"applies": "next_run",
+			"default": "three_per_act",
+			"options": [
+				{"id": "three_per_act", "name": "Third loss in an act ends the run", "description": "Every lost battle costs stakes.loss_cost (data/tuning/overworld.json). The limit-th lost battle in one act ends the run; the count starts again in each act. Losing the boss fight always ends the run.", "params": {"limit": 3}},
+				{"id": "one_loss", "name": "First loss ends the run", "description": "As three_per_act with a limit of 1.", "params": {"limit": 1}},
+				{"id": "unlimited", "name": "Unlimited", "description": "Losses cost resources but never end the run; only losing every region or the boss fight does.", "params": {"limit": 0}}
+			]
+		},
+		{
+			"id": "resource-uses",
+			"name": "What Energy and Material buy",
+			"layer": "campaign",
+			"applies": "next_run",
+			"default": "split",
+			"options": [
+				{"id": "split", "name": "Energy moves, Material builds", "description": "Energy pays for REINFORCE and RETREAT; Material pays for BREACH (lower an attacked region's defense) and REPAIR (restore grid). Each use's cost is {energy, material} below; a use that costs nothing is not offered.", "params": {"reinforce": {"energy": 4}, "retreat": {"energy": 10}, "breach": {"material": 6}, "repair": {"material": 5}}},
+				{"id": "swapped", "name": "Material holds, Energy strikes", "description": "Material pays for REINFORCE and REPAIR; Energy pays for RETREAT and BREACH (an overcharged assault).", "params": {"reinforce": {"material": 3}, "retreat": {"energy": 10}, "breach": {"energy": 15}, "repair": {"material": 5}}}
+			]
+		},
+		{
 			"id": "tier-rule",
 			"name": "Bot tier rule",
 			"layer": "bot_data",

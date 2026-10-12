@@ -5,7 +5,8 @@ extends RefCounted
 ##
 ##   1. A forced defense is fought first.
 ##   2. When a held region's pressure is at reinforce_at or above, reinforce
-##      the one under the most pressure (file order on a tie).
+##      the one under the most pressure (file order on a tie), if the
+##      reinforce cost can be paid.
 ##   3. Otherwise attack the weakest region in range (lowest defense, file
 ##      order on a tie), if the grid holds that attack's expected cost.
 ##   4. Otherwise wait.
@@ -88,7 +89,7 @@ func play(run_seed: int) -> Record:
 	while true:
 		_play_act(c, r, run_seed)
 		r.days_used += ceili(float(c.state.time_points) / c.tuning.points_per_day)
-		if c.is_lost() or not r.problems.is_empty():
+		if c.is_defeated() or not r.problems.is_empty():
 			break
 		r.acts_cleared += 1
 		if not plan.has_next(c.state.act):
@@ -133,8 +134,7 @@ func _play_act(c: Campaign, r: Record, run_seed: int) -> void:
 		actions += 1
 		r.actions += 1
 		var hot := _most_pressed(c)
-		if not hot.is_empty():
-			c.reinforce(hot)
+		if not hot.is_empty() and c.reinforce(hot):
 			continue
 		var target := _weakest_in_range(c)
 		if not target.is_empty() and c.state.grid >= c.attack_grid_cost(target):
