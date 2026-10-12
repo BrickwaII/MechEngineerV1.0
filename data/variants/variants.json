@@ -248,6 +248,18 @@
 			]
 		},
 		{
+			"id": "escalation",
+			"name": "Escalation",
+			"layer": "campaign",
+			"applies": "next_run",
+			"default": "on",
+			"options": [
+				{"id": "on", "name": "On, at 1/3 and 2/3 held (current)", "description": "Each act has three alert tiers (data/tuning/escalation.json). Holding 1/3 of the act's map raises every hostile region one tier, 2/3 raises it again; tiers never drop. Enemy units follow the tier, and hostile regions left alone on alert fortify."},
+				{"id": "off", "name": "Off", "description": "Every region fights at its own defense all act and nothing fortifies: the difficulty before escalation."},
+				{"id": "quarters", "name": "On, at 1/4 and 1/2 held", "description": "As on, but the alert rises sooner: at 1/4 and then 1/2 of the act's map held.", "params": {"thresholds": [{"held": 1, "of": 4}, {"held": 1, "of": 2}]}}
+			]
+		},
+		{
 			"id": "loss-limit",
 			"name": "Loss limit",
 			"layer": "campaign",
@@ -268,6 +280,17 @@
 			"options": [
 				{"id": "split", "name": "Energy moves, Material builds", "description": "Energy pays for REINFORCE and RETREAT; Material pays for BREACH (lower an attacked region's defense) and REPAIR (restore grid). Each use's cost is {energy, material} below; a use that costs nothing is not offered.", "params": {"reinforce": {"energy": 4}, "retreat": {"energy": 10}, "breach": {"material": 6}, "repair": {"material": 5}}},
 				{"id": "swapped", "name": "Material holds, Energy strikes", "description": "Material pays for REINFORCE and REPAIR; Energy pays for RETREAT and BREACH (an overcharged assault).", "params": {"reinforce": {"material": 3}, "retreat": {"energy": 10}, "breach": {"energy": 15}, "repair": {"material": 5}}}
+			]
+		},
+		{
+			"id": "resource-cap",
+			"name": "Resource storage cap",
+			"layer": "campaign",
+			"applies": "next_run",
+			"default": "capped",
+			"options": [
+				{"id": "capped", "name": "Capped storage", "description": "Energy and Material each store at most stakes.cap base + per_region x regions held (data/tuning/overworld.json). Income past the cap is lost; the act zoom carries at most the new act's cap."},
+				{"id": "uncapped", "name": "Uncapped", "description": "Stock grows without limit."}
 			]
 		},
 		{

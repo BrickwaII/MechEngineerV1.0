@@ -28,6 +28,9 @@ signal fight_started(request: FightRequest)
 signal fight_finished(request: FightRequest, result: FightResult)
 ## A region auto-expansion took without a fight.
 signal expanded(region_id: String)
+## An escalation news card: the alert tier rose or a region fortified. See
+## Escalation.news.
+signal escalated(card: Dictionary)
 ## fast_forward() is done; `summary` says what it did.
 signal fast_forwarded(summary: Dictionary)
 
@@ -52,6 +55,8 @@ var variants: CampaignVariants
 ## Gives the campaign variants a fight starts with (grid-cost-owner). Defaults
 ## to the player's choices (CampaignVariants.load_active()).
 var next_fight_variants: Callable = func() -> CampaignVariants: return CampaignVariants.load_active()
+## Alert tiers and fortifying (R2-B); its state lives in state.escalation.
+var escalation: Escalation
 ## The variants of the fight in progress, or null between fights.
 var _fight_variants: CampaignVariants
 ## What losing costs and what resources buy.
@@ -74,6 +79,11 @@ func _init(
 	variants = CampaignVariants.for_run(state.variants)
 	tuning = ActPacing.paced(p_tuning, state.act, variants)
 	stakes = Stakes.make(tuning, variants)
+	escalation = Escalation.new(map, state, variants)
+	escalation.update(false)
+	escalation.news.connect(_on_escalation_news)
+	# A new act (the zoom carries stock over) or a load keeps at most the cap.
+	_cap_stock()
 
 
 ## The state a fresh run starts from. `start` is one of the map's
@@ -128,6 +138,12 @@ func standing(region_id: String) -> Standing:
 		if is_owned(other_id):
 			return Standing.IN_RANGE
 	return Standing.OUT_OF_REACH
+
+
+## The defense level a region fights at: its own defense raised by the alert
+## tier and fortification (Escalation.level_of()).
+func defense_of(region_id: String) -> int:
+	return escalation.level_of(map.get_region(region_id))
 
 
 ## A held region with at least one hostile neighbor.
@@ -193,7 +209,7 @@ func income_per_day() -> Dictionary[String, int]:
 
 ## Grid percent an attack on this region is expected to cost if it wins.
 func attack_grid_cost(region_id: String) -> float:
-	return tuning.attack_grid_base + tuning.attack_grid_per_defense * map.get_region(region_id).defense
+	return tuning.attack_grid_base + tuning.attack_grid_per_defense * defense_of(region_id)
 
 
 ## Squad strength as a defense level, from the fielded squad's stats.
@@ -207,7 +223,7 @@ func squad_level() -> int:
 
 ## The odds label for attacking a region, such as "Favored".
 func odds_label(region_id: String) -> String:
-	var margin := squad_level() - map.get_region(region_id).defense
+	var margin := squad_level() - defense_of(region_id)
 	for band in tuning.odds_bands:
 		if margin >= band["min_margin"]:
 			return band["label"]
@@ -346,6 +362,7 @@ func attack(region_id: String, breach := false) -> bool:
 		return false
 	var region := map.get_region(region_id)
 	set_focus(region_id)
+	escalation.note_attack(region_id)
 	breached = breach
 	if breach:
 		stakes.pay(Stakes.USE_BREACH, state)
@@ -366,7 +383,7 @@ func defend() -> bool:
 	if region_id.is_empty() or fighting or is_over():
 		return false
 	var attacker := attacker_of(region_id)
-	var level := attacker.defense if attacker != null else tuning.uprising_defense_level
+	var level := defense_of(attacker.id) if attacker != null else tuning.uprising_defense_level
 	var request := FightRequest.new(
 		FightRequest.Kind.DEFEND, region_id, level, squad_provider.get_squad())
 	var result := await _run_fight(request)
@@ -460,9 +477,11 @@ func _advance(points: int) -> void:
 			state.pressure[region_id] = minf(tuning.forces_defense_at, pressure_of(region_id) + rates[region_id])
 		EnergyGridRules.accrue_point(state, income, tuning, variants)
 		state.material += float(income[MapRegion.MATERIAL]) / tuning.points_per_day
+		_cap_stock()
 		state.time_points += 1
 		if state.time_points % tuning.points_per_day == 0:
 			_expand()
+			escalation.advance_day()
 	var defense_id := pending_defense()
 	if not defense_id.is_empty():
 		var attacker := attacker_of(defense_id)
@@ -515,11 +534,18 @@ func _set_owned(region_id: String, held: bool) -> void:
 	state.owned = owned
 	if not held:
 		state.pressure.erase(region_id)
+	escalation.ownership_changed(region_id, held)
 
 
 func _add_rewards(result: FightResult) -> void:
 	EnergyGridRules.add_energy(state, result.rewards.get(FightResult.ENERGY, 0), tuning, variants)
 	state.material += result.rewards.get(FightResult.MATERIAL, 0)
+	_cap_stock()
+
+
+func _on_escalation_news(card: Dictionary) -> void:
+	_log("NEWS: %s" % card.headline)
+	escalated.emit(card)
 
 
 func _log(text: String) -> void:
@@ -530,7 +556,7 @@ func _log(text: String) -> void:
 
 ## The defense level an attack on `region_id` fights at, breached or not.
 func attack_level(region_id: String, breach := false) -> int:
-	var level := map.get_region(region_id).defense
+	var level := defense_of(region_id)
 	return maxi(FightRequest.MIN_DEFENSE_LEVEL, level - stakes.breach_levels) if breach else level
 
 
@@ -538,7 +564,7 @@ func attack_level(region_id: String, breach := false) -> int:
 ## breaching, it can be paid, and there is defense to take off.
 func can_breach(region_id: String) -> bool:
 	return can_attack(region_id) and stakes.is_offered(Stakes.USE_BREACH) and stakes.breach_levels > 0 \
-		and map.get_region(region_id).defense > FightRequest.MIN_DEFENSE_LEVEL \
+		and defense_of(region_id) > FightRequest.MIN_DEFENSE_LEVEL \
 		and stakes.can_pay(Stakes.USE_BREACH, state)
 
 
@@ -690,3 +716,15 @@ func _record_loss() -> void:
 	if stakes.loss_limit > 0 and state.losses >= stakes.loss_limit and state.ended.is_empty():
 		state.ended = Stakes.END_LOSS_LIMIT
 		_log("That was loss %d of %d this act. The run is over." % [state.losses, stakes.loss_limit])
+
+
+## Most Energy or Material (Stakes key) the run can store now: grows with
+## the regions held. INF when the run is uncapped.
+func resource_cap(key: String) -> float:
+	return stakes.cap(key, state.owned.size())
+
+
+## Drops stock above the storage caps. TODO(decision: resource-cap).
+func _cap_stock() -> void:
+	state.energy = minf(state.energy, resource_cap(Stakes.ENERGY))
+	state.material = minf(state.material, resource_cap(Stakes.MATERIAL))

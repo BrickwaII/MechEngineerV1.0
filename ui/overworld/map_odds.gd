@@ -101,8 +101,7 @@ func _step(budget_msec: int) -> void:
 
 
 func _begin(campaign: Campaign, region_id: String) -> OddsEstimator.Job:
-	var region := campaign.map.get_region(region_id)
-	return estimator.begin(campaign.squad_provider.get_squad(), region_id, region.defense, run_seed)
+	return estimator.begin(campaign.squad_provider.get_squad(), region_id, campaign.defense_of(region_id), run_seed)
 
 
 func _path() -> String:

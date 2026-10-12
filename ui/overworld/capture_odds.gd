@@ -35,7 +35,7 @@ func _run() -> void:
 			if screen.campaign.standing(region.id) != Campaign.Standing.IN_RANGE:
 				continue
 			var e: OddsEstimator.Estimate = screen.odds.estimator.estimate(
-				screen.campaign.squad_provider.get_squad(), region.id, region.defense, screen.odds.run_seed)
+				screen.campaign.squad_provider.get_squad(), region.id, screen.campaign.defense_of(region.id), screen.odds.run_seed)
 			if e.percent() >= 15 and e.percent() < 70:
 				pick = region.id
 				print("squad %d, %s defense %d: %s %d%%" % [squad_seed, region.id, region.defense, e.label, e.percent()])

@@ -177,7 +177,8 @@ func test_a_run_plays_act1_to_the_payload_then_act2_on_the_carried_state() -> vo
 	var act2 := _campaign(plan, 1, plan.zoom_state(act1.state, plan.load_map(1), plan.load_tuning(1)))
 	assert_bool(act2.is_payload_due()).is_false()
 	assert_bool(act2.is_owned("washington")).is_true()
-	assert_float(act2.state.energy).is_equal(energy)
+	# The zoom carries the stock, up to the new act's storage cap.
+	assert_float(act2.state.energy).is_equal(minf(energy, act2.resource_cap(Stakes.ENERGY)))
 	assert_int(act2.standing("oregon")).is_equal(Campaign.Standing.IN_RANGE)
 	assert_bool(await act2.attack("oregon")).is_true()
 	assert_bool(act2.is_owned("oregon")).is_true()

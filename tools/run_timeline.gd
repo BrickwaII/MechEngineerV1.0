@@ -119,6 +119,8 @@ class _Timeline:
 						out.append("%s             %s: %s" % [stamp, names.get(bot_id, bot_id), text])
 			RunJournal.KIND_EXPANDED:
 				out.append("%s  %s   %s went over to your side" % [stamp, where, line.get("region_name", line.get("region"))])
+			RunJournal.KIND_ESCALATION:
+				out.append("%s  %s   NEWS (%s): %s" % [stamp, where, line.get("tier_name"), line.get("headline")])
 			RunJournal.KIND_FEEDBACK:
 				out.append("%s  %s F8 report: %s, mood %d (%s)" % [stamp, where, line.get("category"), int(line.get("rating", 0)), line.get("folder")])
 			RunJournal.KIND_RUN_END:
