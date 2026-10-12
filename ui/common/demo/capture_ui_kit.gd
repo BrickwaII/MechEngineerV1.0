@@ -39,7 +39,7 @@ func _run() -> void:
 	KeywordPopup.click("kw:Pierce", effect)
 	await _frames(4)
 	await _save("keyword_pinned")
-	var pinned: Node = root.find_child("KeywordBox_Pierce", true, false)
+	var pinned: Node = KeywordPopup._popup._pin_box
 	var text: RichTextLabel = pinned.find_child("Text", true, false)
 	root.warp_mouse(text.global_position + Vector2(120, 6))
 	KeywordPopup.hover("kw:Defense", text)

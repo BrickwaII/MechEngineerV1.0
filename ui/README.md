@@ -39,8 +39,10 @@ widgets do this on their own; for any other control call
 
 Keywords in any description (Guard, Pierce, Charge, Energy, Fortify, alert
 tiers, traits, ...) are highlighted in one color (`tooltip.keyword_color` in
-`data/ui/ui_kit.json`) and underlined, so they read as links, like Slay the
-Spire keywords:
+`data/ui/ui_kit.json`) with a dotted underline that follows wrapped lines, so
+they read as links, like Slay the Spire keywords. A hovered or pinned keyword
+turns bright on a highlight (`tooltip.keyword_active_back`), so you can see
+which word a box belongs to:
 
 - **Hover** a keyword to see its box (icon, name, short definition with its
   numbers) by the cursor.
@@ -52,8 +54,9 @@ Spire keywords:
 Keywords, their aliases (Piercing, Pierces -> Pierce) and definitions live in
 `data/ui/glossary.json`. To show a description, use
 `UiGlossary.rich(text, font_size)` (a wired RichTextLabel), or
-`UiGlossary.highlight()` plus `UiGlossary.wire(label)` on your own
-RichTextLabel; UiTooltip and SkillCard already do this.
+`UiGlossary.wire(label)` plus `UiGlossary.set_text(label, text)` on your own
+RichTextLabel (set_text keeps the plain text so hover and pin can restyle it);
+UiTooltip and SkillCard already do this.
 
 **Name the keyword and its number; leave the explanation to the glossary.**
 Write "Pierce 20%", not "ignores 20% of the target's defense"; "Guard 40%",

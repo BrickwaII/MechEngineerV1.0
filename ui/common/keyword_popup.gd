@@ -20,6 +20,7 @@ static var _labels: Array[RichTextLabel] = []
 
 var _hover_box: Control
 var _pin_box: Control
+var _pin_box_keyword := ""
 
 
 ## Keywords whose boxes show now: the pinned one, then the hovered one.
@@ -70,6 +71,11 @@ static func dismiss() -> void:
 	_restyle_all()
 	if _popup != null and is_instance_valid(_popup):
 		_popup._refresh(false)
+
+
+## True while `label` takes part in a hover or pin (its keywords restyle).
+static func is_tracked(label: Control) -> bool:
+	return label in _labels
 
 
 static func _track(label: Control) -> void:
@@ -137,15 +143,16 @@ static func _render(label: Control, at_mouse: bool) -> void:
 
 func _refresh(at_mouse: bool) -> void:
 	var mouse := get_global_mouse_position() + UiIcons.kit_vector("tooltip.offset", Vector2(16, 16))
-	if _pin_box != null and (pinned.is_empty() or _pin_box.name != "KeywordBox_%s" % pinned):
-		_pin_box.queue_free()
+	if _pin_box != null and _pin_box_keyword != pinned:
+		_drop(_pin_box)
 		_pin_box = null
 	if _pin_box == null and not pinned.is_empty():
 		_pin_box = box(pinned)
+		_pin_box_keyword = pinned
 		add_child(_pin_box)
 		_place(_pin_box, mouse)
 	if _hover_box != null:
-		_hover_box.queue_free()
+		_drop(_hover_box)
 		_hover_box = null
 	if not hovered.is_empty() and hovered != pinned:
 		_hover_box = box(hovered)
@@ -156,6 +163,12 @@ func _refresh(at_mouse: bool) -> void:
 		if _pin_box != null and _source != null and is_instance_valid(_source) and _pin_box.is_ancestor_of(_source):
 			at = Vector2(_pin_box.position.x + _pin_box.size.x + 6.0, _pin_box.position.y)
 		_place(_hover_box, at)
+
+
+## Takes a box out at once (its name is free for the next box), then frees it.
+func _drop(b: Control) -> void:
+	remove_child(b)
+	b.queue_free()
 
 
 func _place(b: Control, at: Vector2) -> void:

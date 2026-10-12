@@ -86,7 +86,7 @@ static func active_back() -> Color:
 ## the plain text so the label can restyle when a keyword is hovered or pinned.
 static func set_text(label: RichTextLabel, text: String) -> void:
 	label.set_meta(TEXT_META, text)
-	restyle(label, KeywordPopup.shown())
+	restyle(label, KeywordPopup.shown() if KeywordPopup.is_tracked(label) else [])
 
 
 ## Redraws `label`'s keywords with those in `active` in the active look.
