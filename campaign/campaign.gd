@@ -22,6 +22,9 @@ signal fight_started(request: FightRequest)
 signal fight_finished(request: FightRequest, result: FightResult)
 ## A region auto-expansion took without a fight.
 signal expanded(region_id: String)
+## An escalation news card: the alert tier rose or a region fortified. See
+## Escalation.news.
+signal escalated(card: Dictionary)
 
 ## How a region looks from the player's side.
 enum Standing { OWNED, IN_RANGE, OUT_OF_REACH }
@@ -44,6 +47,8 @@ var variants: CampaignVariants
 ## Gives the campaign variants a fight starts with (grid-cost-owner). Defaults
 ## to the player's choices (CampaignVariants.load_active()).
 var next_fight_variants: Callable = func() -> CampaignVariants: return CampaignVariants.load_active()
+## Alert tiers and fortifying (R2-B); its state lives in state.escalation.
+var escalation: Escalation
 ## The variants of the fight in progress, or null between fights.
 var _fight_variants: CampaignVariants
 
@@ -61,6 +66,9 @@ func _init(
 	state = p_state if p_state != null else new_run_state(p_map, p_tuning)
 	variants = CampaignVariants.for_run(state.variants)
 	tuning = ActPacing.paced(p_tuning, state.act, variants)
+	escalation = Escalation.new(map, state, variants)
+	escalation.update(false)
+	escalation.news.connect(_on_escalation_news)
 
 
 ## The state a fresh run starts from. `start` is one of the map's
@@ -115,6 +123,12 @@ func standing(region_id: String) -> Standing:
 		if is_owned(other_id):
 			return Standing.IN_RANGE
 	return Standing.OUT_OF_REACH
+
+
+## The defense level a region fights at: its own defense raised by the alert
+## tier and fortification (Escalation.level_of()).
+func defense_of(region_id: String) -> int:
+	return escalation.level_of(map.get_region(region_id))
 
 
 ## A held region with at least one hostile neighbor.
@@ -180,7 +194,7 @@ func income_per_day() -> Dictionary[String, int]:
 
 ## Grid percent an attack on this region is expected to cost if it wins.
 func attack_grid_cost(region_id: String) -> float:
-	return tuning.attack_grid_base + tuning.attack_grid_per_defense * map.get_region(region_id).defense
+	return tuning.attack_grid_base + tuning.attack_grid_per_defense * defense_of(region_id)
 
 
 ## Squad strength as a defense level, from the fielded squad's stats.
@@ -194,7 +208,7 @@ func squad_level() -> int:
 
 ## The odds label for attacking a region, such as "Favored".
 func odds_label(region_id: String) -> String:
-	var margin := squad_level() - map.get_region(region_id).defense
+	var margin := squad_level() - defense_of(region_id)
 	for band in tuning.odds_bands:
 		if margin >= band["min_margin"]:
 			return band["label"]
@@ -313,10 +327,10 @@ func reinforce(region_id: String) -> bool:
 func attack(region_id: String) -> bool:
 	if not can_attack(region_id):
 		return false
-	var region := map.get_region(region_id)
 	set_focus(region_id)
+	escalation.note_attack(region_id)
 	var request := FightRequest.new(
-		FightRequest.Kind.ATTACK, region_id, region.defense, squad_provider.get_squad())
+		FightRequest.Kind.ATTACK, region_id, defense_of(region_id), squad_provider.get_squad())
 	var result := await _run_fight(request)
 	if result == null:
 		return false
@@ -331,7 +345,7 @@ func defend() -> bool:
 	if region_id.is_empty() or fighting or is_over():
 		return false
 	var attacker := attacker_of(region_id)
-	var level := attacker.defense if attacker != null else tuning.uprising_defense_level
+	var level := defense_of(attacker.id) if attacker != null else tuning.uprising_defense_level
 	var request := FightRequest.new(
 		FightRequest.Kind.DEFEND, region_id, level, squad_provider.get_squad())
 	var result := await _run_fight(request)
@@ -425,6 +439,7 @@ func _advance(points: int) -> void:
 		state.time_points += 1
 		if state.time_points % tuning.points_per_day == 0:
 			_expand()
+			escalation.advance_day()
 	var defense_id := pending_defense()
 	if not defense_id.is_empty():
 		var attacker := attacker_of(defense_id)
@@ -477,11 +492,17 @@ func _set_owned(region_id: String, held: bool) -> void:
 	state.owned = owned
 	if not held:
 		state.pressure.erase(region_id)
+	escalation.ownership_changed(region_id, held)
 
 
 func _add_rewards(result: FightResult) -> void:
 	EnergyGridRules.add_energy(state, result.rewards.get(FightResult.ENERGY, 0), tuning, variants)
 	state.material += result.rewards.get(FightResult.MATERIAL, 0)
+
+
+func _on_escalation_news(card: Dictionary) -> void:
+	_log("NEWS: %s" % card.headline)
+	escalated.emit(card)
 
 
 func _log(text: String) -> void:

@@ -183,7 +183,11 @@ func _check_snapshot(line: Dictionary) -> void:
 		_mismatch(line, "a snapshot before the map started")
 		return
 	snapshots_checked += 1
-	_compare(line, "state", line.get("state", {}), RunJournal.state_snapshot(campaign))
+	var actual_state := RunJournal.state_snapshot(campaign)
+	# A journal from before escalation has no escalation in its snapshots.
+	if not (line.get("state", {}) as Dictionary).has("escalation"):
+		actual_state.erase("escalation")
+	_compare(line, "state", line.get("state", {}), actual_state)
 	_compare(line, "squad", line.get("squad", {}), RunJournal.squad_snapshot(squad, ledger))
 
 

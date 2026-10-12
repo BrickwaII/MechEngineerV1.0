@@ -1,0 +1,93 @@
+{
+  "_comment": "Escalation (R2-B), read by campaign/escalation.gd. Each act has three alert tiers, from tiers[0]. Holding thresholds[i].held / thresholds[i].of of the act's regions (rounded up) raises the alert to tier i + 1; the escalation variant (data/variants/variants.json) may give its own thresholds. Tiers never drop within an act; each act starts at tiers[0]. A hostile region fights at its own defense plus its tier's level_offset, kept within min_level and max_level, plus its fortification, at most 5. The faction tables (data/combat/factions.json tier_by_act) turn that level into the enemy unit tier, so the bands below are what tie alert tier to enemy tier. fortify: from tier from_tier on (0 is the first tier), each hostile region left alone gains one fortification level every days_per_level days, at most max_levels; attacking it restarts its count, capturing it clears it. news: headlines per act and tier (tier 0 has none, a run starts there) and for a region reaching max_levels; {map}, {tier}, {region} and {count} are filled in. The headline shown is picked by the day, so a run is deterministic. ui: how long a news card stays up. Every number here is a first guess, not balance.",
+  "thresholds": [
+    {"held": 1, "of": 3},
+    {"held": 2, "of": 3}
+  ],
+  "acts": [
+    {
+      "scope": "Local",
+      "tiers": [
+        {"name": "Unnoticed", "level_offset": -1, "min_level": 0, "max_level": 2},
+        {"name": "Local Concern", "level_offset": 0, "min_level": 1, "max_level": 3},
+        {"name": "Major Crisis", "level_offset": 1, "min_level": 3, "max_level": 5}
+      ]
+    },
+    {
+      "scope": "National",
+      "tiers": [
+        {"name": "Off the Radar", "level_offset": -1, "min_level": 0, "max_level": 2},
+        {"name": "National Concern", "level_offset": 0, "min_level": 2, "max_level": 3},
+        {"name": "National Emergency", "level_offset": 1, "min_level": 3, "max_level": 5}
+      ]
+    },
+    {
+      "scope": "Global",
+      "tiers": [
+        {"name": "Fringe Theory", "level_offset": 0, "min_level": 0, "max_level": 2},
+        {"name": "Global Concern", "level_offset": 0, "min_level": 2, "max_level": 4},
+        {"name": "Global Emergency", "level_offset": 1, "min_level": 4, "max_level": 5}
+      ]
+    }
+  ],
+  "fortify": {
+    "from_tier": 1,
+    "days_per_level": 6,
+    "max_levels": 2
+  },
+  "news": {
+    "tier_body": "Every hostile region in {map} is now at {tier}. Their units fight at a higher tier, and regions left alone will dig in.",
+    "tiers": [
+      [
+        [],
+        [
+          "City Council Forms Subcommittee to Study Whether Robots Are Real",
+          "Local Officials Urge Calm, Schedule Meeting About Scheduling a Meeting",
+          "Neighborhood Association Passes Strongly Worded Resolution Against Robots"
+        ],
+        [
+          "Mayor Declares State of Emergency, Cuts Ribbon on New Barricade",
+          "County Spokesperson: 'We Are Monitoring the Situation Very Closely, From Indoors'",
+          "Officials Promise Swift Action Pending Several Committee Reviews"
+        ]
+      ],
+      [
+        [],
+        [
+          "Federal Agency Launches Task Force; Task Force Launches Logo",
+          "Hearing on Robot Threat Runs Long, Robots Not Invited to Testify",
+          "Pundits Agree Robot Crisis Is Entirely the Other Side's Fault"
+        ],
+        [
+          "Legislature Reaches Rare Bipartisan Agreement: This Is Bad",
+          "Press Secretary Insists Everything Is Under Control, Leaves Through Back Door",
+          "Emergency Funding Bill Passes With Only 400 Pages of Unrelated Amendments"
+        ]
+      ],
+      [
+        [],
+        [
+          "International Summit Issues Joint Statement Expressing Deep Concern",
+          "World Leaders Pose for Group Photo in Front of Robot Threat Map",
+          "Global Committee Votes to Form a Committee"
+        ],
+        [
+          "Every Nation's Spokesperson Reads the Same Prepared Statement",
+          "Global Coalition Unites Against Robots, Briefly",
+          "Planet Enters Emergency Mode; Markets Unsure Whether to Panic"
+        ]
+      ]
+    ],
+    "fortified": [
+      "{region} Officials Unveil New Defenses, Name Them After Themselves",
+      "{region} Barrier Contract Finishes on Time and on Budget, Experts Baffled",
+      "{region} Building Inspector Approves Fortifications in Record Time"
+    ],
+    "fortified_body": "{region} has dug in while you looked elsewhere: its defense is up {count} levels. Strike neglected regions before they fortify."
+  },
+  "ui": {
+    "news_seconds": 6.0,
+    "news_width": 360,
+    "meter_width": 230
+  }
+}

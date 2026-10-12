@@ -1,7 +1,8 @@
 extends Control
 ## Draws the regions of a Campaign's flat map, colored by standing, with a
 ## node on each: pressure ring and cause on held regions, defense pips on
-## hostile ones, the name, and what the region provides. Clicking a region
+## hostile ones (at the level they fight at, fortification in its own color,
+## with a wall inside the border), the name, and what the region provides. Clicking a region
 ## selects it. Water crossings (bridges, ferries) are dashed lines.
 ##
 ## zoom and zoom_center move the camera over "zoom space": map space on a flat
@@ -41,6 +42,10 @@ const CROSSING_DASH := 5.0
 const CROSSING_WIDTH := 2.0
 ## Above this zoom the nodes are hidden; they would crowd the close-up.
 const NODE_ZOOM_LIMIT := 1.15
+## Fortification (R2-B escalation): the pips a region gained while left alone
+## on alert, and the wall drawn inside its border.
+const FORTIFY := Color("#ff7a59")
+const FORTIFY_WALL_PX := 2.0
 
 var campaign: Campaign:
 	set(v):
@@ -253,6 +258,11 @@ func _draw_regions(border: float) -> void:
 		if lit > 0.0 and region.id != selected_id:
 			for points: PackedVector2Array in polygons[region.id]:
 				_outline(points, Color(Palette.TEXT_DIM, lit), ScreenFeel.number("map.hover_outline_px"))
+	for region in campaign.map.regions:
+		var levels := campaign.escalation.fortify_of(region.id)
+		if levels > 0 and not campaign.is_owned(region.id):
+			for points: PackedVector2Array in polygons[region.id]:
+				_outline(points, Color(FORTIFY, 0.9), FORTIFY_WALL_PX * (levels + 1))
 	for id: String in fx.capturing_ids():
 		if polygons.has(id):
 			_draw_capture_ring(campaign.map.get_region(id))
@@ -480,7 +490,7 @@ func _draw_node(region: MapRegion, center: Vector2) -> void:
 	if owned:
 		_draw_ring(Vector2(center.x, top + top_h / 2.0), region.id, RING_RADIUS, RING_WIDTH, true)
 	else:
-		_draw_pips(font, Vector2(center.x, top), region.defense)
+		_draw_pips(font, Vector2(center.x, top), campaign.defense_of(region.id), campaign.escalation.fortify_of(region.id))
 	top += top_h + GAP
 	_label(font, region.name.to_upper(), center.x, top, FONT_NAME, Palette.TEXT_BRIGHT, 18.0)
 	top += 18.0 + GAP
@@ -502,10 +512,12 @@ func _draw_compact_node(region: MapRegion, center: Vector2) -> void:
 		var w := MapRegion.MAX_DEFENSE * (COMPACT_PIP + 1.0) + 3.0
 		var x := center.x - w / 2.0
 		draw_rect(Rect2(x, top, w, top_h), Palette.LABEL_BACK)
+		var level := campaign.defense_of(region.id)
+		var fortified_from := level - campaign.escalation.fortify_of(region.id)
 		for i in MapRegion.MAX_DEFENSE:
 			var pip := Rect2(x + 2.0 + i * (COMPACT_PIP + 1.0), top + 2.0, COMPACT_PIP, COMPACT_PIP)
-			if i < region.defense:
-				draw_rect(pip, Palette.DEFENSE)
+			if i < level:
+				draw_rect(pip, FORTIFY if i >= fortified_from else Palette.DEFENSE)
 			else:
 				draw_rect(pip, Palette.DEFENSE, false, 1.0)
 	_label(font, region.short_name.to_upper(), center.x, top + top_h + 2.0, COMPACT_FONT, Palette.TEXT_BRIGHT, 14.0)
@@ -542,7 +554,9 @@ func _draw_ring(at: Vector2, region_id: String, radius: float, width: float, wit
 		draw_string(font, Vector2(at.x - 20.0, at.y + font.get_ascent(font_size) / 2.0), text, HORIZONTAL_ALIGNMENT_CENTER, 40.0, font_size, Palette.TEXT_BRIGHT)
 
 
-func _draw_pips(font: Font, top_center: Vector2, defense: int) -> void:
+## Defense pips; the last `fortified` of them, gained by fortifying, in the
+## fortify color.
+func _draw_pips(font: Font, top_center: Vector2, defense: int, fortified := 0) -> void:
 	var label_w := font.get_string_size("DEF", HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SMALL).x
 	var pips_w := MapRegion.MAX_DEFENSE * (PIP + 2.0) - 2.0
 	var w := label_w + 5.0 + pips_w + 12.0
@@ -553,7 +567,7 @@ func _draw_pips(font: Font, top_center: Vector2, defense: int) -> void:
 	for i in MapRegion.MAX_DEFENSE:
 		var pip := Rect2(px + i * (PIP + 2.0), top_center.y + 4.5, PIP, PIP)
 		if i < defense:
-			draw_rect(pip, Palette.DEFENSE)
+			draw_rect(pip, FORTIFY if i >= defense - fortified else Palette.DEFENSE)
 		else:
 			draw_rect(pip, Palette.DEFENSE, false, 1.0)
 

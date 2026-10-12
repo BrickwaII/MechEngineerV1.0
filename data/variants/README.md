@@ -21,7 +21,7 @@ non-default choices only. Each layer reads only its own decisions:
 
 - fight: `FightVariants` (`fight/variants/`), loaded when each fight starts.
 - bot_data `draft-rule` and campaign `act-maps`: applied by `RunFlow` when a new run starts.
-- campaign `energy-grid`, `squad-size`, `act-pacing`, `auto-expansion`:
+- campaign `energy-grid`, `squad-size`, `act-pacing`, `auto-expansion`, `escalation`:
   `CampaignVariants` (`campaign/variants/`), read when a run starts and kept
   in the run's save; `squad-size` sizes the draft (`RunFlow`).
 - campaign `grid-cost-owner`: `CampaignVariants`, read when each fight starts

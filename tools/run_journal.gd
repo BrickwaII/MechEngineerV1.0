@@ -32,6 +32,8 @@ extends RefCounted
 ##   fight_end   fight, outcome, actions, timed_out, grid_cost, rewards, seconds
 ##   post_fight  fight, changes: {bot id: {field: [before, after]}}
 ##   expanded    region, region_name
+##   escalation  event: "tier" | "fortified", tier, tier_name, region,
+##               regions, headline (Escalation's news card)
 ##   feedback    folder, category, rating
 ##   run_end     won, reason
 ##
@@ -55,6 +57,7 @@ const KIND_RESOLVED := "resolved"
 const KIND_FIGHT_END := "fight_end"
 const KIND_POST_FIGHT := "post_fight"
 const KIND_EXPANDED := "expanded"
+const KIND_ESCALATION := "escalation"
 const KIND_FEEDBACK := "feedback"
 const KIND_RUN_END := "run_end"
 
@@ -151,6 +154,7 @@ static func state_snapshot(c: Campaign) -> Dictionary:
 		"pressure": Dictionary(s.pressure),
 		"expansion": Dictionary(s.expansion),
 		"focus_id": s.focus_id,
+		"escalation": s.escalation.duplicate(true),
 	}
 
 
