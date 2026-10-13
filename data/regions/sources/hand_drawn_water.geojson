@@ -13,7 +13,7 @@
 		},
 		{
 			"type": "Feature",
-			"properties": {"name": "Lake Washington Ship Canal and Lake Union", "note": "Hand-drawn approximate outline, not in Natural Earth 1:10m lakes. West to east: Shilshole Bay mouth, Hiram M. Chittenden Locks, Salmon Bay, Fremont Cut, Lake Union, Portage Bay, Montlake Cut, Union Bay. The cuts are drawn about 300 m wide (really 30 to 100 m) so they stay a few pixels wide on the act 1 maps. Its ends run out into Puget Sound and Lake Washington."},
+			"properties": {"name": "Lake Washington Ship Canal and Lake Union", "note": "Hand-drawn approximate outline, not in Natural Earth 1:10m lakes. West to east: Shilshole Bay mouth, Hiram M. Chittenden Locks, Salmon Bay, Fremont Cut, Lake Union, Portage Bay, Montlake Cut, Union Bay. The cuts are drawn about 400 m wide (really 30 to 100 m) so they stay a few pixels wide on the act 1 maps. Its ends run out into Puget Sound and Lake Washington."},
 			"geometry": {"type": "Polygon", "coordinates": [[
 				[-122.430, 47.6720], [-122.405, 47.6715], [-122.398, 47.6690], [-122.390, 47.6665],
 				[-122.380, 47.6635], [-122.372, 47.6610], [-122.364, 47.6585], [-122.356, 47.6550],
