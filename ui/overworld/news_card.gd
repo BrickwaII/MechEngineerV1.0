@@ -26,15 +26,17 @@ func _ready() -> void:
 	visible = false
 	var ui: Dictionary = Escalation.load_data().get("ui", {})
 	custom_minimum_size.x = float(ui.get("news_width", 360))
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(Palette.PANEL, 0.96)
+	# An overlay (ui/README.md rule 11): an opaque raised fill, so nothing on
+	# the panel under it shows through, and a shadow to lift it off the panel.
+	var style := UiStyle.panel("overlay")
+	style.bg_color = Color(FeelData.color("panel_raised"), 1.0)
 	style.border_color = Palette.RULE
-	style.set_border_width_all(1)
+	style.set_border_width_all(2)
 	style.border_width_left = 4
-	style.set_content_margin_all(12)
+	style.set_content_margin_all(UiStyle.space("m"))
 	add_theme_stylebox_override("panel", style)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UiStyle.space("s"))
 	add_child(row)
 	_icon = TextureRect.new()
 	_icon.custom_minimum_size = Vector2(12, 12) * float(UiIcons.kit("icon_scale", 2))
@@ -44,11 +46,11 @@ func _ready() -> void:
 	_icon.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	row.add_child(_icon)
 	var rows := VBoxContainer.new()
-	rows.add_theme_constant_override("separation", 4)
+	rows.add_theme_constant_override("separation", UiStyle.space("xs"))
 	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(rows)
-	_headline = _label(16, Palette.TEXT_BRIGHT)
-	_body = UiGlossary.rich("", 12, Palette.TEXT_BODY)
+	_headline = _label(PixelTheme.font_size("body"), Palette.TEXT_BRIGHT)
+	_body = UiGlossary.rich("", PixelTheme.font_size("body"), Palette.TEXT_BODY)
 	for label in [_headline, _body]:
 		rows.add_child(label)
 	gui_input.connect(func(event: InputEvent) -> void:

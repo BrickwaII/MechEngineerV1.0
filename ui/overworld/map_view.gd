@@ -13,6 +13,14 @@ extends Control
 ## projection hooks: project_point(), project_shape(), view_to_map(),
 ## zoom_space_rect() and region_polygons().
 ##
+## Lenses (ui/README.md rules 7 and 10): with `lens` set, each region shows
+## only that lens as one small pin at its node, so the land stays clear:
+##   defense    hostile regions' defense pips (fortified ones in their color)
+##   pressure   held regions' pressure rings
+##   resources  what each region gives, as icons and numbers
+##   odds       your odds on regions in range ("62%"), from `odds_text`
+## The selected region's pin also carries its name. "" keeps the full nodes.
+##
 ## Feel (MapFx, data/feel/screens.json "map"): regions light up under the
 ## cursor, the selection outline pops, a capture sweeps the owned color out
 ## from the region's node with a ring and a flash, and pressure rings slide to
@@ -21,6 +29,10 @@ extends Control
 const Palette := preload("res://ui/overworld/palette.gd")
 
 signal region_selected(region_id: String)
+## A right-click on a region: show everything about it (the DetailModal).
+signal region_detail_requested(region_id: String)
+## The pointer moved onto another region ("" for none).
+signal region_hovered(region_id: String)
 
 ## Resource key -> its icon id in data/ui/icons.json (ui/README.md rule 1).
 const CHIP_ICONS := {MapRegion.POWER: "grid_power", MapRegion.ENERGY: "map_energy", MapRegion.MATERIAL: "material"}
@@ -80,6 +92,23 @@ var inset_alpha := 0.0:
 
 ## The moving parts: hover, selection pop, captures, ring fill and pulse.
 var fx := MapFx.new()
+## The lens the pins show: "defense", "pressure", "resources", "odds", or ""
+## for the full nodes.
+var lens := "":
+	set(v):
+		lens = v
+		queue_redraw()
+## region id -> [text, color] for the odds lens ("" text: no pin). Set by the
+## overworld, which owns the estimates.
+var odds_pin: Callable
+## The pins drawn last frame: region id -> Rect2 in this control's coordinates.
+var pin_rects := {}
+
+const LENSES: Array[String] = ["defense", "pressure", "resources", "odds"]
+## Pin text: the body size, so numbers on the map are as readable as anywhere.
+const PIN_FONT := 20
+const PIN_H := 24.0
+const PIN_PAD := 4.0
 
 ## Map-space ends of each of the map's crossings, in its order.
 var _crossing_ends: Array[PackedVector2Array] = []
@@ -179,6 +208,8 @@ func _map_changed() -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if _right_click(event):
+		return
 	var click := event as InputEventMouseButton
 	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
 		select(region_at(click.position))
@@ -189,13 +220,29 @@ func _gui_input(event: InputEvent) -> void:
 		_hover_at(motion.position)
 
 
+## A right-click on a region asks for its detail card. True when handled.
+func _right_click(event: InputEvent) -> bool:
+	var click := event as InputEventMouseButton
+	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_RIGHT:
+		return false
+	var id := region_at(click.position)
+	if not id.is_empty():
+		region_detail_requested.emit(id)
+	accept_event()
+	return true
+
+
 ## Lights the region under `point` (null for none) and shows a hand over it.
 func _hover_at(point: Variant) -> void:
 	var id := "" if point == null else region_at(point)
 	if id == fx.hovered_id:
 		return
 	fx.set_hovered(id)
-	_tip_fortify(id)
+	region_hovered.emit(id)
+	# With a lens the overworld's hover card shows the region, Fortified flag
+	# included; the full nodes keep their own fortify tooltip.
+	if lens.is_empty():
+		_tip_fortify(id)
 	mouse_default_cursor_shape = Control.CURSOR_ARROW if id.is_empty() else Control.CURSOR_POINTING_HAND
 	queue_redraw()
 
@@ -327,6 +374,9 @@ static func _middle(points: PackedVector2Array) -> Vector2:
 ## compact node if that fits, and nothing otherwise; held regions always show
 ## at least their compact ring.
 func _draw_nodes(entries: Array) -> void:
+	if lens in LENSES:
+		_draw_lens_pins(entries)
+		return
 	var order := campaign.map.ids()
 	entries.sort_custom(func(a: Array, b: Array) -> bool:
 		var ra := _node_rank(a[0])
@@ -358,6 +408,125 @@ func _draw_nodes(entries: Array) -> void:
 			_draw_compact_node(plan[i][0], plan[i][1])
 		else:
 			_draw_node(plan[i][0], plan[i][1])
+
+
+## One small pin per region for the chosen lens; a pin that would cover
+## another is left out (the selected region's always shows, with its name).
+func _draw_lens_pins(entries: Array) -> void:
+	var order := campaign.map.ids()
+	entries.sort_custom(func(a: Array, b: Array) -> bool:
+		var ra := _node_rank(a[0])
+		var rb := _node_rank(b[0])
+		if ra != rb:
+			return ra < rb
+		return order.find(a[0].id) < order.find(b[0].id))
+	pin_rects.clear()
+	var font := get_theme_default_font()
+	var placed: Array[Rect2] = []
+	var plan := []
+	for entry: Array in entries:
+		var region: MapRegion = entry[0]
+		var parts := _pin_parts(region)
+		var selected := region.id == selected_id
+		if parts.is_empty() and not selected:
+			continue
+		var w := _pin_width(font, parts)
+		var with_name := selected
+		if with_name:
+			w = maxf(w, font.get_string_size(region.name, HORIZONTAL_ALIGNMENT_LEFT, -1, PIN_FONT).x + PIN_PAD * 2.0)
+		var h := PIN_H * (2.0 if with_name and not parts.is_empty() else 1.0)
+		var at: Vector2 = entry[1]
+		var rect := Rect2((at - Vector2(w, h) / 2.0).round(), Vector2(w, h).round())
+		if not selected and not _fits(rect.grow(NODE_MARGIN), placed):
+			continue
+		placed.append(rect.grow(NODE_MARGIN))
+		plan.append([region, rect, parts, with_name])
+	for i in range(plan.size() - 1, -1, -1):
+		var p: Array = plan[i]
+		_draw_pin(font, p[0], p[1], p[2], p[3])
+		pin_rects[(p[0] as MapRegion).id] = p[1]
+
+
+## What a region's pin shows for the lens: [kind, value, color] parts, where
+## kind is "pips", "ring", "icon" (an icon id) or "text".
+func _pin_parts(region: MapRegion) -> Array:
+	var owned := campaign.is_owned(region.id)
+	match lens:
+		"defense":
+			if owned:
+				return []
+			return [["pips", campaign.defense_of(region.id), campaign.escalation.fortify_of(region.id)]]
+		"pressure":
+			if not owned:
+				return []
+			return [["ring", region.id, null]]
+		"resources":
+			var out := []
+			for key in MapRegion.RESOURCE_KEYS:
+				if region.provides[key] > 0:
+					out.append(["icon", CHIP_ICONS[key], str(region.provides[key])])
+			return out
+		"odds":
+			if owned or not odds_pin.is_valid():
+				return []
+			var o: Array = odds_pin.call(region.id)
+			if o.is_empty() or str(o[0]).is_empty():
+				return []
+			return [["text", str(o[0]), o[1]]]
+	return []
+
+
+func _pin_width(font: Font, parts: Array) -> float:
+	var w := PIN_PAD
+	for part: Array in parts:
+		match part[0]:
+			"pips":
+				w += MapRegion.MAX_DEFENSE * (PIP + 2.0) - 2.0 + PIN_PAD
+			"ring":
+				w += 18.0 + PIN_PAD
+			"icon":
+				w += LABEL_ICON + 2.0 + font.get_string_size(part[2], HORIZONTAL_ALIGNMENT_LEFT, -1, PIN_FONT).x + PIN_PAD
+			"text":
+				w += font.get_string_size(part[1], HORIZONTAL_ALIGNMENT_LEFT, -1, PIN_FONT).x + PIN_PAD
+	return maxf(w, PIN_H)
+
+
+func _draw_pin(font: Font, region: MapRegion, rect: Rect2, parts: Array, with_name: bool) -> void:
+	draw_rect(rect, Palette.LABEL_BACK)
+	if region.id == selected_id:
+		draw_rect(rect, Palette.TEXT_BRIGHT, false, 1.0)
+	var top := rect.position.y
+	if with_name:
+		var baseline := top + PIN_H / 2.0 + font.get_ascent(PIN_FONT) / 2.0 - 1.0
+		draw_string(font, Vector2(rect.position.x + PIN_PAD, baseline), region.name, HORIZONTAL_ALIGNMENT_LEFT, -1, PIN_FONT, Palette.TEXT_BRIGHT)
+		if parts.is_empty():
+			return
+		top += PIN_H
+	var x := rect.position.x + (rect.size.x - _pin_width(font, parts)) / 2.0 + PIN_PAD
+	var mid := top + PIN_H / 2.0
+	for part: Array in parts:
+		match part[0]:
+			"pips":
+				var level: int = part[1]
+				var fortified: int = part[2]
+				for i in MapRegion.MAX_DEFENSE:
+					var pip := Rect2(x + i * (PIP + 2.0), mid - PIP / 2.0, PIP, PIP)
+					if i < level:
+						draw_rect(pip, FORTIFY if i >= level - fortified else Palette.DEFENSE)
+					else:
+						draw_rect(pip, Palette.DEFENSE, false, 1.0)
+				x += MapRegion.MAX_DEFENSE * (PIP + 2.0) - 2.0 + PIN_PAD
+			"ring":
+				_draw_ring(Vector2(x + 9.0, mid), part[1], COMPACT_RING_RADIUS, COMPACT_RING_WIDTH, false)
+				x += 18.0 + PIN_PAD
+			"icon":
+				draw_texture_rect(UiIcons.texture(part[1]), Rect2(x, mid - LABEL_ICON / 2.0, LABEL_ICON, LABEL_ICON), false)
+				x += LABEL_ICON + 2.0
+				draw_string(font, Vector2(x, mid + font.get_ascent(PIN_FONT) / 2.0 - 1.0), part[2], HORIZONTAL_ALIGNMENT_LEFT, -1, PIN_FONT, Palette.TEXT)
+				x += font.get_string_size(part[2], HORIZONTAL_ALIGNMENT_LEFT, -1, PIN_FONT).x + PIN_PAD
+			"text":
+				draw_string(font, Vector2(x, mid + font.get_ascent(PIN_FONT) / 2.0 - 1.0), part[1], HORIZONTAL_ALIGNMENT_LEFT, -1, PIN_FONT, part[2])
+				x += font.get_string_size(part[1], HORIZONTAL_ALIGNMENT_LEFT, -1, PIN_FONT).x + PIN_PAD
 
 
 func _node_rank(region: MapRegion) -> int:

@@ -7,8 +7,11 @@
 		"down": {"label": "Down", "icon": "status_down", "role": "neutral", "text": "Out of this fight."},
 		"new": {"label": "New", "icon": "new", "role": "hint", "text": "Appeared since you last looked."},
 		"fortified": {"label": "Fortified", "icon": "fortify", "role": "caution", "text": "Left alone too long: its defense rose."},
-		"under_attack": {"label": "Under attack", "icon": "pressure", "role": "bad", "text": "Its pressure is full: a defense fight is coming."},
-		"uprising": {"label": "Uprising", "icon": "alert", "role": "caution", "text": "The alert tier rose here."},
-		"home": {"label": "Home", "icon": "action_home", "role": "ally", "text": "Your base region."}
+		"under_attack": {"label": "Under attack", "icon": "pressure", "role": "bad", "text": "A neighbor's attack is building here. Reinforce it or face a defense fight."},
+		"uprising": {"label": "Uprising", "icon": "alert", "role": "caution", "text": "Unrest is building inside it. Reinforce it or lose it."},
+		"home": {"label": "Home", "icon": "action_home", "role": "ally", "text": "Your base region."},
+		"yours": {"label": "Yours", "icon": "action_reinforce", "role": "ally", "text": "You hold it: it pays out every day."},
+		"in_range": {"label": "In range", "icon": "action_attack", "role": "enemy", "text": "Hostile and next to your network: you can attack it."},
+		"out_of_reach": {"label": "Out of reach", "icon": "action_retreat", "role": "neutral", "text": "Hostile, but not next to your network. Take a neighbor first."}
 	}
 }

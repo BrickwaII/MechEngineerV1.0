@@ -116,6 +116,10 @@ it. The one exception is brief feedback that fades on its own: damage and
 heal popups, hit sparks. A map region shows at most one small pin, placed
 where it covers the least land, with the full card on hover.
 
+The map follows it with **lenses**: the map strip picks Defense, Pressure,
+Resources or Odds, and each region shows only that as one small pin; the
+full card is on hover, everything on a right-click (`MapView.lens`).
+
 ### 8. Card anatomy
 
 Every card for a unit or a region is an `InfoCard` with the same parts:
