@@ -3,6 +3,7 @@
 	"legacy_save": "user://run.res",
 	"autosave": {
 		"at_map_start": true,
+		"before_fight": true,
 		"after_fight": true,
 		"after_act": true
 	},

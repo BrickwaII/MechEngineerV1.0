@@ -339,6 +339,25 @@ func _on_fight_finished(request: FightRequest, result: FightResult) -> void:
 	_snapshot_due = true
 
 
+## The player left mid-battle: the commands so far, then a fight_end line
+## with outcome "abandoned" and no result. Does nothing outside a fight.
+func abandon_fight() -> void:
+	if _fight_request == null or campaign == null or not campaign.fighting:
+		return
+	for line in _held:
+		write(line)
+	_held.clear()
+	_battle = null
+	var fight: Fight = last_fight_source.call()
+	write({
+		"kind": RunJournal.KIND_FIGHT_END,
+		"fight": _fight_count,
+		"outcome": RunJournal.OUTCOME_ABANDONED,
+		"actions": fight.action_count if fight != null else -1,
+		"seconds": snappedf(play_seconds() - _fight_started_s, 0.001),
+	})
+
+
 ## After a fight's result is applied to the map: the snapshot, and the end of
 ## the run when it ended.
 func _on_changed() -> void:

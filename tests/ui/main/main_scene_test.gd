@@ -124,3 +124,29 @@ func test_the_old_save_is_offered_once() -> void:
 	await get_tree().process_frame
 	# The old save kept its bench; the run keeps the squad only.
 	assert_int(menu.flow.squad.bots.size()).is_equal(menu.flow.squad.squad_size)
+
+
+func test_home_from_a_run_saves_and_continue_picks_it_up() -> void:
+	var menu := await _menu()
+	menu.new_run_button.pressed.emit()
+	await get_tree().process_frame
+	var flow := menu.flow
+	var draft := flow.draft_screen
+	for i in draft.picker.squad_size():
+		draft.cards[draft.picker.bots()[i].id].pressed.emit()
+	draft.start_button.pressed.emit()
+	await get_tree().process_frame
+	flow.overworld._on_wait()
+	var dir := flow.run_dir
+	var state: Dictionary = flow.overworld.campaign.state.to_dict()
+	flow.overworld.home_button.pressed.emit()
+	await get_tree().process_frame
+	assert_object(menu.flow).is_null()
+	assert_bool(menu.menu.visible).is_true()
+	assert_bool(menu.continue_button.disabled).is_false()
+	assert_str(menu.continue_label.text).is_equal(dir.get_file())
+	menu.continue_button.pressed.emit()
+	await get_tree().process_frame
+	assert_str(menu.flow.run_dir).is_equal(dir)
+	assert_int(menu.flow.stage).is_equal(RunFlow.Stage.MAP)
+	assert_dict(menu.flow.overworld.campaign.state.to_dict()).is_equal(state)
