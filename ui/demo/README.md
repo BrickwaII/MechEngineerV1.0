@@ -24,6 +24,10 @@ in `data/demo/` (format in its README).
     an act's payload arrives) `DemoEndPanel` offers REPLAY and BACK TO DEMOS.
   A fight scenario opens the map behind and starts the battle at once
   through the run's own fight service; the result does not change the map.
+- `DemoWinRates` (`demo_win_rates_cli.gd` prints it): headless auto-fights of
+  each demo fight over many seeds, the win rate and squad hp left, and
+  whether the exact fight the demo plays is won. The scenario test holds
+  every fight to "winnable but not trivial".
 - `capture_demo.gd`: screenshots of the menu, the picker, every scenario, the
   Esc menu and the end panel (needs a display, see the header).
   `screenshots/` holds the latest set.

@@ -145,6 +145,11 @@ func is_fight() -> bool:
 	return kind == KIND_FIGHT
 
 
+## TODO(decision: act-bosses): only act 3 has a boss in a real run (the
+## stub at its payload: the generic roster at Defense 5). The act 1 and act 2
+## demo bosses are showcases: a fixed lineup of the act's strongest faction
+## units fought over Campaign.BOSS_ID, so the difficulty-curve's boss scaling
+## applies. Whether real runs get act 1 and 2 bosses is open.
 func is_boss() -> bool:
 	return is_fight() and bool(fight.get("boss", false))
 

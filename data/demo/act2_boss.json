@@ -1,0 +1,34 @@
+{
+	"name": "Boss",
+	"description": "Showcase: the Continental Uplink's walkers.",
+	"icon": "losses",
+	"act": 2,
+	"order": 4,
+	"kind": "fight",
+	"map": "north_america_19",
+	"hostile": [
+		"new_york",
+		"mid_atlantic"
+	],
+	"alert_tier": 2,
+	"day": 99,
+	"squad": {
+		"seed": 8,
+		"skill_ranks": 4
+	},
+	"fight": {
+		"region": "boss",
+		"kind": "attack",
+		"level": 5,
+		"boss": true,
+		"music": "boss",
+		"title": "Continental Uplink",
+		"enemies": [
+			"rival_walker_advanced",
+			"enhanced_trooper_advanced",
+			"rival_walker_advanced",
+			"rival_hunter_advanced",
+			"splinter_swarm_advanced"
+		]
+	}
+}

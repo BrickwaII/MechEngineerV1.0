@@ -8,8 +8,8 @@ extends Control
 signal scenario_chosen(scenario: DemoScenario)
 signal back_requested
 
-const CARD_SIZE := Vector2(290, 92)
-const COLUMNS := 4
+const CARD_SIZE := Vector2(232, 96)
+const COLUMNS := 5
 const ACTS_FILE := "res://data/tuning/acts.json"
 
 ## Where scenarios are read from; tests point it elsewhere.
@@ -98,6 +98,9 @@ func _card(s: DemoScenario) -> Button:
 	var line := _label(s.description if s.is_valid() else "Cannot play: " + "; ".join(s.errors), "text_dim" if s.is_valid() else "danger", 10)
 	line.name = "Description"
 	text.add_child(line)
+	# The card grows to its text: a long name or line wraps, never spills.
+	row.minimum_size_changed.connect(func() -> void:
+		card.custom_minimum_size.y = maxf(CARD_SIZE.y, row.get_combined_minimum_size().y + 16.0))
 	UiTooltip.attach(card, s.scenario_name, s.description, "Act %d" % s.act, s.icon if UiIcons.has(s.icon) else "")
 	return card
 

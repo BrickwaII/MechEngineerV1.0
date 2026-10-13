@@ -1,0 +1,24 @@
+{
+	"name": "Map, early",
+	"description": "Day 1: the Pacific Northwest and Canada online.",
+	"icon": "time",
+	"act": 2,
+	"order": 1,
+	"kind": "map",
+	"map": "north_america_19",
+	"held": [
+		"pacific_northwest",
+		"western_canada"
+	],
+	"alert_tier": 0,
+	"day": 1,
+	"resources": {
+		"energy": 24,
+		"material": 18,
+		"grid": 60
+	},
+	"squad": {
+		"seed": 8,
+		"skill_ranks": 2
+	}
+}

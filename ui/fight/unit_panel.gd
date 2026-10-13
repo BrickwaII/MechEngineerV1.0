@@ -68,6 +68,8 @@ var intent_row: HBoxContainer
 ## The enemy's intent in words, for the detail card.
 var intent_text := ""
 
+## The name's font size before fitting, read once it is in the tree.
+var _name_size := -1
 var _style := StyleBoxFlat.new()
 var _unit: Combatant
 var _bars_ready := false
@@ -107,8 +109,9 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 	col.add_child(name_row)
 	name_label = _label(name_row, unit.display_name.to_upper(), "")
 	name_label.add_theme_color_override("font_color", FeelData.color("text_bright"))
-	name_label.clip_text = true
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.tooltip_text = unit.display_name
+	name_label.resized.connect(_fit_name)
 	if is_enemy:
 		intent_chip = IconStat.make("intent_attack")
 		intent_chip.name = "IntentChip"
@@ -414,6 +417,44 @@ func _gui_input(event: InputEvent) -> void:
 	if mouse != null and mouse.pressed:
 		clicked.emit(unit_id, mouse.button_index)
 		accept_event()
+
+
+## A long name is never clipped: it steps down to the small font when it
+## does not fit on one line, and wraps onto two lines if it still does not.
+## The hover card shows the full name too.
+func _fit_name() -> void:
+	var width := name_label.size.x
+	if width <= 0.0 or not name_label.is_inside_tree():
+		return
+	var font := name_label.get_theme_font("font")
+	if _name_size < 0:
+		_name_size = name_label.get_theme_font_size("font_size")
+	var small := mini(_name_size, PixelTheme.font_size("small"))
+	var fits := font.get_string_size(name_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, _name_size).x <= width
+	var fits_small := font.get_string_size(name_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, small).x <= width
+	var wanted := _name_size if fits else small
+	if name_label.get_theme_font_size("font_size") != wanted:
+		if wanted == _name_size:
+			name_label.remove_theme_font_size_override("font_size")
+		else:
+			name_label.add_theme_font_size_override("font_size", wanted)
+	var wrap := TextServer.AUTOWRAP_OFF if fits or fits_small else TextServer.AUTOWRAP_WORD_SMART
+	if name_label.autowrap_mode != wrap:
+		name_label.autowrap_mode = wrap
+
+
+## True when the name shows whole: no clipping, every line within the card.
+func name_fits() -> bool:
+	if name_label.clip_text:
+		return false
+	var font := name_label.get_theme_font("font")
+	var size := name_label.get_theme_font_size("font_size")
+	if name_label.autowrap_mode != TextServer.AUTOWRAP_OFF:
+		for word in name_label.text.split(" "):
+			if font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > name_label.size.x:
+				return false
+		return true
+	return font.get_string_size(name_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x <= name_label.size.x + 0.5
 
 
 static func _label(parent: Node, text: String, variation: String) -> Label:

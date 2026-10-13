@@ -1,0 +1,22 @@
+{
+	"name": "Run over",
+	"description": "How a run ends: the boss held.",
+	"icon": "fights_lost",
+	"act": 3,
+	"order": 6,
+	"kind": "run_over",
+	"run_over": {
+		"won": false,
+		"end_reason": "boss fight lost",
+		"act": 3,
+		"act_name": "The World",
+		"day": 100,
+		"regions_held": 6,
+		"regions_total": 8,
+		"fights_won": 24,
+		"fights_lost": 5,
+		"losses": 1,
+		"loss_limit": 3,
+		"play_s": 5412
+	}
+}

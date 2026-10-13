@@ -35,7 +35,8 @@ with `_` are skipped.
     "level": 3,                           // defense level 0 to 5
     "enemies": ["rival_walker"],          // optional: these enemies every time, in order
     "boss": true,                         // optional: a boss fight (boss styling, boss music)
-    "music": "boss"                       // optional: "battle" or "boss"
+    "music": "boss",                      // optional: "battle" or "boss"
+    "title": "Resistance Command"         // optional: the name in the battle header
   },
   "region": "bellevue",                   // kind "pre_fight": the region the step opens on
   "run_over": {"won": false, "end_reason": "loss limit reached", "act": 2, "day": 41}
@@ -47,3 +48,15 @@ The squad is the seeded draft's (BotFactory), the first squad-size bots or
 Fight scenarios open the map behind and the battle on top at once; the fight
 does not change the map. Every shipped scenario is loaded and built by
 `tests/ui/demo/`.
+
+Bosses: act 3's demo boss is the real one, today's stand-in (the generic
+roster at Defense 5, `Campaign.boss_fight()`). Acts 1 and 2 have no boss in a
+run, so their demo bosses are showcases: the act's strongest faction units as
+a fixed lineup, fought over the `boss` territory so the difficulty curve's
+boss scaling applies. TODO(decision: act-bosses): should real runs get act 1
+and act 2 bosses?
+
+Every fight is winnable but not trivial: `tests/ui/demo/demo_scenario_test.gd`
+checks that the simple auto-player wins the exact fight the demo plays and
+that a random player wins 10 to 95% of seeds. Print the numbers with
+`godot --headless --path . -s res://ui/demo/demo_win_rates_cli.gd -- 60 simple`.

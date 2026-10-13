@@ -1,0 +1,27 @@
+{
+	"name": "Fight",
+	"description": "Assault on Bellevue against the Resistance.",
+	"icon": "action_attack",
+	"act": 1,
+	"order": 3,
+	"kind": "fight",
+	"map": "lake_washington_12",
+	"start": "renton_works",
+	"held": [
+		"renton",
+		"tukwila",
+		"south_seattle",
+		"mercer_island"
+	],
+	"alert_tier": 1,
+	"day": 30,
+	"squad": {
+		"seed": 8,
+		"skill_ranks": 1
+	},
+	"fight": {
+		"region": "bellevue",
+		"kind": "attack",
+		"level": 3
+	}
+}

@@ -10,6 +10,10 @@ fight and turn the mouse into `FightCommand`s.
   for Patch Up and Shield Ally; Brace needs no target); WAIT; CANCEL or
   right-click to step back. The buttons are the bot's own skills, by its
   names and levels.
+  A unit's name on its card is never clipped: a long one steps down to the
+  small font, then wraps onto two lines (`UnitPanel._fit_name()`); its
+  tooltip and the hover card give the full name. A host may add a Home
+  button to the header (`show_home_button()`).
 - `FightSceneService`: a contracts `FightService` that plays the fight as a
   `BattleScreen` under a host node and emits `finished` with the
   `FightResult`. Swap it in for the overworld's fight service.

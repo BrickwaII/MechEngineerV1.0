@@ -1,0 +1,34 @@
+{
+	"name": "Map, late",
+	"description": "9 of 12 held, top alert tier, the rest dug in.",
+	"icon": "alert",
+	"act": 1,
+	"order": 2,
+	"kind": "map",
+	"map": "lake_washington_12",
+	"start": "renton_works",
+	"hostile": [
+		"north_seattle",
+		"bothell",
+		"redmond"
+	],
+	"alert_tier": 2,
+	"fortify": {
+		"*": 2,
+		"redmond": 3
+	},
+	"resources": {
+		"energy": 34,
+		"material": 26,
+		"grid": 58
+	},
+	"day": 74,
+	"losses": 1,
+	"news": {
+		"kind": "tier"
+	},
+	"squad": {
+		"seed": 8,
+		"skill_ranks": 2
+	}
+}

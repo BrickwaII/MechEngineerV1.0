@@ -218,7 +218,7 @@ func _show_demo_run_over() -> void:
 	run_over_screen.name = "RunOverScreen"
 	var summary := scenario.run_over.duplicate(true)
 	summary.merge({"finished": true}, false)
-	run_over_screen.leave_text = "MORE"
+	run_over_screen.leave_text = "DONE"
 	run_over_screen.show_run("", summary)
 	run_over_screen.main_menu_requested.connect(func() -> void:
 		_show_end("RUN OVER", "That is how a run ends.", "accent"))
@@ -295,3 +295,16 @@ func _label_continue() -> void:
 	super._label_continue()
 	if continue_button != null and scenario.kind == DemoScenario.KIND_FIGHT and not readout.is_tallying():
 		continue_button.text = "DONE"
+
+
+## A titled demo fight (a showcase boss) names itself in the battle header.
+func _on_screen_opened(screen: BattleScreen) -> void:
+	super._on_screen_opened(screen)
+	var title := str(scenario.fight.get("title", ""))
+	if scenario.is_fight() and not title.is_empty():
+		screen.header_label.text = "%s  -  %s" % ["BOSS" if scenario.is_boss() else "FIGHT", title.to_upper()]
+
+
+## Home in a demo leaves at once, from any screen: nothing is at stake.
+func go_home() -> void:
+	leave_to_menu()

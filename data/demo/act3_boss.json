@@ -1,13 +1,26 @@
 {
 	"name": "Boss",
-	"description": "The final payload: the boss fight that ends a run.",
-	"icon": "alert",
+	"description": "The run's real boss: today's Defense 5 stand-in.",
+	"icon": "losses",
 	"act": 3,
-	"order": 4,
+	"order": 5,
 	"kind": "fight",
-	"held": ["north_america", "latin_america", "oceania", "sub_saharan_africa", "europe"],
+	"map": "world_8",
+	"hostile": [
+		"asia"
+	],
 	"alert_tier": 2,
-	"day": 95,
-	"squad": {"seed": 13, "skill_ranks": 4},
-	"fight": {"region": "boss", "kind": "attack", "level": 5, "boss": true, "music": "boss"}
+	"day": 99,
+	"squad": {
+		"seed": 42,
+		"skill_ranks": 6
+	},
+	"fight": {
+		"region": "boss",
+		"kind": "attack",
+		"level": 5,
+		"boss": true,
+		"music": "boss",
+		"title": "The final payload"
+	}
 }

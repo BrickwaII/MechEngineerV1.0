@@ -1,0 +1,23 @@
+{
+	"name": "Map, early",
+	"description": "Day 1 on the globe, North America online.",
+	"icon": "time",
+	"act": 3,
+	"order": 1,
+	"kind": "map",
+	"map": "world_8",
+	"held": [
+		"north_america"
+	],
+	"alert_tier": 0,
+	"day": 1,
+	"resources": {
+		"energy": 30,
+		"material": 24,
+		"grid": 60
+	},
+	"squad": {
+		"seed": 42,
+		"skill_ranks": 3
+	}
+}

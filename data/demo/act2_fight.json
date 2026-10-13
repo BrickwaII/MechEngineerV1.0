@@ -1,13 +1,27 @@
 {
 	"name": "Fight",
-	"description": "A mid-act assault on the Rockies against the Rival AI.",
+	"description": "Assault on the Rockies against the Rival AI.",
 	"icon": "action_attack",
 	"act": 2,
 	"order": 3,
 	"kind": "fight",
-	"held": ["pacific_northwest", "western_canada", "southwest", "northern_plains", "prairies"],
+	"map": "north_america_19",
+	"held": [
+		"pacific_northwest",
+		"western_canada",
+		"southwest",
+		"northern_plains",
+		"prairies"
+	],
 	"alert_tier": 1,
-	"day": 20,
-	"squad": {"seed": 13, "skill_ranks": 2},
-	"fight": {"region": "rockies", "kind": "attack", "level": 3}
+	"day": 40,
+	"squad": {
+		"seed": 8,
+		"skill_ranks": 4
+	},
+	"fight": {
+		"region": "rockies",
+		"kind": "attack",
+		"level": 3
+	}
 }

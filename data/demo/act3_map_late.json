@@ -1,0 +1,32 @@
+{
+	"name": "Map, late",
+	"description": "6 of 8 held, global alert, Europe and Asia dug in.",
+	"icon": "alert",
+	"act": 3,
+	"order": 3,
+	"kind": "map",
+	"map": "world_8",
+	"hostile": [
+		"europe",
+		"asia"
+	],
+	"alert_tier": 2,
+	"fortify": {
+		"*": 2,
+		"asia": 3
+	},
+	"resources": {
+		"energy": 60,
+		"material": 44,
+		"grid": 50
+	},
+	"day": 78,
+	"losses": 1,
+	"news": {
+		"kind": "tier"
+	},
+	"squad": {
+		"seed": 42,
+		"skill_ranks": 4
+	}
+}
