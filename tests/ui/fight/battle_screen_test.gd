@@ -224,8 +224,8 @@ func test_the_screen_follows_the_icon_style() -> void:
 	assert_str(_screen.defense_stat.value_text()).is_equal(str(_screen.fight.request.defense_level))
 	for id: String in _screen.unit_panels:
 		var panel = _screen.unit_panels[id]
-		assert_object(panel.stat_icons["atk"]).is_not_null()
-		assert_str(UiTooltip.spec(panel.stat_icons["atk"])["title"]).is_equal("Attack")
+		assert_array(panel.strip.kinds()).is_equal(["bar", "number", "chip"])
+		assert_str(UiTooltip.spec(panel.strip.headline(1))["title"]).is_equal("Attack")
 		if panel.is_enemy and panel.intent_kind != "":
 			assert_bool(panel.intent_chip.visible).override_failure_message(id).is_true()
 

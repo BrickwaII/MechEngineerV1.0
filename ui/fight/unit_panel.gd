@@ -1,12 +1,20 @@
 extends PanelContainer
-## One unit on the battle screen: its animated sprite on a stage (tier plate,
-## glow, target reticle), name and personality tag, its stats as icon chips
-## (ATK, DEF, SPD, BAT), health and energy meters (GhostBars that show every
-## change and the choice preview: the hp slice a hit would take, the energy a
-## skill would cost), and status icons. Resting the pointer on the card shows
-## the full readout (UnitDetail). Emits clicked with the mouse button and
-## hovered when the pointer enters or leaves; the battle screen turns those
-## into FightCommands and previews.
+## One unit on the battle screen, on the card anatomy (ui/README.md rule 8):
+##
+##   +--------+-----------------------------------+
+##   |        | Name                  [intent] ⋮  |
+##   | sprite | ▮▮▮▮▯ 38/50     / 12     >> 2nd   |   HP (Energy under it), ATK, next turn
+##   |        | [Boss] [Guard 40%] [Low HP] [Aggr]|   flags on the edge
+##   +--------+-----------------------------------+
+##
+## The sprite stage (tier plate, glow, target reticle) is never covered; only
+## damage popups cross it. The meters are GhostBars that show every change and
+## the choice preview (the hp slice a hit would take, the energy a skill would
+## cost). ⋮, or a right-click while nothing is being chosen, opens the
+## DetailModal with every stat, the skills with ranks, statuses, the
+## personality and (enemies) the next move. Emits clicked with the mouse
+## button and hovered when the pointer enters or leaves; the battle screen
+## turns those into FightCommands and previews.
 ##
 ## Enemy intents and preview numbers are drawn on the arrows (IntentArrows),
 ## not under the sprite: the intent and preview labels still hold their words
@@ -19,7 +27,7 @@ const UnitDetail := preload("res://ui/fight/unit_detail.gd")
 
 enum Highlight { NONE, ACTIVE, SELECTED, TARGETABLE }
 
-const CARD_WIDTH := 320
+const CARD_WIDTH := 352
 ## Stat id -> its icon id in data/ui/icons.json, in chip order.
 const STAT_ICON_IDS := {"atk": "atk", "def": "def", "spd": "spd", "bat": "battery"}
 ## Intent kind -> its icon id in data/ui/icons.json.
@@ -54,10 +62,19 @@ var intent_changed := false
 var intent_kind := ""
 ## True while the previewed choice would change this enemy's intent.
 var intent_would_change := false
-## Stat id ("atk", "def", "spd", "bat") -> its number label.
-var stat_labels: Dictionary[String, Label] = {}
-## Stat id -> its IconStat (icon, number, tooltip).
-var stat_icons: Dictionary[String, IconStat] = {}
+## The three headlines: HP (with Energy under it), ATK, next turn.
+var strip: StatStrip
+## The flags on the card's edge: unit flags, statuses, the trait.
+var flags_row: HFlowContainer
+## ⋮: opens the DetailModal.
+var more_button: Button
+## True for the fight's boss (show_boss()).
+var is_boss := false
+## When the unit acts next: BattleMath.turn()'s dictionary.
+var turn_info := {}
+## The bot's personality ends (Personality.ENDS order) for the detail card's
+## hexagon; empty for enemies, which only have a tag.
+var personality_ends: Array[float] = []
 ## The personality tag as its trait icon; the tag word is in its tooltip.
 var trait_icon: IconStat
 ## Enemies: the intent as an icon and its number at the top of the card
@@ -73,6 +90,10 @@ var _name_size := -1
 var _style := StyleBoxFlat.new()
 var _unit: Combatant
 var _bars_ready := false
+var _unit_flags: HBoxContainer
+var _trait_flags: HBoxContainer
+var _flag_key := ""
+var _trait_key := ""
 
 
 func setup(unit: Combatant, look: Dictionary = {}) -> void:
@@ -84,13 +105,12 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 	custom_minimum_size = Vector2(CARD_WIDTH, 0)
 	_style.bg_color = FeelData.color("panel")
 	_style.set_border_width_all(2)
-	_style.set_content_margin_all(4)
+	_style.set_content_margin_all(UiStyle.space("xs"))
 	_style.anti_aliasing = false
 	add_theme_stylebox_override("panel", _style)
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var row := UiStyle.row("s")
+	row.name = "Body"
 	add_child(row)
 	view = UnitView.new()
 	view.name = "View"
@@ -98,17 +118,18 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 	if look.is_empty():
 		look = BattleArt.look_for(unit, 0, BattleTierRule.defaults())
 	view.setup(look, is_enemy)
-	var col := VBoxContainer.new()
+	var col := UiStyle.column("xs")
+	col.name = "Strip"
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.add_theme_constant_override("separation", 3)
-	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(col)
-	var name_row := HBoxContainer.new()
-	name_row.add_theme_constant_override("separation", 6)
-	name_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Title strip: the name, the enemy's intent, ⋮.
+	var name_row := UiStyle.row("xs")
+	name_row.name = "TitleRow"
 	col.add_child(name_row)
-	name_label = _label(name_row, unit.display_name.to_upper(), "")
-	name_label.add_theme_color_override("font_color", FeelData.color("text_bright"))
+	name_label = _label(name_row, unit.display_name, "")
+	name_label.name = "Name"
+	UiTooltip._bold(name_label, UiStyle.role("title"))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.tooltip_text = unit.display_name
 	name_label.resized.connect(_fit_name)
@@ -116,85 +137,69 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 		intent_chip = IconStat.make("intent_attack")
 		intent_chip.name = "IntentChip"
 		intent_chip.visible = false
+		intent_chip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		name_row.add_child(intent_chip)
-	var stat_row := HBoxContainer.new()
-	stat_row.name = "StatRow"
-	stat_row.add_theme_constant_override("separation", int(ReadoutStyle.number("stats.gap_px", 6)))
-	stat_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(stat_row)
-	for id: String in STAT_ICON_IDS:
-		var stat := IconStat.make(STAT_ICON_IDS[id])
-		stat.name = "IconStat_%s" % id
-		stat.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		stat.value_label.name = "Stat_%s" % id
-		stat.value_label.theme_type_variation = &"SmallLabel"
-		stat.value_label.add_theme_color_override("font_color", ReadoutStyle.color("stats.text"))
-		stat_row.add_child(stat)
-		stat_icons[id] = stat
-		stat_labels[id] = stat.value_label
+	more_button = DetailModal.more_button(detail_spec)
+	more_button.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	name_row.add_child(more_button)
+	# The three headlines: HP (Energy under it), ATK, next turn.
 	hp_bar = PreviewBar.new()
 	hp_bar.name = "HpBar"
 	hp_bar.kind = "hp"
-	hp_bar.custom_minimum_size = Vector2(0, 12)
-	col.add_child(hp_bar)
+	hp_bar.draw_caption = false
 	energy_bar = PreviewBar.new()
 	energy_bar.name = "EnergyBar"
 	energy_bar.kind = "energy"
-	energy_bar.custom_minimum_size = Vector2(0, 12)
-	col.add_child(energy_bar)
-	var status_line := HBoxContainer.new()
-	status_line.add_theme_constant_override("separation", 6)
-	status_line.custom_minimum_size = Vector2(0, 24)
-	status_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(status_line)
+	energy_bar.draw_caption = false
+	strip = StatStrip.make([_hp_spec(unit, unit.hp, unit.energy()), _atk_spec(unit), _turn_spec()])
+	strip.stacked = true
+	col.add_child(strip)
+	# Flags on the edge: boss, elite, the prompt, statuses, low HP, the trait.
+	flags_row = Flag.row([])
+	flags_row.name = "Flags"
+	col.add_child(flags_row)
+	_unit_flags = HBoxContainer.new()
+	_unit_flags.name = "UnitFlags"
+	_unit_flags.add_theme_constant_override("separation", UiStyle.space("xs"))
+	_unit_flags.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flags_row.add_child(_unit_flags)
 	status_row = StatusRow.new()
 	status_row.name = "StatusRow"
-	status_line.add_child(status_row)
-	status_label = _label(status_line, "", "SmallLabel")
+	flags_row.add_child(status_row)
+	_trait_flags = HBoxContainer.new()
+	_trait_flags.name = "TraitFlags"
+	_trait_flags.add_theme_constant_override("separation", UiStyle.space("xs"))
+	_trait_flags.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flags_row.add_child(_trait_flags)
+	# Kept for their words (detail card, tests); flags show them.
+	var hidden := Control.new()
+	hidden.name = "Words"
+	hidden.visible = false
+	col.add_child(hidden)
+	status_label = _label(hidden, "", "")
 	status_label.name = "StatusLabel"
-	status_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	status_label.add_theme_color_override("font_color", FeelData.color("active"))
-	# The personality tag closes the status line, so long names keep their room.
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	status_line.add_child(spacer)
-	tag_label = _label(status_line, "", "SmallLabel")
+	tag_label = _label(hidden, "", "")
 	tag_label.name = "TagLabel"
-	tag_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	trait_icon = IconStat.make("unknown")
 	trait_icon.name = "TraitIcon"
 	trait_icon.visible = false
-	status_line.add_child(trait_icon)
+	hidden.add_child(trait_icon)
 	if is_enemy:
 		intent_row = HBoxContainer.new()
 		intent_row.name = "IntentRow"
 		intent_row.visible = false
-		intent_row.add_theme_constant_override("separation", 4)
-		intent_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		col.add_child(intent_row)
+		hidden.add_child(intent_row)
 		intent_icon = TextureRect.new()
 		intent_icon.name = "IntentIcon"
-		intent_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		intent_icon.custom_minimum_size = Vector2(24, 24)
-		intent_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		intent_row.add_child(intent_icon)
-		intent_label = _label(intent_row, "Intent: ?", "SmallLabel")
+		intent_label = _label(intent_row, "Intent: ?", "")
 		intent_label.name = "IntentLabel"
-		intent_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		intent_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		intent_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		change_label = _label(col, "", "SmallLabel")
+		change_label = _label(hidden, "", "")
 		change_label.name = "ChangeLabel"
-		change_label.add_theme_color_override("font_color", FeelData.color("changed"))
-		change_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		change_label.visible = false
-	preview_label = _label(col, "", "SmallLabel")
+	preview_label = _label(hidden, "", "")
 	preview_label.name = "PreviewLabel"
-	preview_label.add_theme_color_override("font_color", FeelData.color("preview"))
-	preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	preview_label.visible = false
-	tooltip_text = " "
 	mouse_entered.connect(func() -> void: hovered.emit(unit_id, true))
 	mouse_exited.connect(func() -> void: hovered.emit(unit_id, false))
 	refresh(unit, Highlight.NONE)
@@ -212,6 +217,7 @@ func refresh(unit: Combatant, p_highlight: Highlight, hp := -1, energy := -1) ->
 	status_label.text = _prompt(unit, p_highlight)
 	_update_stats(unit)
 	_update_statuses()
+	_update_flags()
 	_apply_style()
 	modulate = Color(1, 1, 1, BattleArt.number("downed_alpha", 0.55)) if not unit.is_alive() else Color.WHITE
 
@@ -227,6 +233,8 @@ func set_meters(hp: int, energy: int) -> void:
 		energy_bar.reset(energy, maxi(1, max_energy))
 		_bars_ready = true
 		return
+	if strip != null:
+		strip.set_stat(0, _hp_spec(_unit, hp, energy))
 	hp_bar.max_value = _unit.max_hp
 	hp_bar.set_value(hp)
 	energy_bar.set_value(energy)
@@ -239,12 +247,11 @@ func set_meters(hp: int, energy: int) -> void:
 ## `kind` is the intent's kind ("attack", "heal", "wait") or "".
 func show_intent(tag: String, intent: String, change: String, kind := "") -> void:
 	tag_label.text = tag
+	_update_trait_flag(tag)
 	# A known trait shows as its icon, the word in the tooltip; anything else
 	# (a "balanced" bot, a mixed tag) keeps the word.
 	var trait_id := "trait_%s" % tag.to_lower()
 	var has_icon := UiIcons.has(trait_id)
-	tag_label.visible = not tag.is_empty() and not has_icon
-	trait_icon.visible = has_icon
 	if has_icon and trait_icon.icon_id != trait_id:
 		trait_icon.icon_id = trait_id
 		trait_icon.icon_rect.texture = UiIcons.texture(trait_id)
@@ -324,6 +331,7 @@ func detail_text() -> String:
 	return "\n".join(UnitDetail.lines(_unit, status_text(), intent_text, change_label.text if change_label != null else "", tag_label.text))
 
 
+## The full readout as a card (the detail modal's Stats page in words).
 func _make_custom_tooltip(_for_text: String) -> Object:
 	if _unit == null:
 		return null
@@ -385,21 +393,131 @@ func _apply_style() -> void:
 		_style.bg_color = FeelData.color("panel_raised")
 
 
-## The stat chips: ATK, DEF (with the guard on top, while guarded), SPD, BAT.
+## The ATK and next-turn headlines as the unit stands.
 func _update_stats(unit: Combatant) -> void:
-	var s := unit.stats
-	stat_icons["atk"].set_value(s.attack)
-	stat_icons["def"].set_value(str(s.defense) if unit.guard_percent <= 0 else "%d+%d%%" % [s.defense, unit.guard_percent])
-	stat_labels["def"].add_theme_color_override("font_color",
-		ReadoutStyle.color("stats.guarded_text" if unit.guard_percent > 0 else "stats.text"))
-	stat_icons["spd"].set_value(s.speed)
-	stat_icons["bat"].set_value(s.battery_capacity)
+	strip.set_stat(1, _atk_spec(unit))
+	strip.set_stat(2, _turn_spec())
 
 
-## The stat chips as words: "ATK 8 DEF 3 SPD 7 BAT 10".
+## The stats as words: "ATK 8 DEF 3 SPD 7 BAT 10" (DEF "3+40%" while guarded).
 func stats_text() -> String:
-	return "ATK %s DEF %s SPD %s BAT %s" % [
-		stat_labels["atk"].text, stat_labels["def"].text, stat_labels["spd"].text, stat_labels["bat"].text]
+	var s := _unit.stats
+	var def := str(s.defense) if _unit.guard_percent <= 0 else "%d+%d%%" % [s.defense, _unit.guard_percent]
+	return "ATK %d DEF %s SPD %d BAT %d" % [s.attack, def, s.speed, s.battery_capacity]
+
+
+## Sets when the unit acts next (BattleMath.turn()) and shows it.
+func set_turn(info: Dictionary) -> void:
+	if info == turn_info:
+		return
+	turn_info = info
+	if strip != null:
+		strip.set_stat(2, _turn_spec())
+
+
+## Marks the fight's boss: a Boss flag, and no Elite flag.
+func set_boss(boss: bool) -> void:
+	is_boss = boss
+	_update_flags()
+
+
+## True when the unit is drawn in the top tier and is not the boss.
+func is_elite() -> bool:
+	return is_enemy and not is_boss and view != null and view.tier == BattleArt.ELITE_TIER
+
+
+func _hp_spec(unit: Combatant, hp: int, energy: int) -> Dictionary:
+	@warning_ignore("integer_division")
+	var max_energy := unit.max_energy_milli / Combatant.MILLI
+	var spec := StatStrip.bar("hp", hp, unit.max_hp, UiIcons.text("hp"))
+	spec["meter_node"] = hp_bar
+	spec["sub_node"] = energy_bar
+	spec["numbers"] = "HP %d/%d\nEnergy %d/%d" % [hp, unit.max_hp, energy, max_energy]
+	spec["title"] = "HP and Energy"
+	spec["show_icon"] = false
+	spec["bar_size"] = Vector2(64, 10)
+	return spec
+
+
+func _atk_spec(unit: Combatant) -> Dictionary:
+	var spec := StatStrip.number("atk", unit.stats.attack, UiIcons.text("atk"))
+	spec["numbers"] = stats_text().replace(" DEF", "  DEF").replace(" SPD", "  SPD").replace(" BAT", "  BAT")
+	return spec
+
+
+func _turn_spec() -> Dictionary:
+	var chip := str(turn_info.get("chip", "-"))
+	var role := "hint" if chip == "Now" else "text_quiet"
+	var spec := StatStrip.chip("spd", chip, str(turn_info.get("tip", "When it acts next.")), turn_info.get("math", []), role)
+	spec["title"] = "Next turn"
+	spec["numbers"] = "Speed %d" % _unit.stats.speed
+	return spec
+
+
+## The flags on the edge, rebuilt only when they change.
+func _update_flags() -> void:
+	if _unit_flags == null or _unit == null:
+		return
+	var ids: Array[String] = []
+	if is_boss:
+		ids.append("boss")
+	elif is_elite():
+		ids.append("elite")
+	var prompt := status_label.text
+	if prompt == "READY":
+		ids.append("ready")
+	elif prompt == "click to target":
+		ids.append("target")
+	if _unit.is_alive() and hp_bar.is_low():
+		ids.append("low_hp")
+	var key := ",".join(ids)
+	if key == _flag_key:
+		return
+	_flag_key = key
+	for c in _unit_flags.get_children():
+		_unit_flags.remove_child(c)
+		c.queue_free()
+	for id in ids:
+		var f: Flag
+		match id:
+			"ready":
+				f = Flag.make("Ready", "action_resume", "hint", "Its turn: choose a skill or Wait.")
+			"target":
+				f = Flag.make("Target", "action_attack", "enemy" if is_enemy else "ally", "Click to aim the chosen skill here.")
+			_:
+				f = Flag.of(id)
+		f.name = "Flag_%s" % id
+		_unit_flags.add_child(f)
+	_unit_flags.visible = not ids.is_empty()
+
+
+## The personality as a flag: the trait's icon and name.
+func _update_trait_flag(tag: String) -> void:
+	if tag == _trait_key:
+		return
+	_trait_key = tag
+	for c in _trait_flags.get_children():
+		_trait_flags.remove_child(c)
+		c.queue_free()
+	if tag.is_empty():
+		return
+	var trait_id := "trait_%s" % tag.to_lower()
+	var icon := trait_id if UiIcons.has(trait_id) else ""
+	var line := UiIcons.text(trait_id) if UiIcons.has(trait_id) else "Its personality."
+	var f := Flag.make(tag.capitalize(), icon, "neutral", line, not icon.is_empty())
+	f.name = "Flag_trait"
+	_trait_flags.add_child(f)
+
+
+## What ⋮ opens: every stat, the skills with ranks, statuses, the
+## personality, and (enemies) the next move.
+func detail_spec() -> Dictionary:
+	return UnitDetail.spec(_unit, {
+		"statuses": status_text(), "intent": intent_text,
+		"change": change_label.text if change_label != null else "", "tag": tag_label.text,
+		"boss": is_boss, "elite": is_elite(), "turn": turn_info, "personality": personality_ends,
+		"status_flags": status_row.shown,
+	})
 
 
 func _prompt(unit: Combatant, p_highlight: Highlight) -> String:
@@ -419,26 +537,15 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 
 
-## A long name is never clipped: it steps down to the small font when it
-## does not fit on one line, and wraps onto two lines if it still does not.
-## The hover card shows the full name too.
+## A long name is never clipped and never shrinks (ui/README.md rule 13):
+## it wraps onto two lines at the body size. Its tooltip shows it too.
 func _fit_name() -> void:
 	var width := name_label.size.x
 	if width <= 0.0 or not name_label.is_inside_tree():
 		return
 	var font := name_label.get_theme_font("font")
-	if _name_size < 0:
-		_name_size = name_label.get_theme_font_size("font_size")
-	var small := mini(_name_size, PixelTheme.font_size("small"))
-	var fits := font.get_string_size(name_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, _name_size).x <= width
-	var fits_small := font.get_string_size(name_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, small).x <= width
-	var wanted := _name_size if fits else small
-	if name_label.get_theme_font_size("font_size") != wanted:
-		if wanted == _name_size:
-			name_label.remove_theme_font_size_override("font_size")
-		else:
-			name_label.add_theme_font_size_override("font_size", wanted)
-	var wrap := TextServer.AUTOWRAP_OFF if fits or fits_small else TextServer.AUTOWRAP_WORD_SMART
+	var fits := font.get_string_size(name_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, name_label.get_theme_font_size("font_size")).x <= width
+	var wrap := TextServer.AUTOWRAP_OFF if fits else TextServer.AUTOWRAP_WORD_SMART
 	if name_label.autowrap_mode != wrap:
 		name_label.autowrap_mode = wrap
 

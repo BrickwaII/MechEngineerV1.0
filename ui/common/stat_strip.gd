@@ -1,5 +1,5 @@
 class_name StatStrip
-extends HBoxContainer
+extends VBoxContainer
 ## The three headline stats of a card, each with its own kind of graphic so
 ## they read at a glance without labels (as EDHREC's cards do):
 ##
@@ -17,6 +17,13 @@ extends HBoxContainer
 ##   ])
 ##   strip.set_stat(0, StatStrip.bar("hp", 30, 50))   # the bar animates
 ##
+## Any spec may also carry "numbers" (the tooltip's numbers line) and
+## "title" (its name), to say more than the icon's own; "show_icon": false
+## hides the icon where the graphic says enough; a bar takes "bar_size".
+##
+## `stacked` puts the first headline on its own full-width row (a long bar)
+## and the other two beneath it, for narrow cards.
+##
 ## A strip holds exactly three, each of a different kind. Every headline has
 ## the standard tooltip; `math` lines explain how its number came about.
 ## Everything else about the card goes in its DetailModal.
@@ -25,6 +32,13 @@ const KINDS: Array[String] = ["bar", "number", "ring", "arrow", "pips", "chip"]
 const COUNT := 3
 
 var headlines: Array[StatStrip.Headline] = []
+## The first headline alone on a full-width row, the others under it.
+var stacked := false:
+	set(v):
+		stacked = v
+		_place()
+
+var _rows: Array[HBoxContainer] = []
 
 
 ## A strip of three headline stats from specs made by bar(), number(), ...
@@ -35,6 +49,8 @@ static func make(specs: Array) -> StatStrip:
 
 
 ## A meter: `value` of `max_value`. `meter` is a GhostBar kind: "hp" or "energy".
+## A screen that animates its own meter passes it as spec["meter_node"] (and
+## a thin second meter as spec["sub_node"]); the headline then only shows it.
 static func bar(icon: String, value: float, max_value: float, tip := "", math: Array = [], meter := "hp") -> Dictionary:
 	return {"kind": "bar", "icon": icon, "value": value, "max": max_value, "tip": tip, "math": math, "meter": meter}
 
@@ -66,8 +82,21 @@ static func chip(icon: String, text: String, tip := "", math: Array = [], color_
 
 func _init() -> void:
 	name = "StatStrip"
-	add_theme_constant_override("separation", UiStyle.space("m"))
+	add_theme_constant_override("separation", UiStyle.space("xs"))
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for i in 2:
+		var r := HBoxContainer.new()
+		r.name = "Row%d" % i
+		r.add_theme_constant_override("separation", UiStyle.space("m"))
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(r)
+		_rows.append(r)
+
+
+## The gap between headlines on a row.
+func set_gap(px: int) -> void:
+	for r in _rows:
+		r.add_theme_constant_override("separation", px)
 
 
 func set_stats(specs: Array) -> void:
@@ -79,15 +108,29 @@ func set_stats(specs: Array) -> void:
 			push_warning("StatStrip: two '%s' stats; each headline needs its own graphic" % spec["kind"])
 		kinds[spec["kind"]] = true
 	for h in headlines:
-		remove_child(h)
+		h.get_parent().remove_child(h)
 		h.queue_free()
 	headlines.clear()
 	for i in specs.size():
 		var h := StatStrip.Headline.new()
 		h.name = "Stat%d" % i
-		add_child(h)
+		_rows[0].add_child(h)
 		headlines.append(h)
 		h.set_spec(specs[i])
+	_place()
+
+
+func _place() -> void:
+	if _rows.is_empty():
+		return
+	for i in headlines.size():
+		var want := _rows[1] if stacked and i > 0 else _rows[0]
+		var h := headlines[i]
+		if h.get_parent() != want:
+			h.get_parent().remove_child(h)
+			want.add_child(h)
+		h.size_flags_horizontal = Control.SIZE_EXPAND_FILL if stacked and i == 0 else Control.SIZE_FILL
+	_rows[1].visible = stacked and headlines.size() > 1
 
 
 ## Changes one headline; a bar of the same kind animates to the new value.
@@ -126,6 +169,10 @@ class Headline:
 			and spec.get("meter") == p_spec.get("meter")
 		var old := spec
 		spec = p_spec
+		if same_bar and spec.has("meter_node"):
+			value_label.text = text()
+			_retip()
+			return
 		if same_bar:
 			if not is_equal_approx(float(old["max"]), float(spec["max"])):
 				meter.reset(meter.value, float(spec["max"]))
@@ -133,12 +180,18 @@ class Headline:
 			value_label.text = text()
 			_retip()
 			return
+		for keep: Variant in [p_spec.get("meter_node"), p_spec.get("sub_node")]:
+			if keep is Node and (keep as Node).get_parent() != null:
+				(keep as Node).get_parent().remove_child(keep)
 		for c in get_children():
 			remove_child(c)
 			c.queue_free()
 		meter = null
 		gauge = null
 		icon_rect = UiIcons.rect(str(spec["icon"]))
+		# A cramped card may drop the icon when its graphic says enough (a green
+		# HP bar); the tooltip still names it.
+		icon_rect.visible = spec.get("show_icon", true)
 		add_child(icon_rect)
 		value_label = Label.new()
 		value_label.name = "Value"
@@ -147,13 +200,33 @@ class Headline:
 		value_label.add_theme_color_override("font_color", UiStyle.role("title"))
 		match str(spec["kind"]):
 			"bar":
-				meter = GhostBar.new()
+				# A screen may hand in its own meter (a GhostBar subclass with
+				# previews) and a thin second meter under it (Energy under HP).
+				meter = spec.get("meter_node") if spec.get("meter_node") is GhostBar else GhostBar.new()
 				meter.name = "Meter"
 				meter.kind = str(spec.get("meter", "hp"))
-				meter.custom_minimum_size = UiIcons.kit_vector("stat_strip.bar_size", Vector2(64, 10))
-				meter.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-				add_child(meter)
-				meter.reset(float(spec["value"]), float(spec["max"]))
+				meter.custom_minimum_size = spec.get("bar_size", UiIcons.kit_vector("stat_strip.bar_size", Vector2(64, 10)))
+				meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				var stack := VBoxContainer.new()
+				stack.name = "Meters"
+				stack.add_theme_constant_override("separation", 0)
+				stack.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				if meter.get_parent() != null:
+					meter.get_parent().remove_child(meter)
+				stack.add_child(meter)
+				var sub: Variant = spec.get("sub_node")
+				if sub is Control:
+					var sub_control := sub as Control
+					if sub_control.get_parent() != null:
+						sub_control.get_parent().remove_child(sub_control)
+					sub_control.name = "SubMeter"
+					sub_control.custom_minimum_size.y = float(UiIcons.kit("stat_strip.sub_bar_height", 6))
+					stack.add_child(sub_control)
+				add_child(stack)
+				if not spec.has("meter_node"):
+					meter.reset(float(spec["value"]), float(spec["max"]))
 			"number":
 				value_label.add_theme_font_size_override("font_size", PixelTheme.font_size("title"))
 				value_label.add_theme_color_override("font_color", UiStyle.role(str(spec.get("role", "title"))))
@@ -201,8 +274,8 @@ class Headline:
 		var shown := text()
 		if spec.get("kind") == "pips":
 			shown = "%s/%s" % [spec["value"], spec["max"]]
-		var numbers := "%s: %s" % [UiIcons.display_name(icon), shown]
-		UiTooltip.attach(self, UiIcons.display_name(icon), lines, numbers, icon, spec.get("math", []))
+		var numbers := str(spec.get("numbers", "%s: %s" % [UiIcons.display_name(icon), shown]))
+		UiTooltip.attach(self, str(spec.get("title", UiIcons.display_name(icon))), lines, numbers, icon, spec.get("math", []))
 
 
 ## The drawn graphic of a ring, pips or arrow headline.

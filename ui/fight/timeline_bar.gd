@@ -21,6 +21,9 @@ var settings: GameSettings
 var highlight_id := ""
 ## True while the bar shows the order a previewed choice would leave.
 var showing_preview := false
+## When a unit acts and why: unit id -> BattleMath.turn()'s dictionary, for
+## each chip's tooltip. Unset: the tooltip names the tick only.
+var turn_info: Callable
 
 var _entries: Array[TimelineEntry] = []
 
@@ -100,7 +103,10 @@ func refresh(entries: Array[TimelineEntry], preview := false) -> void:
 		_restyle_chip(chip)
 		var label: Label = chip.get_child(0)
 		label.text = entries[i].display_name + (" (wait)" if entries[i].ends_wait else "")
-		chip.tooltip_text = "acts at tick %d" % entries[i].tick
+		var info: Dictionary = turn_info.call(entries[i].combatant_id) if turn_info.is_valid() else {}
+		var when := "Acts now." if i == 0 else "Acts %s, at tick %d." % [BattleMath.ordinal(i + 1), entries[i].tick]
+		UiTooltip.attach(chip, entries[i].display_name, when + (" Ends its wait." if entries[i].ends_wait else ""),
+			"", "spd", info.get("math", []) if i == _first_slot(entries, i) else [])
 		chip.reset_size()
 		var target := Vector2(x, 0)
 		if fresh:
@@ -113,6 +119,15 @@ func refresh(entries: Array[TimelineEntry], preview := false) -> void:
 		elif not animate:
 			chip.position = target
 		x += chip.get_combined_minimum_size().x + GAP
+
+
+## The first slot `entries[i]`'s unit holds: its next action, which the math
+## explains (later slots repeat the same unit).
+static func _first_slot(entries: Array[TimelineEntry], i: int) -> int:
+	for j in entries.size():
+		if entries[j].combatant_id == entries[i].combatant_id:
+			return j
+	return i
 
 
 func _restyle() -> void:
