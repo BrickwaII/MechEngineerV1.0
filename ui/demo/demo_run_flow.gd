@@ -193,8 +193,6 @@ func continue_to_map() -> void:
 		super.continue_to_map()
 		return
 	var won := fight_service.last_report != null and fight_service.last_report.is_victory()
-	if readout != null:
-		readout.visible = false
 	_show_fight_end(won)
 
 
@@ -290,3 +288,10 @@ func _build_banner() -> void:
 	banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, int(BANNER_MARGIN))
 	banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	banner.grow_vertical = Control.GROW_DIRECTION_BEGIN
+
+
+## A demo fight's readout ends the demo: DONE, not BACK TO THE MAP.
+func _label_continue() -> void:
+	super._label_continue()
+	if continue_button != null and scenario.kind == DemoScenario.KIND_FIGHT and not readout.is_tallying():
+		continue_button.text = "DONE"

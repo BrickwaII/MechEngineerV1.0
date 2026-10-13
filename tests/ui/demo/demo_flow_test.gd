@@ -118,6 +118,7 @@ func test_a_demo_fight_ends_on_replay_or_back_to_demos() -> void:
 		await _frames(1)
 		guard += 1
 	_flow.readout.skip()
+	assert_str(_flow.continue_button.text).is_equal("DONE")
 	_flow.continue_button.pressed.emit()
 	await _frames(1)
 	assert_object(_flow.end_panel).is_not_null()
