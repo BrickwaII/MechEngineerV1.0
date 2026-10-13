@@ -352,12 +352,21 @@ func _build_roster(rng: RandomNumberGenerator) -> void:
 			member.id, member.display_name, Combatant.Side.PLAYER, order, member.stats, hp,
 			SquadSkills.ids_for(member, tuning), tuning, SquadSkills.overrides_for(member, tuning)))
 		order += 1
+	var picks := enemy_table.pick_for(request, rng, tuning.variants.option(FightVariants.ENEMY_FACTIONS), tuning)
+	# A unit alone of its kind needs no number: "Precinct Overseer", but
+	# "Rust Hound 1" and "Rust Hound 2".
+	var totals := {}
+	for enemy_id in picks:
+		totals[enemy_id] = totals.get(enemy_id, 0) + 1
 	var counts := {}
-	for enemy_id in enemy_table.pick_for(request, rng, tuning.variants.option(FightVariants.ENEMY_FACTIONS), tuning):
+	for enemy_id in picks:
 		counts[enemy_id] = counts.get(enemy_id, 0) + 1
 		var stats := enemy_table.stats_for(enemy_id, request, tuning)
+		var shown_name: String = enemy_table.name_of(enemy_id)
+		if totals[enemy_id] > 1:
+			shown_name = "%s %d" % [shown_name, counts[enemy_id]]
 		combatants.append(Combatant.new(
 			"%s#%d" % [enemy_id, counts[enemy_id]],
-			"%s %d" % [enemy_table.name_of(enemy_id), counts[enemy_id]],
+			shown_name,
 			Combatant.Side.ENEMY, order, stats, stats.hp, enemy_table.skills_of(enemy_id), tuning))
 		order += 1

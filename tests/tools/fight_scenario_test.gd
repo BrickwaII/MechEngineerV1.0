@@ -71,7 +71,10 @@ func test_explicit_enemies_appear_every_fight_in_order() -> void:
 		assert_array(enemy_ids).is_equal(["hound#1", "drone#1", "drone#2", "custom_boss#1"])
 	var boss := r.start(1).fight.combatant("custom_boss#1")
 	assert_int(boss.hp).is_equal(40)
-	assert_str(boss.display_name).is_equal("Boss 1")
+	# Alone of its kind: no number. Two drones: numbered.
+	assert_str(boss.display_name).is_equal("Boss")
+	assert_str(r.start(1).fight.combatant("drone#2").display_name).ends_with(" 2")
+	assert_str(r.start(1).fight.combatant("hound#1").display_name).not_contains("1")
 	# Rewards still follow the defense level.
 	assert_that(r.enemy_table.rewards(1)).is_equal(H.enemy_table().rewards(1))
 
