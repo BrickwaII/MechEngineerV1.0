@@ -37,5 +37,7 @@
 	"squad": {
 		"seed": 8,
 		"skill_ranks": 3
-	}
+	},
+	"details": "Every region held, nothing left in range: fast-forward plays the days to the payload and sums them up.",
+	"group": "other"
 }

@@ -1,7 +1,7 @@
 {
 	"name": "Boss",
-	"description": "Showcase: the Continental Uplink's walkers.",
-	"icon": "losses",
+	"description": "Showcase: the Continental Defense Grid.",
+	"icon": "demo_boss",
 	"act": 2,
 	"order": 4,
 	"kind": "fight",
@@ -22,13 +22,14 @@
 		"level": 5,
 		"boss": true,
 		"music": "boss",
-		"title": "Continental Uplink",
+		"title": "Continental Defense Grid",
 		"enemies": [
-			"rival_walker_advanced",
-			"enhanced_trooper_advanced",
-			"rival_walker_advanced",
+			"continental_defense_grid",
 			"rival_hunter_advanced",
+			"enhanced_trooper_advanced",
 			"splinter_swarm_advanced"
-		]
-	}
+		],
+		"boss_unit": "continental_defense_grid"
+	},
+	"details": "Showcase boss: the Continental Defense Grid, which shields and repairs its Rival AI and Enhanced escorts and Overloads when charged."
 }

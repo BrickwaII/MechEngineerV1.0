@@ -301,8 +301,13 @@ func _label_continue() -> void:
 func _on_screen_opened(screen: BattleScreen) -> void:
 	super._on_screen_opened(screen)
 	var title := str(scenario.fight.get("title", ""))
-	if scenario.is_fight() and not title.is_empty():
-		screen.header_label.text = "%s  -  %s" % ["BOSS" if scenario.is_boss() else "FIGHT", title.to_upper()]
+	if not scenario.is_fight() or title.is_empty():
+		return
+	for c in screen.fight.combatants:
+		if c.side == Combatant.Side.ENEMY and BattleArt.base_id(c.id) == scenario.boss_unit():
+			screen.show_boss(c.id, title)
+			return
+	screen.header_label.text = "%s  -  %s" % ["BOSS" if scenario.is_boss() else "FIGHT", title.to_upper()]
 
 
 ## Home in a demo leaves at once, from any screen: nothing is at stake.

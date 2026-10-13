@@ -18,5 +18,7 @@
 		"losses": 1,
 		"loss_limit": 3,
 		"play_s": 5412
-	}
+	},
+	"details": "The run-over screen after a lost boss fight: where it ended, regions, fights won and lost, losses, play time.",
+	"group": "other"
 }

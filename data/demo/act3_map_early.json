@@ -1,7 +1,7 @@
 {
 	"name": "Map, early",
 	"description": "Day 1 on the globe, North America online.",
-	"icon": "time",
+	"icon": "demo_globe",
 	"act": 3,
 	"order": 1,
 	"kind": "map",
@@ -19,5 +19,6 @@
 	"squad": {
 		"seed": 42,
 		"skill_ranks": 3
-	}
+	},
+	"details": "The world globe on day 1, North America online. Drag the globe to turn it."
 }

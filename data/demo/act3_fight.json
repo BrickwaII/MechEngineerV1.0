@@ -21,5 +21,6 @@
 		"region": "europe",
 		"kind": "attack",
 		"level": 4
-	}
+	},
+	"details": "A late assault on Europe at Defense 4."
 }

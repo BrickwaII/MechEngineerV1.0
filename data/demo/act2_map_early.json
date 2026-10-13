@@ -1,7 +1,7 @@
 {
 	"name": "Map, early",
 	"description": "Day 1: the Pacific Northwest and Canada online.",
-	"icon": "time",
+	"icon": "demo_map",
 	"act": 2,
 	"order": 1,
 	"kind": "map",
@@ -20,5 +20,6 @@
 	"squad": {
 		"seed": 8,
 		"skill_ranks": 2
-	}
+	},
+	"details": "North America on day 1 after the zoom: the Pacific Northwest and western Canada online."
 }

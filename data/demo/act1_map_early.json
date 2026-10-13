@@ -1,7 +1,7 @@
 {
 	"name": "Map, early",
 	"description": "Day 1: one district held, the alert quiet.",
-	"icon": "time",
+	"icon": "demo_map",
 	"act": 1,
 	"order": 1,
 	"kind": "map",
@@ -11,5 +11,6 @@
 	"day": 1,
 	"squad": {
 		"seed": 8
-	}
+	},
+	"details": "Greater Seattle on day 1, from the Renton Works start. One district held, the alert quiet, the full 100-day countdown ahead."
 }

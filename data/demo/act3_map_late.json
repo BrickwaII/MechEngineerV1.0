@@ -1,7 +1,7 @@
 {
 	"name": "Map, late",
 	"description": "6 of 8 held, global alert, Europe and Asia dug in.",
-	"icon": "alert",
+	"icon": "demo_globe",
 	"act": 3,
 	"order": 3,
 	"kind": "map",
@@ -28,5 +28,6 @@
 	"squad": {
 		"seed": 42,
 		"skill_ranks": 4
-	}
+	},
+	"details": "Day 78. Six of eight blocs held, the alert global, Europe and Asia dug in, a news card just in."
 }

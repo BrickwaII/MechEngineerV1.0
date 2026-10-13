@@ -23,5 +23,6 @@
 		"region": "rockies",
 		"kind": "attack",
 		"level": 3
-	}
+	},
+	"details": "An assault on the Rockies at Defense 3 against the Rival AI's hunters and swarms."
 }

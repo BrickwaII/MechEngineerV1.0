@@ -1,7 +1,7 @@
 {
 	"name": "Boss",
-	"description": "The run's real boss: today's Defense 5 stand-in.",
-	"icon": "losses",
+	"description": "Last Command and its alien escorts.",
+	"icon": "demo_boss",
 	"act": 3,
 	"order": 5,
 	"kind": "fight",
@@ -13,7 +13,7 @@
 	"day": 99,
 	"squad": {
 		"seed": 42,
-		"skill_ranks": 6
+		"skill_ranks": 5
 	},
 	"fight": {
 		"region": "boss",
@@ -21,6 +21,14 @@
 		"level": 5,
 		"boss": true,
 		"music": "boss",
-		"title": "The final payload"
-	}
+		"title": "Last Command",
+		"enemies": [
+			"last_command",
+			"alien_stalker_advanced",
+			"alien_spitter_advanced",
+			"warden_mech"
+		],
+		"boss_unit": "last_command"
+	},
+	"details": "The final payload's boss: Last Command, an alien warmind that charges all-in Overloads and sweeps, with alien escorts. A showcase: a real run's boss is still a stand-in."
 }

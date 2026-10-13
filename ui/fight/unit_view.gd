@@ -18,6 +18,8 @@ var guarded := false
 var down := false
 var settings: GameSettings
 ## Offset from the resting spot, in screen pixels.
+## How much larger than the standard stage the unit is drawn (a boss: 1.6).
+var size_factor := 1.0
 var motion_offset := Vector2.ZERO:
 	set(v):
 		motion_offset = v.round()
@@ -88,6 +90,18 @@ func _process(delta: float) -> void:
 		reticle.scale = Vector2.ONE * (4.0 if fmod(_clock, 0.6) < 0.3 else 5.0)
 
 
+## Draws the unit `factor` times the standard size, stage and all (a boss).
+func set_size_factor(factor: float) -> void:
+	size_factor = factor
+	custom_minimum_size = (STAGE_SIZE * factor).round()
+	var scale_px := float(SpriteManifest.display_scale())
+	if sprite != null:
+		sprite.scale = Vector2.ONE * scale_px * factor
+		plate.scale = Vector2.ONE * scale_px * factor
+		glow.scale = Vector2.ONE * scale_px * factor * float(BattleArt.tier_look(tier).get("glow_scale", 1.0))
+	_place()
+
+
 ## Where effects aimed at this unit land, in global coordinates.
 func center_global() -> Vector2:
 	return get_global_transform() * (size / 2.0)
@@ -151,5 +165,5 @@ func _place() -> void:
 	sprite.position = center + motion_offset
 	glow.position = center + motion_offset
 	# The plate sits under the feet: the frame's bottom rows.
-	plate.position = center + Vector2(0, 14 * scale_px) + Vector2(motion_offset.x, 0)
+	plate.position = center + Vector2(0, 14 * scale_px * size_factor) + Vector2(motion_offset.x, 0)
 	reticle.position = center

@@ -24,5 +24,7 @@
 	"squad": {
 		"seed": 8,
 		"skill_ranks": 1
-	}
+	},
+	"details": "South Seattle's pressure is full: the squad must defend it, or retreat and give the district up.",
+	"group": "other"
 }

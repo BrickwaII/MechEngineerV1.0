@@ -1,7 +1,7 @@
 {
 	"name": "Map, late",
 	"description": "9 of 12 held, top alert tier, the rest dug in.",
-	"icon": "alert",
+	"icon": "demo_map",
 	"act": 1,
 	"order": 2,
 	"kind": "map",
@@ -30,5 +30,6 @@
 	"squad": {
 		"seed": 8,
 		"skill_ranks": 2
-	}
+	},
+	"details": "Day 74. Nine of twelve districts held, so the alert is at its top tier: the last three regions are fortified and a news card is just in."
 }

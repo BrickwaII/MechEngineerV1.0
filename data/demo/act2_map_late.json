@@ -1,7 +1,7 @@
 {
 	"name": "Map, late",
 	"description": "14 of 19 held, top alert tier, the coasts dug in.",
-	"icon": "alert",
+	"icon": "demo_map",
 	"act": 2,
 	"order": 2,
 	"kind": "map",
@@ -31,5 +31,6 @@
 	"squad": {
 		"seed": 8,
 		"skill_ranks": 3
-	}
+	},
+	"details": "Day 76. Fourteen of nineteen regions held, the alert at its top tier, the coasts fortified, a news card just in."
 }
