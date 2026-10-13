@@ -1,0 +1,13 @@
+{
+	"name": "Map, early",
+	"description": "Day 1 in Greater Seattle: one district held, the alert quiet.",
+	"icon": "time",
+	"act": 1,
+	"order": 1,
+	"kind": "map",
+	"map": "lake_washington_12",
+	"start": "renton_works",
+	"alert_tier": 0,
+	"day": 1,
+	"squad": {"seed": 13}
+}

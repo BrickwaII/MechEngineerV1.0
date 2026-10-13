@@ -360,6 +360,21 @@ ICONS = {
         "..o.oaao.o..",
         "....oooo....",
     ]),
+    # A looping arrow: play the same thing again.
+    "action_replay": ("energy", [
+        "....oooo....",
+        "..ooaaaaoo..",
+        ".oaaooooaao.",
+        ".oao....oao.",
+        "oao......oo.",
+        "oao.........",
+        "oao....oooo.",
+        "oao.....oaao",
+        ".oao...oaaao",
+        ".oaaoooaaao.",
+        "..ooaaaaoo..",
+        "....oooo....",
+    ]),
     "intent_buff": ("hp", [
         ".....oo.....",
         "....oaao....",

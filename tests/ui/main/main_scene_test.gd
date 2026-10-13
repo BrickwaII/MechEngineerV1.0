@@ -150,3 +150,30 @@ func test_home_from_a_run_saves_and_continue_picks_it_up() -> void:
 	assert_str(menu.flow.run_dir).is_equal(dir)
 	assert_int(menu.flow.stage).is_equal(RunFlow.Stage.MAP)
 	assert_dict(menu.flow.overworld.campaign.state.to_dict()).is_equal(state)
+
+
+func test_demo_opens_the_picker_and_a_demo_comes_back_to_it() -> void:
+	var menu := await _menu()
+	menu.demo_button.pressed.emit()
+	await get_tree().process_frame
+	var picker := menu.demo_picker
+	assert_object(picker).is_not_null()
+	assert_bool(menu.menu.visible).is_false()
+	assert_int(picker.cards.size()).is_equal(DemoScenario.load_all().size())
+	for act in [1, 2, 3]:
+		assert_object(picker.find_child("Act%dHeader" % act, true, false)).is_not_null()
+	var first: DemoScenario = picker.scenarios[0]
+	picker.choose(first.id)
+	await get_tree().process_frame
+	assert_object(menu.demo_flow).is_not_null()
+	assert_bool(picker.visible).is_false()
+	menu.demo_flow.go_home()
+	await get_tree().process_frame
+	assert_object(menu.demo_flow).is_null()
+	assert_bool(menu.demo_picker.visible).is_true()
+	menu.demo_picker.back_button.pressed.emit()
+	assert_object(menu.demo_picker).is_null()
+	assert_bool(menu.menu.visible).is_true()
+	# Nothing was saved: no run to continue, no run folder.
+	assert_bool(menu.continue_button.disabled).is_true()
+	assert_bool(DirAccess.dir_exists_absolute(RUNS_ROOT) and not DirAccess.get_directories_at(RUNS_ROOT).is_empty()).is_false()
