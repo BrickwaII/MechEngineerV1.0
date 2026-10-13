@@ -42,6 +42,8 @@ func _run() -> void:
 
 
 func _map_shots(map, id: String) -> void:
+	# The news toast (shown as the scenario opens) would cover the panel shots.
+	map.escalation_hud.news.visible = false
 	var target := ""
 	for r in map.campaign.map.regions:
 		if map.campaign.standing(r.id) == Campaign.Standing.IN_RANGE:

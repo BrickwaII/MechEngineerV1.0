@@ -1,6 +1,10 @@
 extends Control
-## The overworld screen: grid capacity and countdown along the top, the map
-## and time bar on the left, the territory panel and event log on the right.
+## The overworld screen: the top bar (payload countdown, losses, Energy,
+## Material, a compact grid meter with Repair, Home), the map strip (lens:
+## Defense / Pressure / Resources / Odds, and "?" for the legend), the map
+## with one lens pin per region and a hover card, the time bar, and the side
+## panel's Region / Squad / Log tabs (ui/README.md rules 7-16). A right-click
+## on a region, or ⋮ on its card, opens its DetailModal.
 ## All rules live in Campaign; this script only shows them and forwards input.
 ##
 ## Presentation (M7 P3, timings in data/feel/screens.json): P1's pixel theme;
@@ -44,6 +48,8 @@ const SAVE_PATH := "user://overworld.save"
 const MAP_SIZE := Vector2(880, 580)
 ## The map's control strip above it (lens, legend).
 const MAP_STRIP_HEIGHT := 40.0
+## How far below the top bar the news toast docks: under the side tabs.
+const NEWS_TOP := 56.0
 const PANEL_WIDTH := 400.0
 const TOP_BAR_HEIGHT := 56.0
 const CHOICE_CARD_WIDTH := 290.0
@@ -475,7 +481,8 @@ func _build_layout() -> void:
 	var toast := Control.new()
 	toast.name = "NewsToast"
 	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	toast.position = Vector2(MAP_SIZE.x, TOP_BAR_HEIGHT)
+	# Under the side panel's tab bar, so the tabs stay reachable.
+	toast.position = Vector2(MAP_SIZE.x, TOP_BAR_HEIGHT + NEWS_TOP)
 	add_child(toast)
 	escalation_hud.dock_news(toast, Vector2(12, 12), PANEL_WIDTH - 24.0)
 	_hover_card = PanelContainer.new()
