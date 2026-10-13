@@ -80,6 +80,9 @@ var run_over_action: Callable
 ## the map can still be saved: RunFlow autosaves there, so leaving mid-battle
 ## can come back to the map as it stood before the fight.
 var before_fight_action: Callable
+## When set, the payload of an act with a next act calls it instead of
+## zooming out (a demo run ends there).
+var payload_action: Callable
 ## Callable(options: Array[StartOption]) -> String. When set, new_run() starts
 ## on the start it names and offers no choice; when unset the player chooses.
 var start_picker: Callable
@@ -139,6 +142,8 @@ var _repair_button: ActionButton
 var _ff_button: ActionButton
 ## The Home button in the top bar, once show_home_button() made it.
 var home_button: ActionButton
+## SAVE, LOAD and NEW RUN in the time strip (show_run_buttons()).
+var run_buttons: Array[Button] = []
 var _top_row: HBoxContainer
 
 
@@ -571,9 +576,12 @@ func _build_time_strip() -> Control:
 	_ff_button.pressed.connect(_on_fast_forward)
 	_ff_button.visible = false
 	header.add_child(_ff_button)
-	header.add_child(_button("SAVE", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, _on_save))
-	header.add_child(_button("LOAD", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, _on_load))
-	header.add_child(_button("NEW RUN", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, _on_new_run))
+	run_buttons = [_button("SAVE", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, _on_save),
+		_button("LOAD", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, _on_load),
+		_button("NEW RUN", Palette.BAR_BACKGROUND, Palette.TEXT_DIM, _on_new_run)]
+	for b in run_buttons:
+		b.name = b.text.capitalize().replace(" ", "") + "Button"
+		header.add_child(b)
 
 	_time_bar = MeterBar.new()
 	_time_bar.custom_minimum_size.y = 18
@@ -1023,6 +1031,12 @@ func show_home_button(on_press: Callable) -> ActionButton:
 	return home_button
 
 
+## Shows or hides SAVE, LOAD and NEW RUN (a demo run hides them).
+func show_run_buttons(on: bool) -> void:
+	for b in run_buttons:
+		b.visible = on
+
+
 ## Shows whatever the run now demands: the end, or a forced defense.
 func _check_forced() -> void:
 	match campaign.end_reason():
@@ -1126,6 +1140,9 @@ func _show_payload_zoom() -> void:
 		plan.act_name(act + 1), floori(campaign.state.energy * plan.energy_kept),
 		floori(campaign.state.material * plan.material_kept), _number(plan.grid_restore), plan.act_name(act),
 		"" if bonus == 0 else " plus %d neighboring territor%s" % [bonus, "y" if bonus == 1 else "ies"]]
+	if payload_action.is_valid():
+		_show_modal("ACT %d · PAYLOAD" % (act + 1), "The payload arrives", body, [["CONTINUE", _close_modal_then.bind(payload_action)]])
+		return
 	_show_modal("ACT %d · PAYLOAD" % (act + 1), "The payload arrives", body, [["ZOOM OUT", zoom_out]])
 
 

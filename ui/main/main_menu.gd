@@ -11,6 +11,10 @@ extends Control
 ##
 ## A finished run's VIEW shows its run-over screen (RunOverScreen), read-only;
 ## a run that ends in play leaves its run-over screen back to this menu.
+##
+## DEMO opens the demo picker (ui/demo/): ready-made scenarios of each act
+## that are never saved. A demo leaves back to the picker; the picker's MAIN
+## MENU comes back here.
 
 const RUN_SCENE := preload("res://ui/run/run_flow.tscn")
 const MENU_WIDTH := 520.0
@@ -29,6 +33,14 @@ var settings := RunDataSettings.load_default()
 var flow: RunFlow
 ## A finished run's run-over screen while it shows, else null.
 var run_over: RunOverScreen
+## The demo picker while it shows, else null.
+var demo_picker: DemoPicker
+## The demo run while one plays, else null.
+var demo_flow: DemoRunFlow
+## Set on a demo run before it starts; tests use it.
+var configure_demo: Callable
+## Where the demo picker reads scenarios; tests point it elsewhere.
+var demo_dir := DemoScenario.DEFAULT_DIR
 
 var menu: Control
 var continue_button: Button
@@ -38,6 +50,7 @@ var continue_label: Label
 var continue_icons: HBoxContainer
 var load_button: Button
 var new_run_button: Button
+var demo_button: Button
 var load_list: Control
 ## Folder path -> that run's LOAD button in the list.
 var load_buttons: Dictionary[String, Button] = {}
@@ -174,6 +187,59 @@ func close_flow() -> void:
 		MusicDirector.current.play_context(MusicDirector.MENU)
 
 
+# --- Demos ---------------------------------------------------------------------------
+
+## Shows the demo picker in place of the menu.
+func show_demos() -> void:
+	if demo_picker == null:
+		demo_picker = DemoPicker.new()
+		demo_picker.name = "DemoPicker"
+		demo_picker.scenario_dir = demo_dir
+		demo_picker.scenario_chosen.connect(open_demo)
+		demo_picker.back_requested.connect(hide_demos)
+		add_child(demo_picker)
+	demo_picker.visible = true
+	for child in [menu, load_list, legacy_panel]:
+		child.visible = false
+
+
+## Back from the picker to the menu.
+func hide_demos() -> void:
+	if demo_picker != null:
+		remove_child(demo_picker)
+		demo_picker.queue_free()
+		demo_picker = null
+	menu.visible = true
+	refresh()
+
+
+## Plays `scenario` as a demo run, over the picker.
+func open_demo(scenario: DemoScenario) -> void:
+	close_demo()
+	demo_flow = DemoRunFlow.new()
+	demo_flow.name = "DemoRunFlow"
+	demo_flow.scenario = scenario
+	if configure_demo.is_valid():
+		configure_demo.call(demo_flow)
+	demo_flow.exit_requested.connect(close_demo)
+	if demo_picker != null:
+		demo_picker.visible = false
+	add_child(demo_flow)
+
+
+## Ends the demo run and shows the picker again.
+func close_demo() -> void:
+	if demo_flow == null:
+		return
+	remove_child(demo_flow)
+	demo_flow.queue_free()
+	demo_flow = null
+	get_tree().paused = false
+	show_demos()
+	if MusicDirector.current != null:
+		MusicDirector.current.play_context(MusicDirector.MENU)
+
+
 ## Shows a finished run's run-over screen, read-only, over the load list.
 func view_finished_run(dir: String) -> void:
 	run_over = RunOverScreen.new()
@@ -228,6 +294,9 @@ func _build() -> void:
 	menu.add_child(_centered(load_button))
 	new_run_button = _button("NEW RUN", start_new_run)
 	menu.add_child(_centered(new_run_button))
+	demo_button = _button("DEMO", show_demos)
+	demo_button.tooltip_text = "Jump into ready-made moments of each act: maps, fights and bosses. Nothing is saved."
+	menu.add_child(_centered(demo_button))
 	menu.add_child(_spacer(12))
 	var where := _label("Runs are kept in %s" % ProjectSettings.globalize_path(runs_folder()), "text_dim", 10, true)
 	where.name = "RunsFolderLabel"

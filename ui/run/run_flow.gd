@@ -141,7 +141,7 @@ var _last_act := -1
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = ScreenTheme.theme()
 	transition = ScreenTransition.new()
 	add_child(transition)
@@ -155,6 +155,12 @@ func _ready() -> void:
 	variant_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	get_tree().node_added.connect(_on_node_added)
 	stage_changed.connect(func(s: Stage) -> void: MusicDirector.follow_stage(Stage.keys()[s]))
+	_start()
+
+
+## What the flow opens on entering the tree: the run in start_dir, or a new
+## one. A demo run (ui/demo/) opens its scenario instead.
+func _start() -> void:
 	if start_dir.is_empty() or not continue_run(start_dir):
 		new_run()
 
@@ -208,16 +214,7 @@ func open_pause_menu() -> PauseMenu:
 		return null
 	pause_menu = PauseMenu.new()
 	pause_menu.name = "PauseMenu"
-	pause_menu.note_text = _leave_note()
-	match stage:
-		Stage.FIGHT:
-			if battle_screen != null:
-				pause_menu.confirm_title = LEAVE_BATTLE_TITLE
-				pause_menu.confirm_body = LEAVE_BATTLE_BODY
-				pause_menu.confirm_leave_text = "Leave the battle"
-		Stage.DRAFT:
-			pause_menu.confirm_title = LEAVE_DRAFT_TITLE
-			pause_menu.confirm_body = LEAVE_DRAFT_BODY
+	_configure_pause_menu(pause_menu)
 	pause_menu.resumed.connect(close_pause_menu)
 	pause_menu.home_requested.connect(leave_run)
 	_variant_layer.add_child(pause_menu)
@@ -263,6 +260,20 @@ func leave_run() -> void:
 	if recorder != null:
 		recorder.snapshot_summary()
 	leave_to_menu()
+
+
+## What the Esc menu says and asks here. A demo run asks nothing.
+func _configure_pause_menu(menu: PauseMenu) -> void:
+	menu.note_text = _leave_note()
+	match stage:
+		Stage.FIGHT:
+			if battle_screen != null:
+				menu.confirm_title = LEAVE_BATTLE_TITLE
+				menu.confirm_body = LEAVE_BATTLE_BODY
+				menu.confirm_leave_text = "Leave the battle"
+		Stage.DRAFT:
+			menu.confirm_title = LEAVE_DRAFT_TITLE
+			menu.confirm_body = LEAVE_DRAFT_BODY
 
 
 func _leave_note() -> String:
