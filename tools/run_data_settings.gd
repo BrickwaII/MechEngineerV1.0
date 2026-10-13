@@ -10,6 +10,7 @@ var runs_folder := "user://runs"
 ## The single-slot save from before run folders, offered once as an import.
 var legacy_save := "user://run.res"
 var autosave_at_map_start := true
+var autosave_before_fight := true
 var autosave_after_fight := true
 var autosave_after_act := true
 var feedback_categories: PackedStringArray = []
@@ -42,6 +43,7 @@ static func load_file(path: String) -> RunDataSettings:
 	s.legacy_save = str(d.get("legacy_save", s.legacy_save))
 	var autosave: Dictionary = d.get("autosave", {})
 	s.autosave_at_map_start = bool(autosave.get("at_map_start", true))
+	s.autosave_before_fight = bool(autosave.get("before_fight", true))
 	s.autosave_after_fight = bool(autosave.get("after_fight", true))
 	s.autosave_after_act = bool(autosave.get("after_act", true))
 	var feedback: Dictionary = d.get("feedback", {})

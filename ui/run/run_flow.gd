@@ -18,7 +18,8 @@ extends Control
 ## draft pick, map action, battle command and fight, with state snapshots,
 ## and keeps the folder's summary. The run autosaves at the map start, after
 ## each fight and at each act change (data/run/run_data.json). Only the bots
-## picked in the draft are kept. F8 pauses and opens the feedback form
+## picked in the draft are kept (the run also saves just before each fight,
+## for leaving mid-battle). F8 pauses and opens the feedback form
 ## (FeedbackForm, FeedbackReport); the map gets a RUN FOLDER button beside NEW RUN.
 ##
 ## Variants: F4 opens the variant switchboard (ui/dev/) over the game, and a
@@ -35,6 +36,15 @@ extends Control
 ## screen (ui/main/run_over_screen.gd) with the folder's summary; MAIN MENU
 ## emits exit_requested (the main menu closes the flow), or starts a new run
 ## when nothing listens.
+##
+## Leaving (PauseMenu): Esc on the draft, map, battle or readout pauses the
+## game under the Esc menu: RESUME, SETTINGS, MAIN MENU. The map, the battle
+## and the readout also show a Home button. Leaving autosaves first (on the
+## map and the readout), writes an exit line in the journal and emits
+## exit_requested; the main menu's CONTINUE picks the run up again. Leaving
+## mid-battle asks first: the fight is called off, and the run goes on from
+## the save made just before it (TODO(decision: leave-mid-battle)). Leaving
+## the draft asks too: a run with no squad has nothing to keep.
 ##
 ## Every change of screen plays the ScreenTransition wipe over the swap. The
 ## readout counts up; CONTINUE skips the count-up first, then goes back to
@@ -54,7 +64,8 @@ const VARIANT_LAYER := 50
 enum Stage { DRAFT, MAP, FIGHT, POST_FIGHT }
 
 signal stage_changed(stage: Stage)
-## The player left a finished run for the main menu.
+## The player left the run for the main menu: a finished run, or one left
+## from the Esc menu or a Home button (saved first).
 signal exit_requested
 
 ## Set before the flow enters the tree. NO_SEED draws a new seed per run.
@@ -120,6 +131,10 @@ var run_over_screen: RunOverScreen
 var last_report_dir := ""
 ## The map's RUN FOLDER button, in the row with WAIT, SAVE, LOAD and NEW RUN.
 var folder_button: Button
+## The Esc menu while it shows, or null.
+var pause_menu: PauseMenu
+## The readout's Home button while the readout shows, or null.
+var readout_home_button: ActionButton
 var _screenshot: Image
 var _loading := false
 var _last_act := -1
@@ -147,7 +162,7 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	if recorder != null:
 		recorder.finish()
-	if get_tree().paused and feedback_form != null:
+	if get_tree().paused and (feedback_form != null or pause_menu != null):
 		get_tree().paused = false
 	# The campaign layer reads choices from this path; stop pointing it here.
 	if CampaignVariants.user_path == variants_path:
@@ -164,6 +179,99 @@ func _input(event: InputEvent) -> void:
 	elif key != null and key.pressed and not key.echo and key.keycode == KEY_F8:
 		open_feedback()
 		get_viewport().set_input_as_handled()
+
+
+## Esc: the pause menu, when nothing else above the game took the key.
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel") and not event.is_echo() and open_pause_menu() != null:
+		get_viewport().set_input_as_handled()
+
+
+# --- Leaving -----------------------------------------------------------------------
+
+## What leaving mid-battle does, said in the confirm step.
+## TODO(decision: leave-mid-battle): the fight is called off and Continue
+## comes back to the map as it was just before it (the before-fight
+## autosave), so the same fight can be fought again. The other option was to
+## count it as a retreat; that needs a rule for retreating mid-fight.
+const LEAVE_BATTLE_TITLE := "Leave the battle?"
+const LEAVE_BATTLE_BODY := "The fight is called off. Continue brings you back to the map just before it, with nothing spent, and the same fight waits for you."
+const LEAVE_DRAFT_TITLE := "Leave the draft?"
+const LEAVE_DRAFT_BODY := "The squad is not picked yet, so this run is not kept."
+
+## Pauses the game under the Esc menu. Returns the menu, or null when it
+## cannot open now (another overlay is up, or the run is over).
+func open_pause_menu() -> PauseMenu:
+	if pause_menu != null:
+		return pause_menu
+	if feedback_form != null or switchboard_screen != null or run_over_screen != null or get_tree().paused:
+		return null
+	pause_menu = PauseMenu.new()
+	pause_menu.name = "PauseMenu"
+	pause_menu.note_text = _leave_note()
+	match stage:
+		Stage.FIGHT:
+			if battle_screen != null:
+				pause_menu.confirm_title = LEAVE_BATTLE_TITLE
+				pause_menu.confirm_body = LEAVE_BATTLE_BODY
+				pause_menu.confirm_leave_text = "Leave the battle"
+		Stage.DRAFT:
+			pause_menu.confirm_title = LEAVE_DRAFT_TITLE
+			pause_menu.confirm_body = LEAVE_DRAFT_BODY
+	pause_menu.resumed.connect(close_pause_menu)
+	pause_menu.home_requested.connect(leave_run)
+	_variant_layer.add_child(pause_menu)
+	_variant_layer.move_child(variant_label, -1)
+	if recorder != null:
+		recorder.pause()
+	get_tree().paused = true
+	return pause_menu
+
+
+## Closes the Esc menu and unpauses.
+func close_pause_menu() -> void:
+	if pause_menu == null:
+		return
+	_free(pause_menu)
+	pause_menu = null
+	get_tree().paused = false
+	if recorder != null:
+		recorder.unpause()
+
+
+## A Home button: leaves at once where the run is safe to save; mid-battle
+## and in the draft, opens the Esc menu on its confirm step first.
+func go_home() -> void:
+	var menu := open_pause_menu()
+	if menu == null:
+		return
+	menu.request_home()
+
+
+## Leaves the run for the main menu: the journal's exit line, an autosave
+## where the map can be saved, then exit_requested (a new run when nothing
+## listens, as from the run-over screen).
+func leave_run() -> void:
+	close_pause_menu()
+	var mid_battle := stage == Stage.FIGHT and battle_screen != null
+	if recorder != null:
+		if mid_battle:
+			recorder.abandon_fight()
+		recorder.action(RunJournal.ACTION_EXIT, "", {"screen": Stage.keys()[stage].to_lower(), "mid_battle": mid_battle})
+	if stage == Stage.MAP or stage == Stage.POST_FIGHT:
+		_autosave()
+	if recorder != null:
+		recorder.snapshot_summary()
+	leave_to_menu()
+
+
+func _leave_note() -> String:
+	match stage:
+		Stage.FIGHT:
+			return "Main menu calls this fight off."
+		Stage.DRAFT:
+			return "Main menu drops this draft."
+	return "Main menu saves the run; Continue picks it up."
 
 
 ## Shows or hides the variant switchboard over the game.
@@ -294,6 +402,7 @@ func continue_to_map() -> void:
 	_free(readout)
 	readout = null
 	continue_button = null
+	readout_home_button = null
 	overworld.visible = true
 	_set_stage(Stage.MAP)
 
@@ -363,8 +472,9 @@ func _load_save(save: RunSave) -> bool:
 	return true
 
 
-## TODO(decision: autosave): the run saves itself at the map start, after
-## every fight and at every act change (data/run/run_data.json "autosave"), so
+## TODO(decision: autosave): the run saves itself at the map start, just
+## before and after every fight, at every act change and when the player
+## leaves for the main menu (data/run/run_data.json "autosave"), so
 ## Continue and the F8 report always have a recent save. There is one save per
 ## run; SAVE on the map writes the same file.
 func _autosave() -> void:
@@ -419,6 +529,7 @@ func _open_overworld() -> void:
 	overworld.act_variants = run_map_variants()
 	_hand_services_to(overworld)
 	overworld.save_action = func() -> void: save_run()
+	overworld.before_fight_action = _on_before_fight
 	overworld.load_action = func() -> void: load_run()
 	overworld.new_run_action = new_run
 	overworld.run_over_action = show_run_over
@@ -426,6 +537,7 @@ func _open_overworld() -> void:
 		overworld.start_picker = seeded_start
 	overworld.campaign_started.connect(_on_campaign_started)
 	add_child(overworld)
+	overworld.show_home_button(go_home)
 	overworld.odds.run_seed = current_seed
 	_add_folder_button()
 
@@ -443,6 +555,12 @@ func _add_folder_button() -> void:
 	folder_button.tooltip_text = "Open this run's folder: its save, journal and F8 reports."
 	folder_button.pressed.connect(open_run_folder)
 	row.add_child(folder_button)
+
+
+## Just before a fight: the autosave that leaving mid-battle comes back to.
+func _on_before_fight() -> void:
+	if run_settings.autosave_before_fight:
+		_autosave()
 
 
 ## A new Campaign on the map: the next act after a zoom, or a load. The
@@ -508,6 +626,7 @@ func _on_screen_opened(screen: BattleScreen) -> void:
 	debug_overlay.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, int(SCREEN_MARGIN))
 	debug_overlay.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	debug_overlay.fight = screen.fight
+	screen.show_home_button(go_home)
 	if recorder != null:
 		recorder.watch_battle(screen)
 	_set_stage(Stage.FIGHT)
@@ -531,6 +650,12 @@ func _on_fight_reported(report: PostFightReport, _result: FightResult) -> void:
 	continue_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT, Control.PRESET_MODE_MINSIZE, int(SCREEN_MARGIN))
 	continue_button.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	continue_button.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	readout_home_button = ActionButton.make("action_home", "Home")
+	readout_home_button.name = "HomeButton"
+	readout_home_button.pressed.connect(go_home)
+	readout.add_child(readout_home_button)
+	readout_home_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, int(SCREEN_MARGIN))
+	readout_home_button.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_set_stage(Stage.POST_FIGHT)
 
 
@@ -576,6 +701,7 @@ func _close_all() -> void:
 	folder_button = null
 	readout = null
 	continue_button = null
+	readout_home_button = null
 	battle_screen = null
 	debug_overlay = null
 

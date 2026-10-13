@@ -104,6 +104,11 @@ class _Timeline:
 				if detail:
 					out.append("%s             = #%d %s %s%s" % [stamp, int(line.get("index", 0)), line.get("side"), line.get("tag"), _events_text(line)])
 			RunJournal.KIND_FIGHT_END:
+				if str(line.get("outcome")) == RunJournal.OUTCOME_ABANDONED:
+					out.append("%s  %s   -> ABANDONED (left for the main menu), %d actions, %d commands" % [
+						stamp, where, int(line.get("actions", -1)), commands])
+					last_line = line
+					return
 				var won := str(line.get("outcome")) == "victory"
 				act_won += 1 if won else 0
 				act_lost += 0 if won else 1
@@ -160,6 +165,9 @@ class _Timeline:
 			RunJournal.ACTION_ACT_ZOOM:
 				_close_act(line)
 				out.append("%s  %s   act zoom" % [stamp, where])
+			RunJournal.ACTION_EXIT:
+				out.append("%s  %s   left for the main menu (from the %s%s)" % [stamp, where,
+					str(line.get("screen", "map")).replace("_", " "), ", mid-battle" if line.get("mid_battle", false) else ""])
 			RunJournal.ACTION_SAVE:
 				if detail or not bool(line.get("auto", false)):
 					out.append("%s  %s   %s" % [stamp, where, "autosave" if line.get("auto", false) else "save"])

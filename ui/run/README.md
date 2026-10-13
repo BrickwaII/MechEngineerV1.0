@@ -65,8 +65,9 @@ Every run has its own folder, a journal of everything the player did, and
 F8 feedback reports. Numbers and switches: `data/run/run_data.json`.
 
     <runs folder>/<yyyy-mm-dd_hhmm>_<seed>/
-        run.res        the save (autosaved at the map start, after every
-                       fight and at every act change; SAVE on the map too)
+        run.res        the save (autosaved at the map start, just before and
+                       after every fight, at every act change and when the
+                       player leaves for the main menu; SAVE on the map too)
         journal.jsonl  the run journal, one JSON object per line
         summary.json   act, day, regions held, fights won and lost, play time,
                        finished or not, won or not
@@ -105,6 +106,27 @@ send a playtest to Claude, upload the run folder (or one `reports/` folder).
   `note.json` (note, category, rating, stage, act, day, screen, active
   variant choices), the screenshot, and copies of the save and the journal.
 - Replay and timeline: `tools/replay_run.gd` (see tools/README.md).
+
+## Leaving a run
+
+Esc on the draft, map, battle or readout pauses the game under the Esc menu
+(`PauseMenu`): RESUME, SETTINGS (the settings screen over everything) and
+MAIN MENU. The map (top bar, right), the battle (header, right) and the
+readout (bottom left) also show a Home button. Leaving:
+
+- from the map or the readout: autosaves, writes an `exit` action in the
+  journal and goes back to the main menu, where CONTINUE picks the run up;
+- mid-battle: asks first. The fight is called off (its `fight_end` line has
+  outcome `abandoned`, with no result and no post-fight changes) and
+  CONTINUE comes back to the map as it was just before the fight (the
+  before-fight autosave), so the same fight waits. TODO(decision:
+  leave-mid-battle): the other option, counting it as a retreat, needs a
+  retreat rule for a fight in progress;
+- from the draft: asks first; the run has no squad yet and is not kept.
+
+Esc does nothing under the F8 form, the F4 switchboard or the run-over
+screen. Play time leaves the pause out. Screenshots:
+`demo/capture_leave.gd` (needs a display, see the header).
 
 Main menu (`ui/main/`): CONTINUE (the latest run that is not over), LOAD
 (every run, newest first, with its one-line summary; a finished run is

@@ -228,6 +228,8 @@ func _action(line: Dictionary) -> void:
 			_save()
 		RunJournal.ACTION_LOAD:
 			done = _load(line)
+		RunJournal.ACTION_EXIT:
+			pass
 	if not done:
 		_mismatch(line, "%s %s was not allowed here" % [line.get("action"), region])
 
@@ -291,6 +293,11 @@ func _play_fight(request: FightRequest) -> FightResult:
 	else:
 		fight = _play_commands(request, seed_value, tuning)
 	var end := _take(RunJournal.KIND_FIGHT_END)
+	if str(end.get("outcome", "")) == RunJournal.OUTCOME_ABANDONED:
+		# The player left mid-battle: the real run applied nothing and goes on
+		# from the save made before the fight, at the next load line. The
+		# replay's campaign takes a defeat here that the load then replaces.
+		return FightResult.new(FightResult.Outcome.DEFEAT)
 	if end.is_empty():
 		_mismatch(start, "the fight's lines have no fight_end")
 	else:

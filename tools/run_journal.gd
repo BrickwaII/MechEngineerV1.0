@@ -26,12 +26,17 @@ extends RefCounted
 ##   snapshot    reason: "run_start" | "fight" | "act" | "load" |
 ##               "fast_forward", state, squad
 ##   action      action: one of the ACTION_ constants, region, region_name;
-##               an attack that was breached has breach: true
+##               an attack that was breached has breach: true; an exit (the
+##               player left for the main menu) has screen ("map", "fight",
+##               "post_fight", "draft") and mid_battle
 ##   fight_start fight (number in the run, from 1), kind, territory,
 ##               territory_name, level, seed, fight_variants, campaign_variants
 ##   command     cmd, arg, ticks, problem ("" when accepted)
 ##   resolved    index, actor, side, tag, events: [event]
-##   fight_end   fight, outcome, actions, timed_out, grid_cost, rewards, seconds
+##   fight_end   fight, outcome, actions, timed_out, grid_cost, rewards, seconds;
+##               outcome "abandoned" when the player left mid-battle: no
+##               result and no post_fight line follow, and the run goes on
+##               from the save made just before the fight (the next load)
 ##   post_fight  fight, changes: {bot id: {field: [before, after]}}
 ##   expanded    region, region_name
 ##   escalation  event: "tier" | "fortified", tier, tier_name, region,
@@ -78,6 +83,9 @@ const ACTION_ACT_ZOOM := "act_zoom"
 const ACTION_RETREAT := "retreat"
 const ACTION_REPAIR := "repair"
 const ACTION_FAST_FORWARD := "fast_forward"
+const ACTION_EXIT := "exit"
+
+const OUTCOME_ABANDONED := "abandoned"
 
 const SNAPSHOT_RUN_START := "run_start"
 const SNAPSHOT_FIGHT := "fight"

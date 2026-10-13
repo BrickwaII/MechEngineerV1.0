@@ -26,6 +26,10 @@ extends Control
 ## plays the days to the payload (Campaign.fast_forward()) and sums them up.
 ## When the run ends, the host's run_over_action takes over (RunFlow shows
 ## the run-over screen); with none, the end message offers NEW RUN.
+##
+## Leaving: a host may put a Home button in the top bar (show_home_button())
+## and be called just before every fight (before_fight_action), which RunFlow
+## uses to autosave the map a mid-battle exit comes back to.
 
 const Palette := preload("res://ui/overworld/palette.gd")
 const MapView := preload("res://ui/overworld/map_view.gd")
@@ -72,6 +76,10 @@ var new_run_action: Callable
 ## Called when the player closes the end-of-run message; a host shows its
 ## run-over screen. When unset the message offers NEW RUN instead.
 var run_over_action: Callable
+## Called just before every fight starts (attack, forced defense, boss), while
+## the map can still be saved: RunFlow autosaves there, so leaving mid-battle
+## can come back to the map as it stood before the fight.
+var before_fight_action: Callable
 ## Callable(options: Array[StartOption]) -> String. When set, new_run() starts
 ## on the start it names and offers no choice; when unset the player chooses.
 var start_picker: Callable
@@ -129,6 +137,9 @@ var _status: Label
 var _losses: IconStat
 var _repair_button: ActionButton
 var _ff_button: ActionButton
+## The Home button in the top bar, once show_home_button() made it.
+var home_button: ActionButton
+var _top_row: HBoxContainer
 
 
 func _ready() -> void:
@@ -485,6 +496,7 @@ func _build_top_bar() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
 	bar.add_child(row)
+	_top_row = row
 
 	var grid := HBoxContainer.new()
 	grid.add_theme_constant_override("separation", 12)
@@ -976,6 +988,8 @@ func _on_attack(region_id: String, breach := false) -> void:
 	var result_holder := []
 	var on_finish := func(_request: FightRequest, result: FightResult) -> void: result_holder.append(result)
 	campaign.fight_finished.connect(on_finish, CONNECT_ONE_SHOT)
+	if campaign.can_attack(region_id):
+		_before_fight()
 	if not await campaign.attack(region_id, breach):
 		if campaign.fight_finished.is_connected(on_finish):
 			campaign.fight_finished.disconnect(on_finish)
@@ -988,6 +1002,25 @@ func _on_attack(region_id: String, breach := false) -> void:
 	else:
 		_show_message("ASSAULT · DEFEAT", "The assault on %s failed" % region.name,
 			"The defenders held. Grid drained by %s%%. %s" % [_number(charge), _loss_text()], _check_forced)
+
+
+func _before_fight() -> void:
+	if before_fight_action.is_valid() and not campaign.fighting:
+		before_fight_action.call()
+
+
+## Puts a Home button at the right end of the top bar; pressing it calls
+## `on_press` (RunFlow leaves for the main menu).
+func show_home_button(on_press: Callable) -> ActionButton:
+	if home_button == null:
+		home_button = ActionButton.make("action_home", "Home")
+		home_button.name = "HomeButton"
+		home_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_top_row.add_child(home_button)
+	for connection in home_button.pressed.get_connections():
+		home_button.pressed.disconnect(connection.callable)
+	home_button.pressed.connect(on_press)
+	return home_button
 
 
 ## Shows whatever the run now demands: the end, or a forced defense.
@@ -1033,6 +1066,7 @@ func _on_defend() -> void:
 	var result_holder := []
 	var on_finish := func(_request: FightRequest, result: FightResult) -> void: result_holder.append(result)
 	campaign.fight_finished.connect(on_finish, CONNECT_ONE_SHOT)
+	_before_fight()
 	if not await campaign.defend():
 		if campaign.fight_finished.is_connected(on_finish):
 			campaign.fight_finished.disconnect(on_finish)
@@ -1072,6 +1106,7 @@ func _show_boss() -> void:
 
 func _on_boss() -> void:
 	_hide_modal()
+	_before_fight()
 	var result: FightResult = await campaign.boss_fight()
 	if result == null:
 		return

@@ -40,6 +40,9 @@ extends Control
 ## current one to finish playing. When the fight ends, the victory or defeat
 ## moment plays (OutcomeBanner) before fight_finished.
 ##
+## A host may put a Home button at the right of the header
+## (show_home_button()); RunFlow asks before leaving the battle.
+##
 ## Call setup() before adding the screen to the tree.
 
 const UnitPanel := preload("res://ui/fight/unit_panel.gd")
@@ -97,6 +100,9 @@ var tier_rule: BattleTierRule
 var presenter: BattlePresenter
 var arrows: IntentArrows
 var outcome_banner: OutcomeBanner
+## The Home button at the right of the header, once show_home_button() made it.
+var home_button: ActionButton
+var _header: HBoxContainer
 var field_root: Control
 var shake: ScreenShake
 var settings: GameSettings
@@ -561,6 +567,7 @@ func _build_layout() -> void:
 	defense_stat = IconStat.make("defense_level", request.defense_level)
 	defense_stat.name = "DefenseLevel"
 	header.add_child(defense_stat)
+	_header = header
 	timeline_bar = TimelineBar.new()
 	timeline_bar.name = "TimelineBar"
 	timeline_bar.settings = settings
@@ -740,6 +747,23 @@ static func skill_card_face(skill: CombatSkill, attack: int) -> Dictionary:
 
 
 ## Shows or hides the battle log.
+## Puts a Home button at the right end of the header; pressing it calls
+## `on_press` (RunFlow asks before leaving the battle).
+func show_home_button(on_press: Callable) -> ActionButton:
+	if home_button == null:
+		var spacer := Control.new()
+		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_header.add_child(spacer)
+		home_button = ActionButton.make("action_home", "Home")
+		home_button.name = "HomeButton"
+		_header.add_child(home_button)
+	for connection in home_button.pressed.get_connections():
+		home_button.pressed.disconnect(connection.callable)
+	home_button.pressed.connect(on_press)
+	return home_button
+
+
 func toggle_log() -> void:
 	log_label.visible = not log_label.visible
 	refresh()
