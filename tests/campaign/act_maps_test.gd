@@ -127,6 +127,49 @@ func test_act1_variants_ring_lake_washington() -> void:
 			assert_bool(map.has_region(kitsap)).is_false()
 
 
+## Points on the act 1 maps (all four share one frame), from their lon/lat.
+const LAKE_UNION := Vector2(0.3552, 0.4575)
+const FREMONT_CUT := Vector2(0.3326, 0.4195)
+const MONTLAKE_CUT := Vector2(0.3943, 0.4313)
+const SALMON_BAY := Vector2(0.2982, 0.3975)
+const WALLINGFORD := Vector2(0.3575, 0.405)
+const MAGNOLIA_NORTH := Vector2(0.2804, 0.41)
+
+
+func test_the_ship_canal_divides_north_seattle_from_the_city_south_of_it() -> void:
+	for id in ["lake_washington_12", "lake_washington_16", "lake_washington_22"]:
+		var map := _load(id)
+		for water in [LAKE_UNION, FREMONT_CUT, MONTLAKE_CUT, SALMON_BAY]:
+			assert_str(map.region_at(water)).override_failure_message("%s: %s is land" % [id, water]).is_empty()
+		var south := "south_seattle" if id == "lake_washington_12" else "central_seattle"
+		assert_str(map.region_at(WALLINGFORD)).is_equal("north_seattle")
+		assert_str(map.region_at(MAGNOLIA_NORTH)).is_equal(south)
+		var north := ["north_seattle", "ballard"] if map.has_region("ballard") else ["north_seattle"]
+		for north_id: String in north:
+			# Over the water only, by a bridge, as Mercer Island is.
+			assert_bool(map.crossing_between(north_id, south).is_empty()) \
+				.override_failure_message("%s: %s has no bridge to %s" % [id, north_id, south]).is_false()
+			for a in map.get_region(north_id).shapes():
+				for b in map.get_region(south).shapes():
+					assert_bool(Geometry2D.intersect_polygons(a, b).is_empty()) \
+						.override_failure_message("%s: %s overlaps %s" % [id, north_id, south]).is_true()
+					assert_float(_gap(a, b)).override_failure_message("%s: %s touches %s" % [id, north_id, south]) \
+						.is_greater(0.003)
+
+
+## The shortest distance between two outlines, in map units.
+func _gap(a: PackedVector2Array, b: PackedVector2Array) -> float:
+	var best := INF
+	for pair in [[a, b], [b, a]]:
+		var from: PackedVector2Array = pair[0]
+		var to: PackedVector2Array = pair[1]
+		for p in from:
+			for i in to.size():
+				var q := Geometry2D.get_closest_point_to_segment(p, to[i], to[(i + 1) % to.size()])
+				best = minf(best, p.distance_to(q))
+	return best
+
+
 func test_act1_variants_keep_the_start_trait_kinds() -> void:
 	for variant: Dictionary in _plan().variants(0):
 		var map := _load(variant["id"])

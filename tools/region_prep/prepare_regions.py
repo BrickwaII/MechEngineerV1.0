@@ -16,7 +16,10 @@ How it works, per source file (data/regions/sources/<map>.source.json):
 1. Project every source outline (Natural Earth admin-0 or admin-1 polygons,
    US Census TIGER places) into the map's frame and rasterize it. Each pixel
    gets the game region its source feature belongs to; several features can
-   make one region (tiny states are grouped that way).
+   make one region (tiny states are grouped that way). A `relabel` rule hands
+   one region's pixels inside a lon/lat box to another (Seattle's districts);
+   with a `seed`, only the part of the box joined over land to the seed, so a
+   strait or canal through the box is the border.
 2. For a metro map, city outlines are only cores: the rest of the land within
    `grow_km` is given to the nearest city along land, so the cities tile the
    land and water stays water.
@@ -281,6 +284,30 @@ def grow_over_land(labels, land, width, height, max_px):
                 dist[nkey] = nd
                 labels[rr][cc] = label
                 heapq.heappush(heap, (nd, nkey, label))
+
+
+def relabel_from_seed(labels, width, height, frame, rule, src, dst):
+    """Gives `dst` every `src` pixel inside the rule's box that is 4-connected,
+    through `src` pixels inside the box, to the pixel at the rule's seed."""
+    lon0, lat0, lon1, lat1 = rule["box"]
+
+    def inside(r, c):
+        lon, lat = frame.pixel_to_lonlat(c + 0.5, r + 0.5)
+        return lon0 <= lon <= lon1 and lat0 <= lat <= lat1
+
+    px, py = frame.to_pixel(*rule["seed"])
+    c, r = int(px), int(py)
+    if not (0 <= r < height and 0 <= c < width) or labels[r][c] != src or not inside(r, c):
+        sys.exit("relabel %s -> %s: seed %s is not on %s inside the box" % (
+            rule["from"], rule["to"], rule["seed"], rule["from"]))
+    labels[r][c] = dst
+    stack = [(r, c)]
+    while stack:
+        r, c = stack.pop()
+        for rr, cc in ((r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)):
+            if 0 <= rr < height and 0 <= cc < width and labels[rr][cc] == src and inside(rr, cc):
+                labels[rr][cc] = dst
+                stack.append((rr, cc))
 
 
 def unpinch(grid, width, height):
@@ -631,6 +658,11 @@ def build(cfg_path, cache, preview_dir, root):
     for rule in cfg.get("relabel", []):
         lon0, lat0, lon1, lat1 = rule["box"]
         src, dst = index[rule["from"]], index[rule["to"]]
+        if "seed" in rule:
+            # Only the piece of the box joined over land to the seed, so a
+            # strait or canal through the box is the border.
+            relabel_from_seed(labels, width, height, frame, rule, src, dst)
+            continue
         for r in range(height):
             row = labels[r]
             for c in range(width):
