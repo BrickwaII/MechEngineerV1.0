@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
-## Unit names on the battle screen are never clipped: a long name steps down
-## to the small font, then wraps; the full name is in its tooltip.
+## Unit names on the battle screen are never clipped and never shrink: a long
+## name wraps at the body size; the full name is in its tooltip.
 
 const BATTLE_SCENE := preload("res://ui/fight/battle_screen.tscn")
 const Helpers := preload("res://tests/ui/fight/fight_ui_helpers.gd")

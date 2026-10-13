@@ -5,6 +5,8 @@ extends GhostBar
 ## is the selected skill's cost. The caption ("HP 12/20") is drawn on top.
 
 var caption := ""
+## False when the caption shows beside the bar instead (a card's stat strip).
+var draw_caption := true
 ## The value the previewed choice would leave, or -1 for no preview.
 var preview_to := -1.0
 var preview_known := true
@@ -67,7 +69,7 @@ func _draw() -> void:
 				# A notch at the predicted end, so the change reads without color.
 				draw_rect(Rect2(inner.position + Vector2(x_to - (1 if not gain else 0), -1), Vector2(1, inner.size.y + 2)),
 					FeelData.color("text_bright"))
-	if not caption.is_empty():
+	if draw_caption and not caption.is_empty():
 		var font := PixelTheme.font()
 		var font_size := 10
 		var at := inner.position + Vector2(3, floorf((inner.size.y + font.get_ascent(font_size)) / 2.0) - 1)

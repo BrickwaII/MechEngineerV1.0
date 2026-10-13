@@ -10,9 +10,10 @@ fight and turn the mouse into `FightCommand`s.
   for Patch Up and Shield Ally; Brace needs no target); WAIT; CANCEL or
   right-click to step back. The buttons are the bot's own skills, by its
   names and levels.
-  A unit's name on its card is never clipped: a long one steps down to the
-  small font, then wraps onto two lines (`UnitPanel._fit_name()`); its
-  tooltip and the hover card give the full name. A host may add a Home
+  A unit's name on its card is never clipped and never shrinks: a long one
+  wraps onto two lines at body size (`UnitPanel._fit_name()`); its tooltip
+  and the detail card give the full name. A unit alone of its kind has no
+  number ("Precinct Overseer", but "Rust Hound 1" and "Rust Hound 2"). A host may add a Home
   button to the header (`show_home_button()`).
 - `FightSceneService`: a contracts `FightService` that plays the fight as a
   `BattleScreen` under a host node and emits `finished` with the
@@ -54,11 +55,22 @@ data/ui/battle_presentation.json. The whole screen uses `PixelTheme`.
   augments, thresholds in data/variants/variants.json). Bots come from
   `BattleScreen.bot_source` (RunFlow passes the squad); without one, tiers
   come from what the fight knows.
-- `UnitPanel` + `UnitView`: a card per unit: the animated sprite on its tier
-  plate and glow (target reticle while targetable), HP and energy
-  `PreviewBar`s (GhostBar + the choice preview blinking on the bar),
-  `StatusRow` (guard, charging, waiting, low energy, down, intent changed:
-  icon, color and word), and for enemies the intent icon and words.
+- `UnitPanel` + `UnitView`: a card per unit on the card anatomy
+  (ui/README.md rule 8): the animated sprite on its tier plate and glow
+  (target reticle while targetable), never covered; a title strip with the
+  name, the enemy's intent chip and ⋮; a `StatStrip` of three headlines (the
+  HP `PreviewBar` with the Energy bar under it, ATK as a big number, and the
+  next turn as a chip, "Now" / "2nd" / ...); and flags on the edge: Boss,
+  Elite, Ready / Target, `StatusRow` statuses ("Guard 40%", "Charging >6",
+  ...), Low HP and the personality trait. ⋮, or a right-click while nothing
+  is being aimed, opens the `DetailModal` (`UnitDetail.spec()`): Stats,
+  Skills (skill cards with ranks), Status, Personality (the hexagon for
+  bots) and, for enemies, Next move.
+- `BattleMath`: the math tooltips (ui/README.md rule 15): an arrow badge's
+  damage (`ATK × Power − DEF × 50% × (1 − Pierce) = N`, then guard and caps),
+  repair and guard, and a turn chip's "(Turn at − Gauge) / Fill = ticks".
+  `IntentArrows` puts an invisible hotspot over each badge to carry its
+  tooltip; the NEXT chips and the card's turn chip share the turn math.
 - `IntentArrows`: an arrow from each enemy to its intent's target; dim, with
   the next enemy to act (or the one under the pointer) bright.
 - `BattlePresenter` + `BattleBeat`: plays each resolved action from the
@@ -93,8 +105,8 @@ seeded fights and checks every previewed number against the resolution.
 - `PreviewBar`: the hp slice a hit would take blinks on the target's bar
   (green past the fill for a heal); the selected skill's cost blinks on the
   bot's energy bar as soon as the skill is picked.
-- `UnitPanel`: ATK, DEF (plus guard), SPD and BAT as icon chips on every
-  card; resting the pointer shows `UnitDetail`, the full stats, skills with
+- `UnitPanel`: ATK on every card, DEF (plus guard), SPD and BAT in the ATK
+  tooltip and the detail card (`UnitDetail`): the full stats, skills with
   level, energy cost and effect, statuses, and an enemy's next move and why it
   changed. The intent and preview words no longer sit under the sprite (the
   labels keep their text for the detail card and tests); the log stays.

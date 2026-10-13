@@ -13,6 +13,11 @@ extends RefCounted
 ## here, else the fallback sheet recolored per enemy type. An enemy's tier is
 ## the enemy table's, else the fight's defense level picks it.
 
+## Enemies drawn in this tier carry the Elite flag on their card.
+## TODO(decision: ui-elite-rule): "elite" means the top sprite tier until
+## enemies get an elite marker of their own.
+const ELITE_TIER := "advanced"
+
 const DATA_PATH := "res://data/ui/battle_presentation.json"
 
 static var _data := {}

@@ -885,8 +885,19 @@ func _panel_defense(region: MapRegion) -> void:
 	line_odds.add_child(odds_label)
 	rows.add_child(line_odds)
 	if odds.is_simulated():
-		UiTooltip.attach(line_odds, "Your odds", "Auto-fights against this territory's enemies, %d of them. The auto-player fights differently from you." % odds.estimator.tuning.runs)
+		UiTooltip.attach(line_odds, "Your odds", "Auto-fights against this territory's enemies, %d of them. The auto-player fights differently from you." % odds.estimator.tuning.runs,
+			"", "odds", odds_math(region.id))
 	_panel.add_child(rows)
+
+
+## How the odds came about: "Won 20 of 32 simulated fights = 62%", or
+## nothing while the estimate is still running (ui/README.md rule 15).
+func odds_math(region_id: String) -> Array:
+	var e := odds.estimate_for(campaign, region_id) if odds.is_simulated() else null
+	if e == null or e.runs <= 0:
+		return []
+	return [UiFormula.new().term("Won", e.wins).op("/").term("Fights", e.runs).equals("%d%%" % e.percent()),
+		"Won %d of %d simulated fights." % [e.wins, e.runs]]
 
 
 ## The odds as the panel shows them: "RISKY · 42%" from simulated

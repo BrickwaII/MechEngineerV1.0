@@ -197,11 +197,15 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 
 
-## A click on a unit panel: bots are selected, enemies are targeted, and a
-## right-click anywhere cancels.
+## A click on a unit panel: bots are selected, enemies are targeted. A
+## right-click cancels a skill being aimed; with nothing to cancel it opens
+## the unit's detail card (as its ⋮ does).
 func on_unit_clicked(unit_id: String, button_index: MouseButton) -> void:
 	if button_index == MOUSE_BUTTON_RIGHT:
-		send(FightCommand.cancel())
+		if not _has_choice_to_cancel() and unit_panels.has(unit_id):
+			open_unit_detail(unit_id)
+		else:
+			send(FightCommand.cancel())
 		return
 	if button_index != MOUSE_BUTTON_LEFT:
 		return
@@ -214,6 +218,35 @@ func on_unit_clicked(unit_id: String, button_index: MouseButton) -> void:
 		send(FightCommand.select_bot(unit_id))
 	else:
 		send(FightCommand.select_target(unit_id))
+
+
+## An arrow badge's tooltip: who does what to whom, and the math behind the
+## number with the real values (BattleMath).
+func describe_badge(badge: ArrowBadge) -> Dictionary:
+	var actor := fight.combatant(badge.from_id)
+	var target := fight.combatant(badge.to_id)
+	var skill := actor.skill(badge.skill_id) if actor != null else null
+	var what: String = {ArrowBadge.HEAL: "Repair", ArrowBadge.GUARD: "Guard"}.get(badge.kind, "Damage")
+	var icon: String = {ArrowBadge.HEAL: "intent_heal", ArrowBadge.GUARD: "intent_guard", ArrowBadge.WAIT: "intent_charge"}.get(badge.kind, "intent_attack")
+	var body := "%s: %s on %s." % [
+		actor.display_name if actor != null else "?", skill.display_name if skill != null else "?",
+		target.display_name if target != null else "?"]
+	if badge.knocks_out:
+		body += " It goes Down."
+	return {"title": "%s %s" % [what, badge.text()], "body": body, "icon": icon,
+		"math": BattleMath.badge_lines(fight, badge)}
+
+
+## True while a right-click has something to undo: a skill being aimed, or
+## another bot than the one acting selected.
+func _has_choice_to_cancel() -> bool:
+	var actor := handler.actor()
+	return not handler.selected_skill_id.is_empty() or (actor != null and handler.selected_bot_id != actor.id)
+
+
+## Opens the DetailModal of `unit_id`'s card.
+func open_unit_detail(unit_id: String) -> DetailModal:
+	return DetailModal.open(self, unit_panels[unit_id].detail_spec())
 
 
 func on_skill_pressed(skill_id: String) -> void:
@@ -277,8 +310,12 @@ func refresh() -> void:
 	var actor := handler.actor()
 	var action := previewed_action()
 	shown_preview = telegraph.preview_choice(fight, action) if action != null else null
+	var upcoming: Array[TimelineEntry] = []
+	if not fight.is_over():
+		upcoming = fight.upcoming(tuning.timeline_length)
 	for c in fight.combatants:
 		var panel := unit_panels[c.id]
+		panel.set_turn(BattleMath.turn(fight, c.id, upcoming))
 		panel.refresh(c, _highlight_for(c), presenter.shown_hp(c.id, c.hp), presenter.shown_energy(c.id, c.energy()))
 		var intent := telegraph.intent_of(c.id) if c.is_alive() else null
 		panel.show_intent(telegraph.tag_of(c.id),
@@ -291,9 +328,6 @@ func refresh() -> void:
 	arrows.set_arrows(arrow_dicts, _arrow_focus())
 	_refresh_intent_chips(arrow_dicts)
 	_refresh_preview_box(action)
-	var upcoming: Array[TimelineEntry] = []
-	if not fight.is_over():
-		upcoming = fight.upcoming(tuning.timeline_length)
 	var order := BattleReadout.order_with_choice(upcoming, shown_preview)
 	var order_changes := not order.is_empty() and not BattleReadout.same_order(order, upcoming)
 	timeline_bar.refresh(order if order_changes else upcoming, order_changes)
@@ -586,6 +620,8 @@ func _build_layout() -> void:
 	header.add_child(defense_stat)
 	_header = header
 	timeline_bar = TimelineBar.new()
+	timeline_bar.turn_info = func(id: String) -> Dictionary:
+		return unit_panels[id].turn_info if unit_panels.has(id) else {}
 	timeline_bar.name = "TimelineBar"
 	timeline_bar.settings = settings
 	root.add_child(timeline_bar)
@@ -635,6 +671,8 @@ func _build_layout() -> void:
 		if c.side == Combatant.Side.PLAYER:
 			look = BattleArt.with_distinct_palette(look, used_palettes)
 		panel.setup(c, look)
+		if bot != null and bot.personality != null:
+			panel.personality_ends = bot.personality.get_ends()
 		panel.view.settings = settings
 		panel.clicked.connect(on_unit_clicked)
 		panel.hovered.connect(on_unit_hovered)
@@ -710,6 +748,7 @@ func _build_layout() -> void:
 	arrows = IntentArrows.new()
 	arrows.name = "IntentArrows"
 	arrows.views = views
+	arrows.describe = describe_badge
 	arrows.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(arrows)
 	presenter = BattlePresenter.new()
@@ -775,6 +814,7 @@ func show_boss(unit_id: String, title: String) -> void:
 		push_error("BattleScreen: no unit '%s' to show as the boss" % unit_id)
 		return
 	boss_id = unit_id
+	unit_panels[unit_id].set_boss(true)
 	header_label.text = "BOSS  -  %s" % title.to_upper()
 	var panel := unit_panels[unit_id]
 	panel.get_parent().remove_child(panel)

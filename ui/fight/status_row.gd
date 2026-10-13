@@ -1,7 +1,8 @@
 extends HBoxContainer
-## A unit's statuses as icons with their number: color AND shape, never color
-## alone, and the word in the hover tooltip (ui/README.md style). Icons are
-## the status_<id> ids in data/ui/icons.json.
+## A unit's statuses as flags (ui/README.md rule 9): the status icon and its
+## name with its number ("Guard 40%"), on the card's edge, color AND shape,
+## the full word in the hover tooltip. Icons are the status_<id> ids in
+## data/ui/icons.json; `compact` shows icons only (name on hover).
 ##
 ##   guard           shield    "GUARD 40%"
 ##   charging        bolt      "CHARGE >6"   (in a wait, filling toward a cost)
@@ -12,15 +13,20 @@ extends HBoxContainer
 
 const IDS: Array[String] = ["guard", "charging", "waiting", "low_energy", "down", "intent_changed"]
 const ICON_SCALE := 2
+## Status id -> its flag's color role.
+const ROLES := {"guard": "info", "charging": "info", "waiting": "neutral", "low_energy": "caution",
+	"down": "neutral", "intent_changed": "rare"}
 
 ## Status id -> its word, for what shows now.
 var shown: Dictionary[String, String] = {}
+## Icons only, the name on hover.
+var compact := false
 
 static var _icons := {}
 
 
 func _init() -> void:
-	add_theme_constant_override("separation", 6)
+	add_theme_constant_override("separation", UiStyle.space("xs"))
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	custom_minimum_size = Vector2(0, 12 * ICON_SCALE)
 
@@ -38,27 +44,14 @@ func show_statuses(statuses: Dictionary) -> void:
 		remove_child(child)
 		child.queue_free()
 	for id: String in shown:
-		var item := HBoxContainer.new()
-		item.name = "Status_%s" % id
-		item.add_theme_constant_override("separation", 2)
-		item.mouse_filter = Control.MOUSE_FILTER_PASS
-		UiTooltip.attach(item, UiIcons.display_name("status_" + id), UiIcons.text("status_" + id), shown[id], "status_" + id)
-		var icon := TextureRect.new()
-		icon.texture = icon_for(id)
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.custom_minimum_size = Vector2(12, 12) * ICON_SCALE
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		item.add_child(icon)
-		var label := Label.new()
-		label.text = number_of(shown[id])
-		label.visible = not label.text.is_empty()
-		label.theme_type_variation = &"SmallLabel"
-		label.add_theme_color_override("font_color", color_for(id))
-		label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		item.add_child(label)
-		add_child(item)
+		var number := number_of(shown[id])
+		var label := UiIcons.display_name("status_" + id)
+		if not number.is_empty():
+			label = "%s %s" % [label, number]
+		var flag := Flag.make(label, "status_" + id, ROLES.get(id, "neutral"), UiIcons.text("status_" + id), compact)
+		flag.name = "Status_%s" % id
+		UiTooltip.attach(flag, UiIcons.display_name("status_" + id), UiIcons.text("status_" + id), shown[id], "status_" + id)
+		add_child(flag)
 
 
 ## The part of a status word the card shows: the tokens with a digit.

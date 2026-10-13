@@ -46,6 +46,7 @@
 	"stat_strip": {
 		"slot_width": 72,
 		"bar_size": [64, 10],
+		"sub_bar_height": 6,
 		"ring_size": 32,
 		"ring_width": 6,
 		"pips_max": 5,
@@ -70,6 +71,6 @@
 	"math": {
 		"color_role": "hint",
 		"operator_role": "text_quiet",
-		"max_width": 600
+		"max_width": 720
 	}
 }

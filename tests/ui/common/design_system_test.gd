@@ -372,3 +372,29 @@ func test_gaps_on_the_style_check_page_sit_on_the_grid() -> void:
 				if (n as Control).has_theme_constant_override(k):
 					var sep := (n as Control).get_theme_constant(k)
 					assert_bool(sep in allowed).override_failure_message("%s %s %d" % [n.get_path(), k, sep]).is_true()
+
+
+func test_a_stacked_strip_gives_the_first_headline_its_own_row() -> void:
+	var s: StatStrip = auto_free(StatStrip.make([
+		StatStrip.bar("hp", 1, 2), StatStrip.number("atk", 3), StatStrip.chip("spd", "1st"),
+	]))
+	assert_object(s.headline(0).get_parent()).is_same(s.headline(1).get_parent())
+	s.stacked = true
+	assert_object(s.headline(0).get_parent()).is_not_same(s.headline(1).get_parent())
+	assert_object(s.headline(1).get_parent()).is_same(s.headline(2).get_parent())
+	assert_array(s.kinds()).is_equal(["bar", "number", "chip"])
+
+
+func test_a_bar_headline_can_show_a_screen_s_own_meters() -> void:
+	var hp: GhostBar = GhostBar.new()
+	var en: GhostBar = GhostBar.new()
+	var spec := StatStrip.bar("hp", 5, 10)
+	spec["meter_node"] = hp
+	spec["sub_node"] = en
+	spec["show_icon"] = false
+	var s: StatStrip = auto_free(StatStrip.make([spec, StatStrip.number("atk", 3), StatStrip.chip("spd", "1st")]))
+	assert_object(s.headline(0).meter).is_same(hp)
+	assert_bool(s.headline(0).is_ancestor_of(en)).is_true()
+	assert_bool(s.headline(0).icon_rect.visible).is_false()
+	s.set_stat(0, spec)
+	assert_object(s.headline(0).meter).is_same(hp)
