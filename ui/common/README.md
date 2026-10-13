@@ -27,7 +27,15 @@ holds a tunable number.
 | `icon_stat.gd` | `IconStat.make("atk", 12)`: icon + number + tooltip |
 | `skill_card.gd` | `SkillCard.make("Beam", 3, "Deal 12. Pierce 20%.", "+2")`: a skill as a card-like button |
 | `action_button.gd` | `ActionButton.make("action_reinforce", "Reinforce", "material", 2)`: icon + label + cost |
-| `demo/` | `theme_demo`, `feel_demo`, `sprite_demo`, `ui_kit_demo` scenes; `capture_screenshots.gd` and `capture_ui_kit.gd` render them |
+| `ui_style.gd` | `UiStyle`: the design system's rules as code: `space("s")`, `panel("plain")`, `role("bad")`, `caption(label)` |
+| `ui_formula.gd` | `UiFormula`: a formula line from real values for math tooltips: `UiFormula.parse("{ATK} − {DEF}", {...}, 4)` |
+| `stat_strip.gd` | `StatStrip`: a card's three headline stats, each its own graphic (bar, number, ring, arrow, pips, chip) |
+| `flag.gd` | `Flag.of("boss")`: the one badge style; catalog in `data/ui/flags.json` |
+| `info_card.gd` | `InfoCard`: the card anatomy (title + ⋮, flags, portrait, stat strip) |
+| `detail_modal.gd` | `DetailModal`: everything about a thing, from ⋮ or right-click; Esc closes |
+| `control_strip.gd` | `ControlStrip`: the one bar of view controls on a screen |
+| `ui_tabs.gd` | `UiTabs`: related pages under one row of tabs |
+| `demo/` | `style_check` (every design-system piece; `capture_style_check.gd`), `theme_demo`, `feel_demo`, `sprite_demo`, `ui_kit_demo` scenes; `capture_screenshots.gd` and `capture_ui_kit.gd` render them |
 
 ## Adopting it on a screen
 

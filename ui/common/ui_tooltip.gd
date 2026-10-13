@@ -5,6 +5,11 @@ extends VBoxContainer
 ##
 ##   UiTooltip.attach(control, "Guard", "Blocks part of the next hits.", "40%", "status_guard")
 ##
+## A tooltip can also explain its math: formula lines built from the real
+## values (UiFormula), shown under the numbers:
+##
+##   UiTooltip.set_math(badge, [UiFormula.parse("{ATK} − {DEF}", {"ATK": 12, "DEF": 8}, 4)])
+##
 ## attach() works on any Control: hovering it for the kit delay shows the
 ## tooltip by the mouse. Call it again to change the lines; it connects once.
 
@@ -20,23 +25,26 @@ var _source: Control
 var _away := 0.0
 var numbers: String
 var icon_id: String
+## Formula lines as bbcode (see math_lines()).
+var math: Array[String] = []
 
 
 ## A tooltip panel, built now. Shown by attach(); tests build it directly.
-static func build(p_title: String, p_body: String, p_numbers := "", p_icon_id := "") -> UiTooltip:
+static func build(p_title: String, p_body: String, p_numbers := "", p_icon_id := "", p_math: Array = []) -> UiTooltip:
 	var tip := UiTooltip.new()
 	tip.title = p_title
 	tip.body = p_body
 	tip.numbers = p_numbers
 	tip.icon_id = p_icon_id
+	tip.math = math_lines(p_math)
 	tip._compose()
 	return tip
 
 
 ## Gives `control` this tooltip on hover.
-static func attach(control: Control, p_title: String, p_body: String, p_numbers := "", p_icon_id := "") -> void:
+static func attach(control: Control, p_title: String, p_body: String, p_numbers := "", p_icon_id := "", p_math: Array = []) -> void:
 	var first := not control.has_meta(META)
-	control.set_meta(META, {"title": p_title, "body": p_body, "numbers": p_numbers, "icon": p_icon_id})
+	control.set_meta(META, {"title": p_title, "body": p_body, "numbers": p_numbers, "icon": p_icon_id, "math": math_lines(p_math)})
 	if not first:
 		return
 	if control.mouse_filter == Control.MOUSE_FILTER_IGNORE:
@@ -46,9 +54,30 @@ static func attach(control: Control, p_title: String, p_body: String, p_numbers 
 	control.tree_exiting.connect(_on_exit.bind(control))
 
 
-## What attach() stored on `control`: title, body, numbers, icon.
+## What attach() stored on `control`: title, body, numbers, icon, math.
 static func spec(control: Control) -> Dictionary:
 	return control.get_meta(META, {})
+
+
+## Sets the formula lines of `control`'s tooltip (after attach()).
+static func set_math(control: Control, lines: Array) -> void:
+	if not control.has_meta(META):
+		attach(control, "", "")
+	var s: Dictionary = control.get_meta(META)
+	s["math"] = math_lines(lines)
+	control.set_meta(META, s)
+
+
+## Formula lines as bbcode: a UiFormula renders colored, a String shows as
+## plain text.
+static func math_lines(lines: Array) -> Array[String]:
+	var out: Array[String] = []
+	for line: Variant in lines:
+		if line is UiFormula:
+			out.append((line as UiFormula).bbcode())
+		elif line is String and not (line as String).is_empty():
+			out.append((line as String).replace("[", "[lb]"))
+	return out
 
 
 func _process(delta: float) -> void:
@@ -71,12 +100,12 @@ func _compose() -> void:
 	name = "UiTooltip"
 	theme = PixelTheme.theme()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_theme_constant_override("separation", 4)
+	add_theme_constant_override("separation", UiStyle.space("xs"))
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var width := float(UiIcons.kit("tooltip.width", 260))
 	var main := _box("Main")
 	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 6)
+	head.add_theme_constant_override("separation", UiStyle.space("s"))
 	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	main.add_child(head)
 	if not icon_id.is_empty():
@@ -92,10 +121,32 @@ func _compose() -> void:
 		var n := _rich("Numbers", numbers, width)
 		n.add_theme_color_override("default_color", FeelData.color(str(UiIcons.kit("tooltip.number_color", "text_bright"))))
 		main.add_child(n)
+	if not math.is_empty():
+		var rule := HSeparator.new()
+		rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rule.add_theme_constant_override("separation", UiStyle.space("xs"))
+		main.add_child(rule)
+		var m := RichTextLabel.new()
+		m.name = "Math"
+		m.bbcode_enabled = true
+		m.fit_content = true
+		m.scroll_active = false
+		m.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		# A formula reads best on one line: widen for it, up to the kit's limit.
+		var longest := 0
+		for line in math:
+			longest = maxi(longest, _plain(line).length())
+		var advance := PixelTheme.font().get_string_size("0", HORIZONTAL_ALIGNMENT_LEFT, -1, text_size()).x
+		m.custom_minimum_size = Vector2(clampf(longest * advance + 8.0, width, float(UiIcons.kit("math.max_width", 600))), 0)
+		m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		m.add_theme_font_size_override("normal_font_size", text_size())
+		m.add_theme_color_override("default_color", FeelData.color("text"))
+		m.text = "\n".join(math)
+		main.add_child(m)
 	for k in keywords():
 		var box := _box("Keyword_%s" % k)
 		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
+		row.add_theme_constant_override("separation", UiStyle.space("s"))
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(row)
 		var e := UiGlossary.entry(k)
@@ -114,7 +165,7 @@ func _box(box_name: String) -> VBoxContainer:
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(panel)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 2)
+	v.add_theme_constant_override("separation", UiStyle.space("xs"))
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(v)
 	return v
@@ -128,7 +179,7 @@ func _rich(label_name: String, text: String, width: float) -> RichTextLabel:
 	r.scroll_active = false
 	r.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	r.custom_minimum_size = Vector2(width, 0)
-	r.add_theme_font_size_override("normal_font_size", PixelTheme.font_size("small"))
+	r.add_theme_font_size_override("normal_font_size", text_size())
 	r.add_theme_color_override("default_color", FeelData.color("text"))
 	# Keywords are links: hover shows their box, click pins it.
 	UiGlossary.wire(r)
@@ -143,6 +194,16 @@ static func _bold(label: Label, color: Color) -> void:
 	label.add_theme_color_override("font_outline_color", color)
 	label.add_theme_constant_override("outline_size", 2)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+static func _plain(bbcode: String) -> String:
+	var re := RegEx.create_from_string("\\[[^\\]]*\\]")
+	return re.sub(bbcode, "", true)
+
+
+## The size of tooltip text: body size, so nothing the player reads is tiny.
+static func text_size() -> int:
+	return PixelTheme.font_size(str(UiIcons.kit("tooltip.font_size", "body")))
 
 
 static func _keyword_color() -> Color:
@@ -184,7 +245,13 @@ static func show_at(control: Control, at: Vector2) -> void:
 	_layer.name = "UiTooltipLayer"
 	_layer.layer = 100
 	control.get_tree().root.add_child(_layer)
-	var tip := build(s["title"], s["body"], s["numbers"], s["icon"])
+	var tip := UiTooltip.new()
+	tip.title = s["title"]
+	tip.body = s["body"]
+	tip.numbers = s["numbers"]
+	tip.icon_id = s["icon"]
+	tip.math.assign(s.get("math", []))
+	tip._compose()
 	tip._source = control
 	_layer.add_child(tip)
 	tip.reset_size()

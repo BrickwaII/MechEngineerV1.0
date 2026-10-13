@@ -45,7 +45,7 @@ func _build() -> void:
 	focus_mode = Control.FOCUS_NONE
 	var row := HBoxContainer.new()
 	row.name = "Row"
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", UiStyle.space("s"))
 	row.set_anchors_preset(Control.PRESET_FULL_RECT)
 	row.offset_left = 8
 	row.offset_right = -8

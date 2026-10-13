@@ -10,6 +10,14 @@ the rest.** The kit that does it lives in `ui/common/` (see its README);
 `ui/common/demo/ui_kit_demo.tscn` shows every piece, and
 `ui/common/screenshots/ui_kit.png` is the reference picture.
 
+Sections 7 to 16 are the **design system**: one card anatomy, one flag
+style, one control strip, three panel styles, an 8 px grid and color roles,
+so every screen reads as one game. The page that shows all of it is
+`ui/common/demo/style_check.tscn` (reference pictures
+`ui/common/screenshots/style_check*.png`); compare a screen against it. The
+rule behind all of it: **streamlined at rest, everything one click away. We
+relocate information, we never remove it.**
+
 ### 1. Icons and numbers, not labels
 
 Every stat, resource, status, intent, map action, region property and
@@ -24,6 +32,7 @@ Never write "ATK 12" or "Energy: 24"; write `IconStat.make("atk", 12)`.
 | Personality | `trait_aggressive`, `trait_defensive`, `trait_solitary`, `trait_supportive`, `trait_reactive`, `trait_methodical` |
 | Map actions | `action_attack`, `action_reinforce`, `action_wait`, `action_retreat`, `action_fast_forward` |
 | Enemy intents | `intent_attack`, `intent_guard`, `intent_heal`, `intent_charge`, `intent_buff` |
+| Cards and flags | `more` (the ⋮ of a card), `odds`, `elite`, `new`, `multiplier` |
 | Statuses | `status_guard`, `status_charging`, `status_waiting`, `status_low_energy`, `status_down`, `status_intent_changed` |
 
 Icons are named by id from `data/ui/icons.json` (texture, name, color, tooltip
@@ -99,6 +108,120 @@ Icons are 12 x 12 pixel art drawn at a whole-number scale (`icon_scale` in
 only. Art is generated or CC0, and every file is credited in `CREDITS.md`
 (a test checks this). Each icon differs by shape as well as color.
 
+### 7. Nothing over the art
+
+Portraits, unit sprites and the land of the map are never covered. Names,
+flags, buttons and stats sit in a strip **around** the art, never on top of
+it. The one exception is brief feedback that fades on its own: damage and
+heal popups, hit sparks. A map region shows at most one small pin, placed
+where it covers the least land, with the full card on hover.
+
+### 8. Card anatomy
+
+Every card for a unit or a region is an `InfoCard` with the same parts:
+
+| Part | What | Kit |
+|---|---|---|
+| Title strip | The name, and **⋮** on the right | `InfoCard`, `DetailModal.more_button` |
+| Flags | On the edge of the card, beside or above the art | `Flag`, `Flag.row` |
+| Portrait | The art, alone in its slot | any Control |
+| Stat strip | **Exactly three headline stats**, each with its own graphic | `StatStrip` |
+
+The three headlines are the numbers the player needs to decide; everything
+else goes in the detail modal. Each headline uses a different graphic so the
+three read apart without labels:
+
+| Graphic | For | Example |
+|---|---|---|
+| `bar` | a value out of a maximum | HP 38/50 |
+| `number` | one count, big | ATK 12 |
+| `ring` | a share or chance | odds 62% |
+| `arrow` | a multiplier | ×1.5 |
+| `pips` | a small level | defense 2 of 5 |
+| `chip` | a short word | next turn "2nd" |
+
+**⋮ or a right-click** on a card opens its `DetailModal`: the name, flags,
+every stat, skills with ranks, statuses, notes, links, in tabs when there is
+more than one kind of thing. Esc, the close button or a click outside close
+it. A unit with one of its kind has no index ("Precinct Overseer", not
+"Precinct Overseer 1").
+
+### 9. Flags
+
+A flag is a badge for one characteristic: Boss, Elite, Low HP, New,
+Fortified, Under attack, Uprising. One style everywhere: an icon and a short
+word on a fill tinted with its color role, no border, body-size text. A
+crowded edge may use compact flags (icon only, name on hover). Common flags
+live in `data/ui/flags.json` (`Flag.of("boss")`); a one-off uses
+`Flag.make(label, icon, role, line)`.
+
+### 10. One control strip per screen
+
+Each screen (or gallery) has one `ControlStrip`, always on the top edge of
+what it controls. Everything that changes **how** the screen shows things
+goes there, in this order: choices (Size, View, Lens, Group by, Sort) as
+segmented buttons, toggles (Log, Preview), then actions on the right (Home,
+speed). No view control lives anywhere else.
+
+### 11. Panels: three styles
+
+| Style | For | Look |
+|---|---|---|
+| `plain` | information | a flat fill, **no border** |
+| `card` | something you click, select or open | a fill and a border, brighter on hover |
+| `overlay` | above the screen: modal, drawer, tooltip | a raised fill, a border and a shadow |
+
+`UiStyle.panel("plain")` and so on. **Borders mean "you can click this".**
+Information sits on plain backgrounds; a box drawn round text that does
+nothing is a bug. No fourth style.
+
+### 12. Spacing on an 8 px grid
+
+Gaps and paddings come from `UiStyle.space()`: `xs` 4 (inside one control,
+such as an icon and its number), `s` 8, `m` 16, `l` 24, `xl` 32. Sizes of
+panels and cards are multiples of 8. A test checks the style check page.
+
+### 13. Text sizes
+
+The pixel font draws crisply at 10, 20 and 30. **Anything the player reads
+to play is at least body size (20)**: names, numbers, flags, buttons,
+tooltips, log lines, previews. Title size (30) is for names on a detail
+modal and screen headings. Small text (10) is only for a **caption**, a
+short all-caps heading over a group whose contents carry their own text
+(`UiStyle.caption(label)`). No tiny grey text for anything that matters.
+Quiet (grey) text is body size and only labels a value shown beside it.
+
+### 14. Color roles
+
+Name colors by role, not by hue: `UiStyle.role("bad")`. The roles and their
+palette colors are in `data/ui/ui_kit.json` `color_roles`:
+
+| Role | Means |
+|---|---|
+| `text`, `title`, `text_quiet` | reading text, names, labels for a value |
+| `interactive` | something you can press; the selected option |
+| `good`, `bad`, `caution` | gains and health; losses, danger, enemies' threat; warnings |
+| `info` | Energy and neutral numbers |
+| `ally`, `enemy` | sides |
+| `rare` | Boss, Elite, rare things |
+| `hint` | keywords, previews, the result of a formula |
+| `neutral` | down, inactive |
+
+### 15. Tooltips explain the math
+
+A number that comes from other numbers shows how in its tooltip, with the
+real values: `ATK 12 − DEF 8 × (1 − Pierce 20%) = 6`. Build the line with
+`UiFormula` (`UiFormula.parse("{ATK} − {DEF}", {"ATK": 12, "DEF": 8}, 4)`)
+and pass it as `math` to `StatStrip`, `IconStat.set_math`,
+`DetailModal.rows` or `UiTooltip.set_math`. A number from simulations says
+so: "Won 20 of 32 simulated fights".
+
+### 16. Tabs, changes and feedback
+
+Related content on one page goes in `UiTabs` (Region / Squad / Log; Summary /
+Growth / Details) rather than one long column. A visible UI change gets a
+line in the "What's new" card, which links to F8 feedback.
+
 ### Exceptions
 
 Dev tools (the F4 switchboard, `ui/dev/`) may stay text-heavy.
@@ -106,5 +229,6 @@ Dev tools (the F4 switchboard, `ui/dev/`) may stay text-heavy.
 ### Stand-ins
 
 TODO(decision: ui-style-icon-art): every icon is generated placeholder art.
+TODO(decision: ui-system-ring): the ring gauge is drawn arcs, not pixel art.
 TODO(decision: ui-style-bold): the pixel font has no bold face; names are
 "bold" by a one-pixel outline in their own color (`UiTooltip._bold`).

@@ -13,6 +13,8 @@ var icon_id: String
 var value: Variant
 ## Extra tooltip lines; "" uses the icon's own lines from icons.json.
 var tip_text: String
+## Formula lines for the tooltip (UiFormula or String), see set_math().
+var math: Array = []
 
 var icon_rect: TextureRect
 var value_label: Label
@@ -48,13 +50,19 @@ func set_tip_text(p_tip_text: String) -> void:
 	_retip()
 
 
+## Explains the number in the tooltip: formula lines built from the real values.
+func set_math(lines: Array) -> void:
+	math = lines
+	_retip()
+
+
 func value_text() -> String:
 	return value_label.text
 
 
 func _build() -> void:
 	name = "IconStat_%s" % icon_id
-	add_theme_constant_override("separation", 2)
+	add_theme_constant_override("separation", UiStyle.space("xs"))
 	# PASS: hover shows the tooltip, clicks still reach the card or panel under it.
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	icon_rect = UiIcons.rect(icon_id)
@@ -70,4 +78,4 @@ func _build() -> void:
 func _retip() -> void:
 	var lines := tip_text if not tip_text.is_empty() else UiIcons.text(icon_id)
 	var numbers := "" if value_text().is_empty() else "%s: %s" % [UiIcons.display_name(icon_id), value_text()]
-	UiTooltip.attach(self, UiIcons.display_name(icon_id), lines, numbers, icon_id)
+	UiTooltip.attach(self, UiIcons.display_name(icon_id), lines, numbers, icon_id, math)
