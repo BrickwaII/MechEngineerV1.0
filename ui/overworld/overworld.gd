@@ -41,12 +41,16 @@ const EscalationHud := preload("res://ui/overworld/escalation_hud.gd")
 signal campaign_started(campaign: Campaign)
 
 const SAVE_PATH := "user://overworld.save"
-const MAP_SIZE := Vector2(880, 620)
+const MAP_SIZE := Vector2(880, 580)
+## The map's control strip above it (lens, legend).
+const MAP_STRIP_HEIGHT := 40.0
 const PANEL_WIDTH := 400.0
 const TOP_BAR_HEIGHT := 56.0
 const CHOICE_CARD_WIDTH := 290.0
 ## The grid bar's width once the top bar also holds a Home button.
-const HOME_GRID_BAR_WIDTH := 200.0
+const HOME_GRID_BAR_WIDTH := 96.0
+## The compact grid meter's bar.
+const GRID_BAR_WIDTH := 96.0
 ## The icon of the campaign's Energy resource (data/ui/icons.json): the power
 ## cell. "energy" is the battle lightning for skill costs.
 const ENERGY_ICON := "map_energy"
@@ -124,6 +128,22 @@ var _grid_title: IconStat
 var _grid_rate: Label
 var _countdown: Label
 var _day_line: Label
+## The countdown with its icon; its tooltip has the act, day and territories.
+var _countdown_box: HBoxContainer
+## The side panel's tabs: Region, Squad, Log.
+var side_tabs: UiTabs
+## The map's control strip: lens and legend.
+var map_strip: ControlStrip
+var _legend: Control
+## The card of the region under the pointer.
+var _hover_card: PanelContainer
+var _hovered_region := ""
+## The Squad tab's rows.
+var _squad: VBoxContainer
+## Log lines added since the Log tab was last open.
+var _unread_log := 0
+## The compact grid meter; its tooltip has the daily rate.
+var _grid_meter: HBoxContainer
 var _income: HBoxContainer
 var _time_day: Label
 var _time_bar: MeterBar
@@ -166,6 +186,8 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	if _hover_card != null and _hover_card.visible:
+		_place_hover_card()
 	if _unshown != null and can_show_changes():
 		_show_changes(_unshown)
 		_unshown = null
@@ -429,12 +451,15 @@ func _build_layout() -> void:
 	left.custom_minimum_size.x = MAP_SIZE.x
 	left.add_theme_constant_override("separation", 0)
 	body.add_child(left)
+	left.add_child(_build_map_strip())
 	map_view = _new_view(false)
 	left.add_child(map_view)
-	left.add_child(_build_time_strip())
+	var time_strip := _build_time_strip()
+	left.add_child(time_strip)
 
-	body.add_child(_build_side_panel())
-	_hud = [column.get_child(0), left.get_child(1), body.get_child(1)]
+	var side := _build_side_panel()
+	body.add_child(side)
+	_hud = [column.get_child(0), map_strip, time_strip, side]
 	_popups = Control.new()
 	_popups.name = "Popups"
 	_popups.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -442,7 +467,7 @@ func _build_layout() -> void:
 	add_child(_popups)
 	escalation_hud = EscalationHud.new()
 	escalation_hud.name = "EscalationHud"
-	escalation_hud.position = Vector2(0, TOP_BAR_HEIGHT)
+	escalation_hud.position = Vector2(0, TOP_BAR_HEIGHT + MAP_STRIP_HEIGHT)
 	escalation_hud.size = MAP_SIZE
 	add_child(escalation_hud)
 	escalation_hud.news.can_show = can_show_changes
@@ -453,6 +478,15 @@ func _build_layout() -> void:
 	toast.position = Vector2(MAP_SIZE.x, TOP_BAR_HEIGHT)
 	add_child(toast)
 	escalation_hud.dock_news(toast, Vector2(12, 12), PANEL_WIDTH - 24.0)
+	_hover_card = PanelContainer.new()
+	_hover_card.name = "HoverCard"
+	_hover_card.visible = false
+	_hover_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hover_card.add_theme_stylebox_override("panel", UiStyle.panel("overlay"))
+	_hover_card.custom_minimum_size.x = 320
+	add_child(_hover_card)
+	_legend = _build_legend()
+	add_child(_legend)
 	_build_act_title()
 	_build_modal()
 
@@ -477,6 +511,10 @@ func _new_view(globe: bool) -> MapView:
 	view.name = "GlobeView" if globe else "MapView"
 	view.custom_minimum_size = MAP_SIZE
 	view.region_selected.connect(func(_id: String) -> void: _refresh())
+	view.region_hovered.connect(_on_region_hovered)
+	view.region_detail_requested.connect(func(id: String) -> void: DetailModal.open(self, region_detail_spec(id)))
+	view.odds_pin = _odds_pin
+	view.lens = map_strip.value(&"lens") if map_strip != null else str(UiIcons.kit("map.lens", "defense"))
 	if _time_bar != null:
 		_time_bar.fx = view.fx
 		_grid_bar.fx = view.fx
@@ -497,57 +535,172 @@ func _use_view_for(map: RegionMap) -> void:
 	map_view = view
 
 
+## The map's one control strip (ui/README.md rule 10): which lens the region
+## pins show, and the "?" legend.
+func _build_map_strip() -> Control:
+	map_strip = ControlStrip.new()
+	map_strip.name = "MapStrip"
+	map_strip.custom_minimum_size.y = MAP_STRIP_HEIGHT
+	map_strip.add_choice(&"lens", "", [
+		[&"defense", "Defense", "defense_level", "Hostile regions' defense: how hard the fight is."],
+		[&"pressure", "Pressure", "pressure", "Your regions' pressure: how close each is to an attack or uprising."],
+		[&"resources", "Resources", "material", "What each region gives every day."],
+		[&"odds", "Odds", "odds", "Your chance to win each attack in range, from simulated fights."],
+	], StringName(str(UiIcons.kit("map.lens", "defense"))))
+	map_strip.add_spring()
+	var help := map_strip.add_toggle(&"legend", "?", false, "", "What the map's colors mean.")
+	help.name = "LegendButton"
+	map_strip.changed.connect(_on_map_strip)
+	return map_strip
+
+
+func _on_map_strip(id: StringName, value: Variant) -> void:
+	match id:
+		&"lens":
+			map_view.lens = str(value)
+		&"legend":
+			_legend.visible = bool(value)
+			if _legend.visible:
+				var b := map_strip.button(&"legend")
+				_legend.reset_size()
+				_legend.position = Vector2(b.get_global_rect().end.x - _legend.size.x, b.get_global_rect().end.y + UiStyle.space("xs"))
+
+
+## The map legend behind "?": what each color means.
+func _build_legend() -> Control:
+	var panel := PanelContainer.new()
+	panel.name = "Legend"
+	panel.visible = false
+	panel.add_theme_stylebox_override("panel", UiStyle.panel("overlay"))
+	var rows := UiStyle.column("s")
+	panel.add_child(rows)
+	for entry: Array in [[Palette.OWNED, "Yours"], [Palette.IN_RANGE, "Hostile, in range to attack"], [Palette.OUT_OF_REACH, "Hostile, out of reach"]]:
+		var row := UiStyle.row("s")
+		row.add_child(_swatch(entry[0], Vector2(16, 16)))
+		row.add_child(_text(entry[1], PixelTheme.font_size("body"), Palette.TEXT))
+		rows.add_child(row)
+	rows.add_child(UiStyle.label("Right-click a region for everything about it.", "text_quiet"))
+	return panel
+
+
+## The odds lens pin of a region: ["62%", band color], or ["", ...] for none.
+func _odds_pin(region_id: String) -> Array:
+	if campaign == null or campaign.standing(region_id) != Campaign.Standing.IN_RANGE:
+		return ["", Color.WHITE]
+	if not odds.is_simulated():
+		var label := campaign.odds_label(region_id)
+		return [label, _odds_color(label)]
+	var e := odds.estimate_for(campaign, region_id)
+	if e == null:
+		return ["...", Palette.TEXT_DIM]
+	return ["%d%%" % e.percent(), _odds_color(e.label)]
+
+
+## The full card of the region under the pointer, by the pointer.
+func _on_region_hovered(region_id: String) -> void:
+	_hovered_region = region_id
+	_hover_card.visible = false
+	if region_id.is_empty() or campaign == null or not campaign.map.has_region(region_id) or zooming:
+		return
+	for c in _hover_card.get_children():
+		_hover_card.remove_child(c)
+		c.queue_free()
+	var region := campaign.map.get_region(region_id)
+	var col := UiStyle.column("xs")
+	col.add_child(_text(region.name, PixelTheme.font_size("body"), Palette.TEXT_BRIGHT))
+	col.add_child(Flag.row(region_flags(region_id)))
+	var strip := StatStrip.make(region_headlines(region_id))
+	strip.set_gap(UiStyle.space("m"))
+	col.add_child(strip)
+	_hover_card.add_child(col)
+	_hover_card.visible = true
+	_hover_card.reset_size()
+	_place_hover_card()
+
+
+func _place_hover_card() -> void:
+	if not _hover_card.visible:
+		return
+	var at := get_global_mouse_position() + UiIcons.kit_vector("map.hover_card_offset", Vector2(20, 20))
+	var view := get_viewport_rect().size
+	_hover_card.position = Vector2(clampf(at.x, 0, view.x - _hover_card.size.x), clampf(at.y, 0, view.y - _hover_card.size.y))
+
+
 func _build_top_bar() -> Control:
-	var bar := _box(Palette.BAR_BACKGROUND, Vector4(24, 0, 24, 0))
+	# One row, left to right: the payload countdown (the main element), losses,
+	# Energy and Material, the compact grid meter with Repair, then Home. The
+	# act, day and territory count sit in the countdown's tooltip.
+	var bar := PanelContainer.new()
+	bar.name = "TopBar"
+	var box := UiStyle.panel("plain")
+	box.bg_color = Palette.BAR_BACKGROUND
+	box.content_margin_left = UiStyle.space("l")
+	box.content_margin_right = UiStyle.space("l")
+	box.content_margin_top = 0
+	box.content_margin_bottom = 0
+	bar.add_theme_stylebox_override("panel", box)
 	bar.custom_minimum_size.y = TOP_BAR_HEIGHT
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
+	var row := UiStyle.row("l")
+	row.name = "Row"
 	bar.add_child(row)
 	_top_row = row
 
-	var grid := HBoxContainer.new()
-	grid.add_theme_constant_override("separation", 12)
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.alignment = BoxContainer.ALIGNMENT_BEGIN
+	var countdown := UiStyle.row("s")
+	countdown.name = "Countdown"
+	countdown.mouse_filter = Control.MOUSE_FILTER_PASS
+	countdown.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(countdown)
+	var clock := UiIcons.rect("time")
+	clock.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	countdown.add_child(clock)
+	_countdown = _text("", PixelTheme.font_size("title"), Palette.TEXT_BRIGHT)
+	_countdown.name = "CountdownText"
+	countdown.add_child(_countdown)
+	# Kept for its words (the countdown's tooltip, tests); not shown on the bar.
+	_day_line = _text("", PixelTheme.font_size("body"), Palette.TEXT_DIM)
+	_day_line.visible = false
+	countdown.add_child(_day_line)
+	_countdown_box = countdown
+
+	_losses = IconStat.make("losses", 0)
+	_losses.name = "LossesStat"
+	_losses.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(_losses)
+
+	_income = UiStyle.row("m")
+	_income.name = "Income"
+	_income.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(_income)
+
+	row.add_child(UiStyle.spring())
+
+	# The grid as a compact meter: icon, a short bar, the percent; its rate in
+	# the tooltip. Repair beside it.
+	var grid := UiStyle.row("xs")
+	grid.name = "GridMeter"
+	grid.mouse_filter = Control.MOUSE_FILTER_PASS
+	grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(grid)
 	_grid_title = IconStat.make("grid_power", null, GRID_TIP)
 	_grid_title.name = "GridTitle"
 	grid.add_child(_grid_title)
 	_grid_bar = MeterBar.new()
-	_grid_bar.custom_minimum_size = Vector2(260, 16)
+	_grid_bar.custom_minimum_size = Vector2(GRID_BAR_WIDTH, 12)
 	_grid_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_grid_bar.segment_px = 13.0
+	_grid_bar.segment_px = 8.0
 	grid.add_child(_grid_bar)
-	_grid_text = _text("", 14, Palette.WARNING)
+	_grid_text = _text("", PixelTheme.font_size("body"), Palette.WARNING)
 	grid.add_child(_grid_text)
-	_grid_rate = _text("", 11, Palette.TEXT_DIM)
+	# The rate's words live in the meter's tooltip.
+	_grid_rate = _text("", PixelTheme.font_size("body"), Palette.TEXT_DIM)
+	_grid_rate.visible = false
 	grid.add_child(_grid_rate)
+	_grid_meter = grid
 	_repair_button = ActionButton.make("action_repair", "Repair")
 	_repair_button.name = "RepairButton"
 	_repair_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_repair_button.pressed.connect(_on_repair)
-	grid.add_child(_repair_button)
-
-	var middle := VBoxContainer.new()
-	middle.add_theme_constant_override("separation", 0)
-	middle.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_child(middle)
-	_countdown = _text("", 20, Palette.TEXT)
-	_countdown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	middle.add_child(_countdown)
-	_day_line = _text("", 11, Palette.TEXT_DIM)
-	_day_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	middle.add_child(_day_line)
-	_losses = IconStat.make("losses", 0)
-	_losses.name = "LossesStat"
-	_losses.alignment = BoxContainer.ALIGNMENT_CENTER
-	middle.add_child(_losses)
-
-	_income = HBoxContainer.new()
-	_income.add_theme_constant_override("separation", 22)
-	_income.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_income.alignment = BoxContainer.ALIGNMENT_END
-	row.add_child(_income)
+	row.add_child(_repair_button)
 	return bar
 
 
@@ -561,10 +714,10 @@ func _build_time_strip() -> Control:
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 12)
 	rows.add_child(header)
-	header.add_child(_text("TIME", 11, Palette.TEXT_DIM))
-	_time_day = _text("", 18, Palette.TEXT)
+	header.add_child(UiStyle.caption(_text("TIME", 10, Palette.TEXT_DIM)))
+	_time_day = _text("", PixelTheme.font_size("body"), Palette.TEXT)
 	header.add_child(_time_day)
-	_status = _text("", 11, Palette.DEFENSE_TEXT)
+	_status = _text("", PixelTheme.font_size("body"), Palette.DEFENSE_TEXT)
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(_status)
 	_wait_button = _action("action_wait", "Wait", "", null, _on_wait, true, "Let time pass. Regions you hold pay out; pressure rises.")
@@ -597,7 +750,7 @@ func _build_time_strip() -> Control:
 	var camp := HBoxContainer.new()
 	camp.add_theme_constant_override("separation", 10)
 	rows.add_child(camp)
-	camp.add_child(_text("CAMPAIGN", 10, Palette.TEXT_DIM))
+	camp.add_child(UiStyle.caption(_text("CAMPAIGN", 10, Palette.TEXT_DIM)))
 	_campaign_bar = MeterBar.new()
 	_campaign_bar.custom_minimum_size.y = 6
 	_campaign_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -605,30 +758,42 @@ func _build_time_strip() -> Control:
 	_campaign_bar.fill_color = Palette.TIME_FILL
 	_campaign_bar.border = Color(0, 0, 0, 0)
 	camp.add_child(_campaign_bar)
-	camp.add_child(_text("PAYLOAD", 10, Palette.TEXT_DIM))
+	camp.add_child(UiStyle.caption(_text("PAYLOAD", 10, Palette.TEXT_DIM)))
 	return strip
 
 
 func _build_side_panel() -> Control:
-	var side := VBoxContainer.new()
+	# Tabs (ui/README.md rule 16): the selected region, the squad, the log.
+	var side := PanelContainer.new()
+	side.name = "SidePanel"
 	side.custom_minimum_size.x = PANEL_WIDTH
 	side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	side.add_theme_constant_override("separation", 0)
+	var box := UiStyle.panel("plain")
+	box.bg_color = Palette.PANEL
+	box.set_content_margin_all(UiStyle.space("m"))
+	side.add_theme_stylebox_override("panel", box)
+	side_tabs = UiTabs.new()
+	side_tabs.name = "SideTabs"
+	side.add_child(side_tabs)
 
-	var top := _box(Palette.PANEL, Vector4(24, 20, 24, 20))
-	top.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	side.add_child(top)
-	_panel = VBoxContainer.new()
-	_panel.add_theme_constant_override("separation", 14)
-	top.add_child(_panel)
+	_panel = UiStyle.column("m")
+	_panel.name = "Region"
+	_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	side_tabs.add_tab(&"region", "Region", _panel, "defense_level")
 
-	var log_box := _box(Palette.BAR_BACKGROUND, Vector4(24, 12, 24, 12))
-	log_box.custom_minimum_size.y = 150
-	log_box.clip_contents = true
-	side.add_child(log_box)
-	_log = VBoxContainer.new()
-	_log.add_theme_constant_override("separation", 6)
-	log_box.add_child(_log)
+	_squad = UiStyle.column("s")
+	_squad.name = "Squad"
+	side_tabs.add_tab(&"squad", "Squad", _squad, "hp")
+
+	var log_scroll := ScrollContainer.new()
+	log_scroll.name = "LogScroll"
+	log_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_log = UiStyle.column("s")
+	_log.name = "Log"
+	_log.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	log_scroll.add_child(_log)
+	side_tabs.add_tab(&"log", "Log", log_scroll, "status_waiting")
+	side_tabs.changed.connect(_on_side_tab)
 	return side
 
 
@@ -693,11 +858,18 @@ func _refresh() -> void:
 		_grid_rate.text = "+%s%%/DAY" % _number((income[MapRegion.POWER] + income[MapRegion.ENERGY]) * t.points_per_day / maxf(divisor, 0.001))
 	else:
 		_grid_rate.text = "+%s%%/DAY" % _number(income[MapRegion.POWER] * t.points_per_day / t.grid_regen_divisor)
+	UiTooltip.attach(_grid_meter, "Power pool" if shared else "Grid capacity", POOL_TIP if shared else GRID_TIP,
+		"%s now, %s a day" % [_grid_text.text, _grid_rate.text.to_lower().replace("/day", "")], "grid_power")
 
-	_countdown.text = "PAYLOAD IN %d DAYS" % campaign.days_left()
+	_countdown.text = "Payload in %d days" % campaign.days_left()
 	_day_line.text = "ACT %d · %s · DAY %d / %d · %d OF %d TERRITORIES" % [
 		s.act + 1, campaign.map.name.to_upper(), campaign.day(), t.total_points / t.points_per_day,
 		s.owned.size(), campaign.map.regions.size()]
+	UiTooltip.attach(_countdown_box, "Payload countdown",
+		"When it reaches 0 the act's payload lands: the boss fight. Act %d, %s." % [s.act + 1, campaign.map.name],
+		"Day %d of %d\nTerritories %d of %d" % [campaign.day(), t.total_points / t.points_per_day,
+			s.owned.size(), campaign.map.regions.size()], "time",
+		[UiFormula.new().term("Days", t.total_points / t.points_per_day).op("−").term("Day", campaign.day()).equals(campaign.days_left(), "left")])
 	_clear(_income)
 	for key in ([MapRegion.MATERIAL] if shared else [MapRegion.ENERGY, MapRegion.MATERIAL]):
 		var stock: float = s.energy if key == MapRegion.ENERGY else s.material
@@ -725,6 +897,7 @@ func _refresh() -> void:
 	map_view.queue_redraw()
 	odds.update(campaign, map_view.selected_id)
 	_refresh_panel()
+	_refresh_squad()
 	_refresh_log()
 
 
@@ -748,42 +921,56 @@ func _refresh_panel() -> void:
 		return
 	var region := campaign.map.get_region(id)
 	var standing := campaign.standing(id)
+	var owned := standing == Campaign.Standing.OWNED
 
-	var head := _rows(6)
-	head.add_child(_text(region.kind.to_upper(), 11, Palette.TEXT_DIM))
-	var name_label := _text(region.name, 30, Palette.TEXT)
+	# The region card (ui/README.md rule 8): name and ⋮, flags, three headlines.
+	var head := UiStyle.row("s")
+	head.name = "TitleRow"
+	var names := UiStyle.column("xs")
+	names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	names.add_child(UiStyle.label(region.kind.capitalize(), "text_quiet"))
+	var name_label := _text(region.name, PixelTheme.font_size("title"), Palette.TEXT_BRIGHT)
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	head.add_child(name_label)
-	head.add_child(_pill(standing))
+	names.add_child(name_label)
+	head.add_child(names)
+	var more := DetailModal.more_button(region_detail_spec.bind(id))
+	more.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	head.add_child(more)
 	_panel.add_child(head)
+	_panel.add_child(Flag.row(region_flags(id)))
 
-	var provides := HBoxContainer.new()
-	provides.name = "Provides"
-	provides.add_theme_constant_override("separation", 18)
-	var any := false
-	for key in MapRegion.RESOURCE_KEYS:
-		if region.provides[key] > 0:
-			any = true
-			var stat := IconStat.make(_resource_icon(key), "+%d/day" % region.provides[key],
-				"%s this territory adds every day while you hold it." % RESOURCE_LABELS[key])
-			stat.name = "Provides_%s" % key
-			provides.add_child(stat)
-	if not any:
-		provides.add_child(_text("Provides nothing", 13, Palette.TEXT_DIM))
-	_panel.add_child(provides)
+	var strip := StatStrip.make(region_headlines(id))
+	strip.name = "Headlines"
+	strip.set_gap(UiStyle.space("l"))
+	_panel.add_child(strip)
+	# The headlines keep the names the panel's parts always had.
+	if owned:
+		strip.headline(0).name = "Pressure"
+	else:
+		strip.headline(0).name = "Odds"
+		strip.headline(1).name = "Defense"
+		if odds.is_simulated():
+			UiTooltip.attach(strip.headline(0), "Your odds%s" % _odds_band_suffix(id),
+				"Auto-fights against this territory's enemies, %d of them. The auto-player fights differently from you." % odds.estimator.tuning.runs,
+				"", "odds", odds_math(id))
+	strip.headline(2).name = "Provides"
 
-	if standing == Campaign.Standing.OWNED:
-		_panel_pressure(id)
+	if owned:
+		var attacker := campaign.attacker_of(id)
+		_panel.add_child(_text("Attack building from %s" % attacker.name if attacker != null
+			else "Uprising building from within", PixelTheme.font_size("body"), Palette.TEXT))
 	else:
 		_panel_faction(region)
-		_panel_defense(region)
+		if campaign.escalation.fortify_of(id) > 0:
+			_panel.add_child(IconStat.make("fortify", "+%d" % campaign.escalation.fortify_of(id),
+				"Dug in while left alone on Alert. Attack it to stop the digging."))
 
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_panel.add_child(spacer)
 
-	var actions := _rows(8)
-	if standing == Campaign.Standing.OWNED:
+	var actions := _rows(UiStyle.space("s"))
+	if owned:
 		var stakes := campaign.stakes
 		var note := "Lowers pressure here. Takes %s and a little grid power" % _points_text(campaign.tuning.reinforce_time)
 		if stakes.is_offered(Stakes.USE_REINFORCE):
@@ -807,25 +994,136 @@ func _refresh_panel() -> void:
 			_style_button(attack, Palette.ATTACK_BUTTON, Palette.ATTACK_TEXT, Color(0, 0, 0, 0))
 			attack.label.add_theme_color_override("font_color", Palette.ATTACK_TEXT)
 		actions.add_child(attack)
-		if standing == Campaign.Standing.OUT_OF_REACH:
-			actions.add_child(_note("Out of reach.", 12))
 	_panel.add_child(actions)
 
 
+## The flags on a region's card: its standing, Fortified, Under attack or
+## Uprising (once pressure reaches the warning level).
+func region_flags(region_id: String) -> Array:
+	var out: Array = []
+	match campaign.standing(region_id):
+		Campaign.Standing.OWNED:
+			out.append(Flag.of("yours"))
+		Campaign.Standing.IN_RANGE:
+			out.append(Flag.of("in_range"))
+		_:
+			out.append(Flag.of("out_of_reach"))
+	if campaign.is_owned(region_id):
+		if campaign.pressure_of(region_id) >= campaign.tuning.ring_warning_at:
+			out.append(Flag.of("under_attack" if campaign.attacker_of(region_id) != null else "uprising"))
+	elif campaign.escalation.fortify_of(region_id) > 0:
+		out.append(Flag.of("fortified"))
+	return out
+
+
+## A region's three headlines. Hostile: odds (ring), defense (pips), what it
+## gives (chip). Held: pressure (ring), what it gives, border or interior.
+func region_headlines(region_id: String) -> Array:
+	var t := campaign.tuning
+	var region := campaign.map.get_region(region_id)
+	var gives := _gives_spec(region)
+	if campaign.is_owned(region_id):
+		var pressure := campaign.pressure_of(region_id)
+		var role := "bad" if pressure >= t.imminent_at else ("caution" if pressure >= t.ring_warning_at else "interactive")
+		var where := "Border territory, exposed to its neighbors. " if campaign.is_border(region_id) \
+			else "Interior territory, shielded by your other holdings. "
+		var ring := StatStrip.ring("pressure", pressure / t.forces_defense_at,
+			where + "Pressure is rising %s." % t.rate_word(campaign.pressure_rate(region_id)),
+			[UiFormula.new().term("Pressure", "%d%%" % roundi(pressure)).op("/").term("Defense fight at", "%d%%" % roundi(t.forces_defense_at))
+				.equals("%d%%" % roundi(100.0 * pressure / t.forces_defense_at))], role)
+		ring["text"] = "%d%%" % roundi(pressure)
+		ring["title"] = "Pressure"
+		return [ring, gives, StatStrip.chip("defense_level", "Border" if campaign.is_border(region_id) else "Interior",
+			where.strip_edges(), [], "caution" if campaign.is_border(region_id) else "text_quiet")]
+	var e := odds.estimate_for(campaign, region_id) if odds.is_simulated() else null
+	var share := e.win_rate() if e != null else 0.0
+	var odds_spec := StatStrip.ring("odds", share, "Chance to win, from simulated fights.", odds_math(region_id), "hint")
+	odds_spec["text"] = ("%d%%" % e.percent()) if e != null else ("..." if odds.is_simulated() else campaign.odds_label(region_id))
+	odds_spec["title"] = "Your odds%s" % _odds_band_suffix(region_id)
+	var level := campaign.defense_of(region_id)
+	var defense := StatStrip.pips("defense_level", level, MapRegion.MAX_DEFENSE,
+		campaign.tuning.opposition(level), [], "info")
+	defense["numbers"] = "Defense %d of %d: %s" % [level, MapRegion.MAX_DEFENSE, campaign.tuning.defense_label(level)]
+	return [odds_spec, defense, gives]
+
+
+## What a region gives each day, as a chip: "+3" with its main resource's icon
+## (every resource in the tooltip).
+func _gives_spec(region: MapRegion) -> Dictionary:
+	var best := ""
+	var total := 0
+	var lines := PackedStringArray()
+	for key in MapRegion.RESOURCE_KEYS:
+		var n: int = region.provides[key]
+		if n > 0:
+			total += n
+			lines.append("%s +%d a day" % [RESOURCE_LABELS[key], n])
+			if best.is_empty() or n > region.provides[best]:
+				best = key
+	if best.is_empty():
+		return StatStrip.chip("material", "None", "Gives nothing.", [], "text_quiet")
+	# The main resource on the card; every resource in the tooltip, the
+	# detail card and the Resources lens.
+	var more := " and more" if lines.size() > 1 else ""
+	var spec := StatStrip.chip(_resource_icon(best), "+%d" % region.provides[best],
+		"What it adds every day while you hold it%s." % more, [], "good")
+	spec["numbers"] = "\n".join(lines)
+	spec["title"] = "Gives"
+	return spec
+
+
+func _odds_band_suffix(region_id: String) -> String:
+	if not odds.is_simulated():
+		return ": " + campaign.odds_label(region_id)
+	var e := odds.estimate_for(campaign, region_id)
+	return (": " + e.label) if e != null else ""
+
+
+## Everything about a region (⋮ on its card, or a right-click on the map).
+func region_detail_spec(region_id: String) -> Dictionary:
+	var region := campaign.map.get_region(region_id)
+	var rows: Array = []
+	if campaign.is_owned(region_id):
+		var pressure := campaign.pressure_of(region_id)
+		rows.append(["pressure", "Pressure", "%d%%" % roundi(pressure)])
+		rows.append(["defense_level", "Exposure", "Border" if campaign.is_border(region_id) else "Interior"])
+		var attacker := campaign.attacker_of(region_id)
+		rows.append(["alert", "Cause", attacker.name if attacker != null else "Uprising"])
+	else:
+		var e := odds.estimate_for(campaign, region_id) if odds.is_simulated() else null
+		rows.append(["odds", "Odds", ("%d%%" % e.percent()) if e != null else odds_text(region_id), odds_math(region_id)])
+		rows.append(["defense_level", "Defense", "%d · %s" % [campaign.defense_of(region_id), campaign.tuning.defense_label(campaign.defense_of(region_id))]])
+		if campaign.escalation.fortify_of(region_id) > 0:
+			rows.append(["fortify", "Fortified", "+%d" % campaign.escalation.fortify_of(region_id)])
+		var faction := factions.faction_for(region_id)
+		if not faction.is_empty():
+			rows.append(["alert", "Held by", faction["name"]])
+	for key in MapRegion.RESOURCE_KEYS:
+		if region.provides[key] > 0:
+			rows.append([_resource_icon(key), RESOURCE_LABELS[key], "+%d a day" % region.provides[key]])
+	var neighbors := PackedStringArray()
+	for n in region.adjacent:
+		if campaign.map.has_region(n):
+			neighbors.append(campaign.map.get_region(n).name)
+	var sections: Array = [{"id": "region", "title": "Region", "content": DetailModal.rows(rows)}]
+	if not neighbors.is_empty():
+		sections.append({"id": "neighbors", "title": "Neighbors", "content": DetailModal.prose(", ".join(neighbors) + ".")})
+	return {"title": region.name, "icon": "defense_level", "subtitle": region.kind.capitalize(),
+		"flags": region_flags(region_id), "sections": sections}
+
+
 func _panel_intro() -> void:
-	var rows := _rows(12)
-	rows.add_child(_text("NO TERRITORY SELECTED", 11, Palette.TEXT_DIM))
-	var title := _text("Pick a territory on the map.", 26, Palette.TEXT)
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	# The how-to sits behind hover (ui/README.md rule 5).
-	UiTooltip.attach(title, "Territories", "You can only attack territories next to ones you already hold. Rings on your territories show how close each is to an uprising or an attack.")
-	rows.add_child(title)
-	for entry: Array in [[Palette.OWNED, "Yours"], [Palette.IN_RANGE, "Hostile, in range to attack"], [Palette.OUT_OF_REACH, "Hostile, out of reach"]]:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 10)
-		row.add_child(_swatch(entry[0], Vector2(16, 12)))
-		row.add_child(_text(entry[1], 14, Palette.TEXT))
-		rows.add_child(row)
+	var rows := _rows(UiStyle.space("s"))
+	rows.name = "Intro"
+	# The first-turn hint shows only early in a run; the color legend lives
+	# behind the map strip's "?" (ui/README.md rule 5).
+	if campaign.day() <= int(UiIcons.kit("map.hint_days", 2)):
+		var title := _text("Pick a territory on the map.", PixelTheme.font_size("title"), Palette.TEXT)
+		title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		UiTooltip.attach(title, "Territories", "You can only attack territories next to ones you already hold. Rings on your territories show how close each is to an uprising or an attack.")
+		rows.add_child(title)
+	else:
+		rows.add_child(UiStyle.label("Select a territory to see it here.", "text_quiet"))
 	_panel.add_child(rows)
 
 
@@ -837,7 +1135,7 @@ func _panel_faction(region: MapRegion) -> void:
 		return
 	var rows := _rows(6)
 	rows.name = "Faction"
-	rows.add_child(_text("HELD BY", 11, Palette.TEXT_DIM))
+	rows.add_child(UiStyle.label("Held by", "text_quiet"))
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 10)
 	var color: Color = faction["color"]
@@ -855,38 +1153,8 @@ func _panel_faction(region: MapRegion) -> void:
 		diamond.pivot_offset = Vector2(5, 5)
 		diamond.rotation = PI / 4.0
 		line.add_child(diamond)
-	line.add_child(_text(faction["name"], 16, color))
+	line.add_child(_text(faction["name"], PixelTheme.font_size("body"), color))
 	rows.add_child(line)
-	_panel.add_child(rows)
-
-
-func _panel_defense(region: MapRegion) -> void:
-	var rows := _rows(8)
-	var line := HBoxContainer.new()
-	line.name = "Defense"
-	line.add_theme_constant_override("separation", 12)
-	var opposition := campaign.tuning.opposition(campaign.defense_of(region.id))
-	line.add_child(IconStat.make("defense_level", campaign.defense_of(region.id), opposition))
-	var pips := HBoxContainer.new()
-	pips.add_theme_constant_override("separation", 4)
-	for i in MapRegion.MAX_DEFENSE:
-		pips.add_child(_pip(i < campaign.defense_of(region.id)))
-	line.add_child(pips)
-	line.add_child(_text(campaign.tuning.defense_label(campaign.defense_of(region.id)).to_upper(), 16, Palette.TEXT))
-	rows.add_child(line)
-	if campaign.escalation.fortify_of(region.id) > 0:
-		rows.add_child(IconStat.make("fortify", "+%d" % campaign.escalation.fortify_of(region.id),
-			"Dug in while left alone on Alert. Attack it to stop the digging."))
-	var line_odds := HBoxContainer.new()
-	line_odds.name = "Odds"
-	line_odds.add_theme_constant_override("separation", 10)
-	line_odds.add_child(_text("ODDS", 11, Palette.TEXT_DIM))
-	var odds_label := _text(odds_text(region.id), 16, _odds_color(odds.label_for(campaign, region.id)))
-	line_odds.add_child(odds_label)
-	rows.add_child(line_odds)
-	if odds.is_simulated():
-		UiTooltip.attach(line_odds, "Your odds", "Auto-fights against this territory's enemies, %d of them. The auto-player fights differently from you." % odds.estimator.tuning.runs,
-			"", "odds", odds_math(region.id))
 	_panel.add_child(rows)
 
 
@@ -921,49 +1189,61 @@ func _on_odds_estimated(region_id: String) -> void:
 		_refresh_panel()
 
 
-func _panel_pressure(region_id: String) -> void:
-	var t := campaign.tuning
-	var pressure := campaign.pressure_of(region_id)
-	var rows := _rows(8)
-	var line := HBoxContainer.new()
-	line.name = "Pressure"
-	line.add_theme_constant_override("separation", 12)
-	line.add_child(IconStat.make("pressure"))
-	var bar := MeterBar.new()
-	bar.custom_minimum_size.y = 14
-	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	bar.fill_ratio = pressure / t.forces_defense_at
-	bar.fill_color = Palette.DANGER if pressure >= t.imminent_at else (Palette.WARNING if pressure >= t.ring_warning_at else Palette.ACCENT)
-	if _pending_action() == Campaign.Action.REINFORCE:
-		var relief := minf(t.reinforce_relief, pressure)
-		bar.ghost_from = (pressure - relief) / t.forces_defense_at
-		bar.ghost_ratio = relief / t.forces_defense_at
-		bar.ghost_color = Palette.ACCENT
-		bar.ghost_dark = Palette.OWNED
-	line.add_child(bar)
-	line.add_child(_text("%d%%" % roundi(pressure), 15, Palette.TEXT))
-	rows.add_child(line)
-	var attacker := campaign.attacker_of(region_id)
-	rows.add_child(_text("Attack building from %s" % attacker.name if attacker != null
-		else "Uprising building from within", 16, Palette.TEXT))
-	var where := "Border territory, exposed to its neighbors. " if campaign.is_border(region_id) \
-		else "Interior territory, shielded by your other holdings. "
-	UiTooltip.attach(line, "Pressure", where + "Pressure is rising %s." % t.rate_word(campaign.pressure_rate(region_id)),
-		"%d%%" % roundi(pressure), "pressure")
-	_panel.add_child(rows)
-
-
 func _refresh_log() -> void:
 	_clear(_log)
-	_log.add_child(_text("EVENT LOG", 11, Palette.TEXT_DIM))
 	for text in _events:
-		var line := _text(text, 13, Color("#c7d6e3"))
+		var line := _text(text, PixelTheme.font_size("body"), Palette.TEXT_BODY)
 		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_log.add_child(line)
+	if side_tabs != null:
+		side_tabs.button(&"log").text = "Log" if _unread_log == 0 else "Log %d" % _unread_log
+
+
+## The Squad tab: each bot's name, HP, ATK and trait (the SquadProvider's
+## summaries; the fight screen and readout have the rest).
+func _refresh_squad() -> void:
+	if _squad == null or campaign == null or campaign.squad_provider == null:
+		return
+	_clear(_squad)
+	for m in campaign.squad_provider.get_squad():
+		var card := PanelContainer.new()
+		card.name = "Bot_%s" % m.id.validate_node_name()
+		var cbox := UiStyle.panel("plain")
+		cbox.bg_color = Palette.BAR_BACKGROUND
+		card.add_theme_stylebox_override("panel", cbox)
+		var col := UiStyle.column("xs")
+		card.add_child(col)
+		var head := UiStyle.row("s")
+		col.add_child(head)
+		var n := _text(m.display_name, PixelTheme.font_size("body"), Palette.TEXT_BRIGHT)
+		n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		head.add_child(n)
+		if not m.personality_tag.is_empty():
+			var trait_id := "trait_%s" % m.personality_tag.to_lower()
+			head.add_child(Flag.make(m.personality_tag.capitalize(), trait_id if UiIcons.has(trait_id) else "",
+				"neutral", UiIcons.text(trait_id) if UiIcons.has(trait_id) else "Its personality.", UiIcons.has(trait_id)))
+		var hp_max := maxi(1, m.max_hp)
+		var specs := [StatStrip.bar("hp", m.hp, hp_max)]
+		if m.stats != null:
+			specs.append(StatStrip.number("atk", m.stats.attack))
+			specs.append(StatStrip.chip("spd", str(m.stats.speed), "Speed: how often it acts."))
+		var strip := StatStrip.make(specs)
+		strip.set_gap(UiStyle.space("m"))
+		col.add_child(strip)
+		_squad.add_child(card)
+	if _squad.get_child_count() == 0:
+		_squad.add_child(UiStyle.label("No bots yet.", "text_quiet"))
+
+
+func _on_side_tab(id: StringName) -> void:
+	if id == &"log":
+		_unread_log = 0
+		_refresh_log()
 
 
 func _event(text: String) -> void:
+	if side_tabs != null and side_tabs.current != &"log":
+		_unread_log += 1
 	_events.insert(0, text)
 	var keep := campaign.tuning.event_log_length if campaign != null else 5
 	if _events.size() > keep:
@@ -1425,7 +1705,9 @@ func _resource_stat(key: String, stock: int, per_day: int) -> Control:
 	row.add_theme_constant_override("separation", 6)
 	var stat := IconStat.make(ENERGY_ICON if key == Stakes.ENERGY else key, stock, resource_tooltip(key))
 	row.add_child(stat)
-	row.add_child(_text("+%d/day" % per_day, 10, Palette.TEXT_DIM))
+	row.add_child(_text("+%d" % per_day, PixelTheme.font_size("body"), Palette.TEXT_DIM))
+	UiTooltip.attach(row.get_child(1), UiIcons.display_name(ENERGY_ICON if key == Stakes.ENERGY else key),
+		"Gained each day from the territories you hold.", "+%d a day" % per_day, ENERGY_ICON if key == Stakes.ENERGY else key)
 	row.set_meta("resource", key)
 	return row
 
@@ -1558,15 +1840,24 @@ func _on_fast_forward() -> void:
 func _text(text: String, font_size: int, color: Color) -> Label:
 	var label := Label.new()
 	label.text = text
-	label.add_theme_font_size_override("font_size", ScreenTheme.size(font_size))
+	label.add_theme_font_size_override("font_size", _size(font_size))
 	label.add_theme_color_override("font_color", color)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	return label
 
 
 ## A description line; its keywords are links to their glossary boxes.
+## The type scale step for a font size: 10 stays small (captions only, which
+## UiStyle.caption marks), anything up to 24 is body size, larger is title
+## (ui/README.md rule 13: nothing the player reads is smaller than body).
+static func _size(font_size: int) -> int:
+	if font_size <= 10:
+		return PixelTheme.font_size("small")
+	return PixelTheme.font_size("body") if font_size <= 24 else PixelTheme.font_size("title")
+
+
 func _note(text: String, font_size := 13) -> RichTextLabel:
-	var label := UiGlossary.rich(text, ScreenTheme.size(font_size), Palette.TEXT_BODY, 100)
+	var label := UiGlossary.rich(text, _size(font_size), Palette.TEXT_BODY, 100)
 	label.name = "Note"
 	return label
 
@@ -1611,32 +1902,11 @@ func _pip(filled: bool) -> Control:
 	return pip
 
 
-func _pill(standing: Campaign.Standing) -> Control:
-	var text := "YOURS"
-	var fg := Palette.ACCENT_TEXT
-	var bg := Palette.ACCENT
-	var edge := Palette.ACCENT
-	if standing == Campaign.Standing.IN_RANGE:
-		text = "HOSTILE · IN RANGE"
-		fg = Palette.DEFENSE_TEXT
-		bg = Color(0, 0, 0, 0)
-		edge = Palette.DEFENSE
-	elif standing == Campaign.Standing.OUT_OF_REACH:
-		text = "HOSTILE · OUT OF REACH"
-		fg = Color("#aab4c2")
-		bg = Color(0, 0, 0, 0)
-		edge = Color("#5b6678")
-	var box := _box(bg, Vector4(10, 4, 10, 4), edge)
-	box.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	box.add_child(_text(text, 11, fg))
-	return box
-
-
 func _button(text: String, bg: Color, fg: Color, on_press: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.custom_minimum_size.y = 26
-	button.add_theme_font_size_override("font_size", ScreenTheme.size(13))
+	button.add_theme_font_size_override("font_size", _size(13))
 	_style_button(button, bg, fg, Color("#3a526a"))
 	button.pressed.connect(on_press)
 	return button
@@ -1647,7 +1917,7 @@ func _big_button(text: String, bg: Color, fg: Color, enabled: bool) -> Button:
 	button.text = text
 	button.custom_minimum_size.y = 48
 	button.disabled = not enabled
-	button.add_theme_font_size_override("font_size", ScreenTheme.size(16))
+	button.add_theme_font_size_override("font_size", _size(16))
 	_style_button(button, bg if enabled else Palette.DISABLED, fg if enabled else Palette.TEXT_DIM, Color(0, 0, 0, 0))
 	return button
 

@@ -143,6 +143,8 @@ func _map_changed() -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if _right_click(event):
+		return
 	var button := event as InputEventMouseButton
 	if button != null and button.button_index == MOUSE_BUTTON_LEFT:
 		if button.pressed:

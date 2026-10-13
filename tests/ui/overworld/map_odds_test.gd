@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
-## The panel's odds: simulated auto-fights ("RISKY · 42%") by default, played
-## over frames, or the old stat formula under the odds-model switch.
+## The panel's odds: a ring headline from simulated auto-fights ("42%", the
+## band in its tooltip's title) by default, played over frames, or the old
+## stat formula under the odds-model switch.
 
 const SCENE := "res://ui/overworld/overworld.tscn"
 const PLACEHOLDER := "res://data/regions/act1_placeholder.json"
@@ -28,20 +29,21 @@ func _screen() -> Node:
 
 func _odds_line(screen: Node) -> String:
 	var row: Node = screen._panel.find_child("Odds", true, false)
-	return row.get_child(1).text if row != null else ""
+	return row.value_label.text if row != null else ""
 
 
 func test_the_panel_shows_the_simulated_label_and_rate() -> void:
 	var screen := _screen()
 	screen.map_view.select("hydro_dam")
-	assert_str(_odds_line(screen)).is_equal("SIMULATING...")
+	assert_str(_odds_line(screen)).is_equal("...")
 	screen.odds.finish_all()
 	await _runner.simulate_frames(1)
 	# The panel estimates at the level the fight would use (escalation included).
 	var e: OddsEstimator.Estimate = OddsEstimator.new().estimate(
 		screen.campaign.squad_provider.get_squad(), "hydro_dam", screen.campaign.defense_of("hydro_dam"),
 		screen.odds.run_seed)
-	assert_str(_odds_line(screen)).is_equal("%s · %d%%" % [e.label.to_upper(), e.percent()])
+	assert_str(_odds_line(screen)).is_equal("%d%%" % e.percent())
+	assert_str(UiTooltip.spec(screen._panel.find_child("Odds", true, false))["title"]).is_equal("Your odds: %s" % e.label)
 	# How the odds are made sits in the row's tooltip (ui/README.md rule 5).
 	var row: Control = screen._panel.find_child("Odds", true, false)
 	assert_str(UiTooltip.spec(row).get("body", "")).contains("auto-player fights differently")
@@ -55,7 +57,7 @@ func test_estimates_play_over_frames_without_being_asked() -> void:
 	var screen := _screen()
 	screen.map_view.select("hydro_dam")
 	for i in 400:
-		if not _odds_line(screen).begins_with("SIMULATING"):
+		if _odds_line(screen) != "...":
 			break
 		await _runner.simulate_frames(1)
 	assert_str(_odds_line(screen)).contains("%")
@@ -68,5 +70,5 @@ func test_the_formula_option_shows_the_old_label() -> void:
 	var screen := _screen()
 	screen.map_view.select("hydro_dam")
 	await _runner.simulate_frames(1)
-	assert_str(_odds_line(screen)).is_equal(screen.campaign.odds_label("hydro_dam").to_upper())
+	assert_str(_odds_line(screen)).is_equal(screen.campaign.odds_label("hydro_dam"))
 	assert_bool(OverworldTestHelpers.panel_has_text(screen, "auto-player")).is_false()

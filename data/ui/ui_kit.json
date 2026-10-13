@@ -72,5 +72,10 @@
 		"color_role": "hint",
 		"operator_role": "text_quiet",
 		"max_width": 720
+	},
+	"map": {
+		"hint_days": 2,
+		"lens": "defense",
+		"hover_card_offset": [20, 20]
 	}
 }

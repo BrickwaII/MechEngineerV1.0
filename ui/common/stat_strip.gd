@@ -19,7 +19,8 @@ extends VBoxContainer
 ##
 ## Any spec may also carry "numbers" (the tooltip's numbers line) and
 ## "title" (its name), to say more than the icon's own; "show_icon": false
-## hides the icon where the graphic says enough; a bar takes "bar_size".
+## hides the icon where the graphic says enough; a bar takes "bar_size";
+## "text" replaces the words beside the graphic (a ring still estimating: "...").
 ##
 ## `stacked` puts the first headline on its own full-width row (a long bar)
 ## and the other two beneath it, for narrow cards.
@@ -254,6 +255,8 @@ class Headline:
 
 	## The text beside the graphic: "38/50", "12", "62%", "×1.5", "2/5", "2nd".
 	func text() -> String:
+		if spec.has("text"):
+			return str(spec["text"])
 		var v: Variant = spec.get("value")
 		match str(spec.get("kind")):
 			"bar":
