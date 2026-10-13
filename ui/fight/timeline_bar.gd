@@ -104,7 +104,7 @@ func refresh(entries: Array[TimelineEntry], preview := false) -> void:
 		var label: Label = chip.get_child(0)
 		label.text = entries[i].display_name + (" (wait)" if entries[i].ends_wait else "")
 		var info: Dictionary = turn_info.call(entries[i].combatant_id) if turn_info.is_valid() else {}
-		var when := "Acts now." if i == 0 else "Acts %s, at tick %d." % [BattleMath.ordinal(i + 1), entries[i].tick]
+		var when := "Acts now." if i == 0 else "Acts %s, in %d ticks." % [BattleMath.ordinal(i + 1), entries[i].tick - entries[0].tick]
 		UiTooltip.attach(chip, entries[i].display_name, when + (" Ends its wait." if entries[i].ends_wait else ""),
 			"", "spd", info.get("math", []) if i == _first_slot(entries, i) else [])
 		chip.reset_size()

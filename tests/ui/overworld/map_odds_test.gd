@@ -45,6 +45,10 @@ func test_the_panel_shows_the_simulated_label_and_rate() -> void:
 	# How the odds are made sits in the row's tooltip (ui/README.md rule 5).
 	var row: Control = screen._panel.find_child("Odds", true, false)
 	assert_str(UiTooltip.spec(row).get("body", "")).contains("auto-player fights differently")
+	# And the math: how many of the simulated fights were won (rule 15).
+	var math: Array = UiTooltip.spec(row).get("math", [])
+	assert_int(math.size()).is_equal(2)
+	assert_str(math[1]).is_equal("Won %d of %d simulated fights." % [e.wins, e.runs])
 
 
 func test_estimates_play_over_frames_without_being_asked() -> void:

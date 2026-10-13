@@ -71,6 +71,6 @@
 	"math": {
 		"color_role": "hint",
 		"operator_role": "text_quiet",
-		"max_width": 600
+		"max_width": 720
 	}
 }
