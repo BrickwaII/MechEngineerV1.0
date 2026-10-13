@@ -54,6 +54,11 @@
 		"status_down": {"texture": "res://assets/ui/icons/status_down.png", "name": "Down", "color": "down", "text": "Out of the fight."},
 		"status_intent_changed": {"texture": "res://assets/ui/icons/status_intent_changed.png", "name": "Changed", "color": "changed", "text": "Its intent changed this turn."},
 		"ko": {"texture": "res://assets/fight/icons/ko_skull.png", "name": "KO", "color": "text_bright", "text": "This hit would put its target Down."},
+		"more": {"texture": "res://assets/ui/icons/more.png", "name": "More", "color": "text", "text": "Opens the full card: every stat, skill and note."},
+		"odds": {"texture": "res://assets/ui/icons/odds.png", "name": "Odds", "color": "preview", "text": "Chance to win, from simulated fights."},
+		"elite": {"texture": "res://assets/ui/icons/elite.png", "name": "Elite", "color": "changed", "text": "A stronger enemy than its kind."},
+		"new": {"texture": "res://assets/ui/icons/new.png", "name": "New", "color": "accent", "text": "Appeared since you last looked."},
+		"multiplier": {"texture": "res://assets/ui/icons/multiplier.png", "name": "Multiplier", "color": "preview", "text": "Scales another number."},
 		"unknown": {"texture": "res://assets/ui/icons/unknown.png", "name": "Unknown", "color": "changed", "text": "Not known yet."}
 	}
 }

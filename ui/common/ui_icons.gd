@@ -13,6 +13,7 @@ const KIT_PATH := "res://data/ui/ui_kit.json"
 const FALLBACK_ID := "unknown"
 
 static var _textures := {}
+static var _scaled := {}
 
 
 static func table() -> Dictionary:
@@ -77,6 +78,26 @@ static func kit_vector(path: String, fallback := Vector2.ZERO) -> Vector2:
 ## Icon size on screen: the 12 px art at the kit's whole-number scale.
 static func icon_size() -> Vector2:
 	return Vector2(12, 12) * int(kit("icon_scale", 2))
+
+
+## The icon scaled to the kit size with crisp pixels, for a Button's `icon`
+## (which draws its texture at its own size).
+static func scaled_texture(id: String) -> Texture2D:
+	if _scaled.has(id):
+		return _scaled[id]
+	var tex := texture(id)
+	var out: Texture2D = tex
+	if tex != null:
+		var img := tex.get_image()
+		if img != null:
+			img = img.duplicate()
+			if img.is_compressed():
+				img.decompress()
+			var n := int(kit("icon_scale", 2))
+			img.resize(img.get_width() * n, img.get_height() * n, Image.INTERPOLATE_NEAREST)
+			out = ImageTexture.create_from_image(img)
+	_scaled[id] = out
+	return out
 
 
 ## A TextureRect showing the icon at the kit size, ignoring the mouse.

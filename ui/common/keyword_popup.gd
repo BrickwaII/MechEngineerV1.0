@@ -109,11 +109,11 @@ static func box(k: String) -> PanelContainer:
 	panel.theme = PixelTheme.theme()
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 2)
+	col.add_theme_constant_override("separation", UiStyle.space("xs"))
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(col)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", UiStyle.space("s"))
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(row)
 	var e := UiGlossary.entry(k)
@@ -124,7 +124,7 @@ static func box(k: String) -> PanelContainer:
 	title.text = k
 	UiTooltip._bold(title, UiGlossary.color())
 	row.add_child(title)
-	var text := UiGlossary.rich(str(e.get("text", "")), PixelTheme.font_size("small"), Color(0, 0, 0, 0),
+	var text := UiGlossary.rich(str(e.get("text", "")), UiTooltip.text_size(), Color(0, 0, 0, 0),
 		float(UiIcons.kit("tooltip.width", 260)))
 	text.name = "Text"
 	col.add_child(text)

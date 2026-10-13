@@ -4,7 +4,8 @@
 	"tooltip": {
 		"delay_seconds": 0.35,
 		"grace_seconds": 0.25,
-		"width": 260,
+		"width": 360,
+		"font_size": "body",
 		"offset": [16, 16],
 		"keyword_color": "preview",
 		"keyword_active_back": "panel_border_light",
@@ -15,5 +16,60 @@
 		"padding": [12, 8],
 		"cost_color": "energy",
 		"rank_color": "preview"
+	},
+	"grid": 8,
+	"space": {"xs": 4, "s": 8, "m": 16, "l": 24, "xl": 32},
+	"color_roles": {
+		"text": "text",
+		"text_quiet": "text_dim",
+		"title": "text_bright",
+		"interactive": "accent",
+		"good": "hp",
+		"bad": "danger",
+		"caution": "warning",
+		"info": "energy",
+		"ally": "ally",
+		"enemy": "enemy",
+		"rare": "changed",
+		"hint": "preview",
+		"neutral": "text_dim"
+	},
+	"panels": {
+		"plain": {"fill": "panel", "border": "", "padding": 8},
+		"card": {"fill": "panel_raised", "border": "panel_border", "border_hover": "panel_border_light", "padding": 8},
+		"overlay": {"fill": "panel_raised", "border": "panel_border_light", "padding": 16, "shadow": 8}
+	},
+	"text": {
+		"min_size": "body",
+		"small_allowed_for": ["caption"]
+	},
+	"stat_strip": {
+		"slot_width": 72,
+		"bar_size": [64, 10],
+		"ring_size": 32,
+		"ring_width": 6,
+		"pips_max": 5,
+		"pip_size": [8, 14],
+		"arrow_up_role": "good",
+		"arrow_down_role": "bad"
+	},
+	"flag": {
+		"height": 28,
+		"padding": [4, 2],
+		"border": 1
+	},
+	"detail_modal": {
+		"width": 640,
+		"max_height_share": 0.85,
+		"dim": 0.6,
+		"layer": 90
+	},
+	"control_strip": {
+		"height": 40
+	},
+	"math": {
+		"color_role": "hint",
+		"operator_role": "text_quiet",
+		"max_width": 600
 	}
 }

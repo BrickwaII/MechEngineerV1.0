@@ -46,7 +46,7 @@ func _init() -> void:
 	col.offset_top = pad.y
 	col.offset_right = -pad.x
 	col.offset_bottom = -pad.y
-	col.add_theme_constant_override("separation", 2)
+	col.add_theme_constant_override("separation", UiStyle.space("xs"))
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(col)
 	# Top row: the cost badge in the corner, the rank on the right.
@@ -65,7 +65,7 @@ func _init() -> void:
 	cost_badge.add_theme_stylebox_override("panel", badge)
 	top.add_child(cost_badge)
 	var cost_row := HBoxContainer.new()
-	cost_row.add_theme_constant_override("separation", 2)
+	cost_row.add_theme_constant_override("separation", UiStyle.space("xs"))
 	cost_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cost_badge.add_child(cost_row)
 	cost_row.add_child(UiIcons.rect("energy"))
