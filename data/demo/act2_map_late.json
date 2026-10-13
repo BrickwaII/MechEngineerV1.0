@@ -1,0 +1,36 @@
+{
+	"name": "Map, late",
+	"description": "14 of 19 held, top alert tier, the coasts dug in.",
+	"icon": "demo_map",
+	"act": 2,
+	"order": 2,
+	"kind": "map",
+	"map": "north_america_19",
+	"hostile": [
+		"california",
+		"texas",
+		"new_york",
+		"mid_atlantic",
+		"southeast"
+	],
+	"alert_tier": 2,
+	"fortify": {
+		"*": 2,
+		"new_york": 3
+	},
+	"resources": {
+		"energy": 48,
+		"material": 36,
+		"grid": 52
+	},
+	"day": 76,
+	"losses": 1,
+	"news": {
+		"kind": "tier"
+	},
+	"squad": {
+		"seed": 8,
+		"skill_ranks": 3
+	},
+	"details": "Day 76. Fourteen of nineteen regions held, the alert at its top tier, the coasts fortified, a news card just in."
+}

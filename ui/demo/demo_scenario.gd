@@ -37,6 +37,10 @@ var id := ""
 var path := ""
 var scenario_name := ""
 var description := ""
+## A longer line for the card's hover.
+var details := ""
+## "" for the act's column in the picker, "other" for "Other screens".
+var group := ""
 ## An icon id from data/ui/icons.json.
 var icon := "unknown"
 ## 1 to 3.
@@ -67,7 +71,8 @@ var news: Dictionary = {}
 ## order, or the draft's own first picks), each skill raised skill_ranks.
 var squad: Dictionary = {}
 ## Fight scenarios: {"region", "kind" (attack or defend), "level",
-## "enemies" (ids, optional), "boss", "music"}.
+## "enemies" (ids, optional), "boss", "boss_unit" (the enemy id shown as the
+## boss), "title", "music"}.
 var fight: Dictionary = {}
 ## Pre-fight scenarios: the region the step opens on.
 var region := ""
@@ -108,6 +113,8 @@ static func from_dict(d: Dictionary, p_id: String) -> DemoScenario:
 	s.id = p_id
 	s.scenario_name = str(d.get("name", ""))
 	s.description = str(d.get("description", ""))
+	s.details = str(d.get("details", ""))
+	s.group = str(d.get("group", ""))
 	s.icon = str(d.get("icon", "unknown"))
 	s.act = int(d.get("act", 1))
 	s.order = int(d.get("order", 0))
@@ -145,8 +152,18 @@ func is_fight() -> bool:
 	return kind == KIND_FIGHT
 
 
+## TODO(decision: act-bosses): only act 3 has a boss in a real run (the
+## stub at its payload: the generic roster at Defense 5). The act 1 and act 2
+## demo bosses are showcases: a fixed lineup of the act's strongest faction
+## units fought over Campaign.BOSS_ID, so the difficulty-curve's boss scaling
+## applies. Whether real runs get act 1 and 2 bosses is open.
 func is_boss() -> bool:
 	return is_fight() and bool(fight.get("boss", false))
+
+
+## The enemy id drawn as the boss, or "".
+func boss_unit() -> String:
+	return str(fight.get("boss_unit", ""))
 
 
 ## "boss" or "battle".
@@ -180,6 +197,8 @@ func _check_fields() -> void:
 			errors.append("%s: fight.kind must be attack or defend" % id)
 		if not music() in [MUSIC_BATTLE, MUSIC_BOSS]:
 			errors.append("%s: fight.music must be battle or boss" % id)
+	if is_boss() and not boss_unit().is_empty() and not boss_unit() in fight.get("enemies", []):
+		errors.append("%s: fight.boss_unit '%s' is not in fight.enemies" % [id, boss_unit()])
 	if kind == KIND_PRE_FIGHT and region.is_empty():
 		errors.append("%s: a pre_fight scenario needs region" % id)
 

@@ -1,15 +1,21 @@
 class_name DemoPicker
 extends Control
 ## The demo picker, from the main menu's DEMO button: every scenario in
-## data/demo/ as a card (icon, name, one line), grouped by act under the
-## act's name. Clicking a card emits scenario_chosen; MAIN MENU emits
+## data/demo/ as a card (its type's icon, name, one line; hover for a longer
+## one), in a column per act under the act's name and color, and an "Other
+## screens" column for the steps and screens (globe, forced defense,
+## pre-fight, fast-forward, run over). Clicking a card emits scenario_chosen; MAIN MENU emits
 ## back_requested. Nothing here or in a demo is saved.
 
 signal scenario_chosen(scenario: DemoScenario)
 signal back_requested
 
-const CARD_SIZE := Vector2(290, 92)
-const COLUMNS := 4
+const CARD_SIZE := Vector2(0, 92)
+const COLUMN_GAP := 14
+## Each act's column color (data/feel/palette.json names).
+const ACT_COLORS: Array[String] = ["ally", "warning", "energy"]
+## The group key of the "Other screens" column.
+const OTHER := "other"
 const ACTS_FILE := "res://data/tuning/acts.json"
 
 ## Where scenarios are read from; tests point it elsewhere.
@@ -19,7 +25,8 @@ var scenarios: Array[DemoScenario] = []
 ## Scenario id -> its card.
 var cards: Dictionary[String, Button] = {}
 var back_button: ActionButton
-var _rows: VBoxContainer
+## The columns, side by side.
+var _rows: HBoxContainer
 
 
 func _ready() -> void:
@@ -29,7 +36,8 @@ func _ready() -> void:
 	refresh()
 
 
-## Reads the scenarios again and rebuilds the cards.
+## Reads the scenarios again and rebuilds the columns: one per act (its
+## name over a band in the act's color), then "Other screens".
 func refresh() -> void:
 	scenarios = DemoScenario.load_all(scenario_dir)
 	cards.clear()
@@ -37,23 +45,16 @@ func refresh() -> void:
 		_rows.remove_child(child)
 		child.queue_free()
 	var plan := ActPlan.load_file(ACTS_FILE)
-	var act := 0
-	var grid: GridContainer
+	var columns := {}
+	for act in [1, 2, 3]:
+		var act_name := plan.act_name(act - 1) if plan.is_valid() else ""
+		columns[act] = _column("Act%d" % act, "ACT %d" % act, act_name.to_upper(), ACT_COLORS[act - 1])
+	columns[OTHER] = _column("Other", "OTHER SCREENS", "STEPS AND SCREENS", "text_dim")
 	for s in scenarios:
-		if s.act != act:
-			act = s.act
-			var act_name := plan.act_name(act - 1) if plan.is_valid() else ""
-			var head := _label("ACT %d%s" % [act, "" if act_name.is_empty() else "  ·  " + act_name.to_upper()], "accent", 20)
-			head.name = "Act%dHeader" % act
-			_rows.add_child(head)
-			grid = GridContainer.new()
-			grid.name = "Act%dCards" % act
-			grid.columns = COLUMNS
-			grid.add_theme_constant_override("h_separation", 12)
-			grid.add_theme_constant_override("v_separation", 12)
-			_rows.add_child(grid)
-		var card := _card(s)
-		grid.add_child(card)
+		var other := s.group == OTHER
+		var key: Variant = OTHER if other else s.act
+		var card := _card(s, other)
+		(columns[key] as VBoxContainer).add_child(card)
 		cards[s.id] = card
 
 
@@ -63,7 +64,31 @@ func choose(scenario_id: String) -> void:
 		cards[scenario_id].pressed.emit()
 
 
-func _card(s: DemoScenario) -> Button:
+func _column(node_name: String, title: String, subtitle: String, color: String) -> VBoxContainer:
+	var col := VBoxContainer.new()
+	col.name = node_name
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 8)
+	_rows.add_child(col)
+	var head := PanelContainer.new()
+	head.name = "%sHeader" % node_name
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(FeelData.color(color), 0.18)
+	style.border_color = FeelData.color(color)
+	style.border_width_top = 4
+	style.set_content_margin_all(8)
+	head.add_theme_stylebox_override("panel", style)
+	col.add_child(head)
+	var titles := VBoxContainer.new()
+	titles.add_theme_constant_override("separation", 2)
+	head.add_child(titles)
+	titles.add_child(_label(title, color, 20))
+	if not subtitle.is_empty():
+		titles.add_child(_label(subtitle, "text_dim", 10))
+	return col
+
+
+func _card(s: DemoScenario, show_act := false) -> Button:
 	var card := Button.new()
 	card.name = "Card_%s" % s.id
 	card.custom_minimum_size = CARD_SIZE
@@ -92,13 +117,17 @@ func _card(s: DemoScenario) -> Button:
 	text.add_theme_constant_override("separation", 4)
 	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(text)
-	var title := _label(s.scenario_name, "text_bright", 20)
+	var title := _label(s.scenario_name + ("  · A%d" % s.act if show_act else ""), "text_bright", 20)
 	title.name = "Name"
 	text.add_child(title)
 	var line := _label(s.description if s.is_valid() else "Cannot play: " + "; ".join(s.errors), "text_dim" if s.is_valid() else "danger", 10)
 	line.name = "Description"
 	text.add_child(line)
-	UiTooltip.attach(card, s.scenario_name, s.description, "Act %d" % s.act, s.icon if UiIcons.has(s.icon) else "")
+	# The card grows to its text: a long name or line wraps, never spills.
+	row.minimum_size_changed.connect(func() -> void:
+		card.custom_minimum_size.y = maxf(CARD_SIZE.y, row.get_combined_minimum_size().y + 16.0))
+	UiTooltip.attach(card, s.scenario_name, s.details if not s.details.is_empty() else s.description,
+		"Act %d" % s.act, s.icon if UiIcons.has(s.icon) else "")
 	return card
 
 
@@ -134,10 +163,10 @@ func _build() -> void:
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(scroll)
-	_rows = VBoxContainer.new()
-	_rows.name = "Rows"
+	_rows = HBoxContainer.new()
+	_rows.name = "Columns"
 	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_rows.add_theme_constant_override("separation", 12)
+	_rows.add_theme_constant_override("separation", COLUMN_GAP)
 	scroll.add_child(_rows)
 
 

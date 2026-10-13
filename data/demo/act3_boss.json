@@ -1,13 +1,34 @@
 {
 	"name": "Boss",
-	"description": "The final payload: the boss fight that ends a run.",
-	"icon": "alert",
+	"description": "Last Command and its alien escorts.",
+	"icon": "demo_boss",
 	"act": 3,
-	"order": 4,
+	"order": 5,
 	"kind": "fight",
-	"held": ["north_america", "latin_america", "oceania", "sub_saharan_africa", "europe"],
+	"map": "world_8",
+	"hostile": [
+		"asia"
+	],
 	"alert_tier": 2,
-	"day": 95,
-	"squad": {"seed": 13, "skill_ranks": 4},
-	"fight": {"region": "boss", "kind": "attack", "level": 5, "boss": true, "music": "boss"}
+	"day": 99,
+	"squad": {
+		"seed": 42,
+		"skill_ranks": 5
+	},
+	"fight": {
+		"region": "boss",
+		"kind": "attack",
+		"level": 5,
+		"boss": true,
+		"music": "boss",
+		"title": "Last Command",
+		"enemies": [
+			"last_command",
+			"alien_stalker_advanced",
+			"alien_spitter_advanced",
+			"warden_mech"
+		],
+		"boss_unit": "last_command"
+	},
+	"details": "The final payload's boss: Last Command, an alien warmind that charges all-in Overloads and sweeps, with alien escorts. A showcase: a real run's boss is still a stand-in."
 }

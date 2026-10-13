@@ -45,6 +45,8 @@ const MAP_SIZE := Vector2(880, 620)
 const PANEL_WIDTH := 400.0
 const TOP_BAR_HEIGHT := 56.0
 const CHOICE_CARD_WIDTH := 290.0
+## The grid bar's width once the top bar also holds a Home button.
+const HOME_GRID_BAR_WIDTH := 200.0
 ## The icon of the campaign's Energy resource (data/ui/icons.json): the power
 ## cell. "energy" is the battle lightning for skill costs.
 const ENERGY_ICON := "map_energy"
@@ -1025,6 +1027,8 @@ func show_home_button(on_press: Callable) -> ActionButton:
 		home_button.name = "HomeButton"
 		home_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		_top_row.add_child(home_button)
+		# Room for it at the end of the bar, even with large income numbers.
+		_grid_bar.custom_minimum_size.x = HOME_GRID_BAR_WIDTH
 	for connection in home_button.pressed.get_connections():
 		home_button.pressed.disconnect(connection.callable)
 	home_button.pressed.connect(on_press)

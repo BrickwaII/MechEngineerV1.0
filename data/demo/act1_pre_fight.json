@@ -1,0 +1,22 @@
+{
+	"name": "Pre-fight",
+	"description": "Attack Tukwila: Fight, Breach or Retreat.",
+	"icon": "action_breach",
+	"act": 1,
+	"order": 5,
+	"kind": "pre_fight",
+	"map": "lake_washington_12",
+	"start": "renton_works",
+	"alert_tier": 1,
+	"resources": {
+		"energy": 30,
+		"material": 20
+	},
+	"day": 12,
+	"region": "tukwila",
+	"squad": {
+		"seed": 8
+	},
+	"details": "Attacking Tukwila opens the pre-fight step: fight as is, Breach the defenses for Material, or Retreat for time and Energy.",
+	"group": "other"
+}

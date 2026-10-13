@@ -1,0 +1,35 @@
+{
+	"name": "Boss",
+	"description": "Showcase: the Precinct Overseer.",
+	"icon": "demo_boss",
+	"act": 1,
+	"order": 4,
+	"kind": "fight",
+	"map": "lake_washington_12",
+	"start": "renton_works",
+	"hostile": [
+		"north_seattle"
+	],
+	"alert_tier": 2,
+	"day": 99,
+	"squad": {
+		"seed": 8,
+		"skill_ranks": 4
+	},
+	"fight": {
+		"region": "boss",
+		"kind": "attack",
+		"level": 5,
+		"boss": true,
+		"music": "boss",
+		"title": "Precinct Overseer",
+		"enemies": [
+			"precinct_overseer",
+			"resistance_soldier_advanced",
+			"resistance_mech_advanced",
+			"resistance_soldier_advanced"
+		],
+		"boss_unit": "precinct_overseer"
+	},
+	"details": "Showcase boss: the Precinct Overseer, a command tank that sweeps the whole squad, with Resistance escorts. Acts 1 and 2 have no boss in a real run yet."
+}

@@ -30,8 +30,13 @@ func _run() -> void:
 		flow.scenario = s
 		flow.folder_opener = func(path: String) -> void: print("would open ", path)
 		root.add_child(flow)
-		await _settle(s.kind == DemoScenario.KIND_FIGHT, 80)
+		await _settle(false, 30 if s.kind == DemoScenario.KIND_FIGHT else 80)
 		await _save("demo_%s" % s.id)
+		if flow.overworld != null and flow.overworld.map_view.has_method("drag_by") and s.id == "act3_globe":
+			# The globe turns under a drag: the same as dragging it with the mouse.
+			flow.overworld.map_view.drag_by(Vector2(-260, 40))
+			await _settle(false, 6)
+			await _save("demo_%s_dragged" % s.id)
 		if s.kind == DemoScenario.KIND_FIGHT and not shown_end and only.is_empty():
 			shown_end = true
 			flow.open_pause_menu()

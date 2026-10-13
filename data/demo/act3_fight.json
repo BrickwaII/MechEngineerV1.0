@@ -1,0 +1,26 @@
+{
+	"name": "Fight",
+	"description": "A late assault on Europe at Defense 4.",
+	"icon": "action_attack",
+	"act": 3,
+	"order": 4,
+	"kind": "fight",
+	"map": "world_8",
+	"held": [
+		"north_america",
+		"latin_america",
+		"sub_saharan_africa"
+	],
+	"alert_tier": 1,
+	"day": 45,
+	"squad": {
+		"seed": 42,
+		"skill_ranks": 4
+	},
+	"fight": {
+		"region": "europe",
+		"kind": "attack",
+		"level": 4
+	},
+	"details": "A late assault on Europe at Defense 4."
+}

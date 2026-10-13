@@ -208,3 +208,17 @@ func test_a_run_over_scenario_shows_the_screen_then_the_end() -> void:
 	_flow.run_over_screen.leave_button.pressed.emit()
 	assert_object(_flow.end_panel).is_not_null()
 	_assert_nothing_saved()
+
+
+func test_a_demo_boss_fight_shows_its_boss() -> void:
+	for s in DemoScenario.load_all():
+		if not s.is_boss():
+			continue
+		await _open(s)
+		var screen := _flow.battle_screen
+		assert_str(BattleArt.base_id(screen.boss_id)).override_failure_message(s.id).is_equal(s.boss_unit())
+		assert_str(screen.header_label.text).starts_with("BOSS  -  ")
+		assert_object(screen.boss_bar).is_not_null()
+		assert_bool(MusicDirector.current == null or MusicDirector.current.boss_battle).is_true()
+		_flow.queue_free()
+		await _frames(1)

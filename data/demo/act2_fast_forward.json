@@ -1,0 +1,43 @@
+{
+	"name": "Fast-forward",
+	"description": "Every region held: skip to the payload.",
+	"icon": "action_fast_forward",
+	"act": 2,
+	"order": 5,
+	"kind": "fast_forward",
+	"map": "north_america_19",
+	"held": [
+		"pacific_northwest",
+		"california",
+		"southwest",
+		"rockies",
+		"northern_plains",
+		"southern_plains",
+		"texas",
+		"upper_midwest",
+		"great_lakes",
+		"deep_south",
+		"southeast",
+		"mid_atlantic",
+		"new_york",
+		"new_england",
+		"western_canada",
+		"prairies",
+		"ontario",
+		"quebec_maritimes",
+		"northern_mexico"
+	],
+	"alert_tier": 2,
+	"day": 92,
+	"resources": {
+		"energy": 40,
+		"material": 30,
+		"grid": 60
+	},
+	"squad": {
+		"seed": 8,
+		"skill_ranks": 3
+	},
+	"details": "Every region held, nothing left in range: fast-forward plays the days to the payload and sums them up.",
+	"group": "other"
+}

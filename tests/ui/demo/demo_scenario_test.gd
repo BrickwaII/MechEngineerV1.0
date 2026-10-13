@@ -115,3 +115,31 @@ func test_a_news_card_uses_the_acts_own_headline() -> void:
 	assert_int(int(card.tier)).is_equal(2)
 	assert_str(str(card.headline)).not_contains("{")
 	assert_dict(_scenario({}).news_card(map)).is_empty()
+
+
+func test_the_shipped_set_covers_every_act() -> void:
+	var by_act := {1: [], 2: [], 3: []}
+	var ids := []
+	for s in DemoScenario.load_all():
+		by_act[s.act].append(s)
+		ids.append(s.id)
+	for act in [1, 2, 3]:
+		var kinds: Array = by_act[act].map(func(s: DemoScenario) -> String: return s.scenario_name)
+		for wanted in ["Map, early", "Map, late", "Fight", "Boss"]:
+			assert_array(kinds).override_failure_message("act %d has no '%s'" % [act, wanted]).contains([wanted])
+	for wanted in ["act3_globe", "act1_forced_defense", "act1_pre_fight", "act3_run_over", "act2_fast_forward"]:
+		assert_array(ids).contains([wanted])
+
+
+## Winnable but meaningful: the fight the demo plays is won by the simple
+## auto-player, and a random one still wins some and loses some.
+func test_every_demo_fight_is_winnable_but_not_trivial() -> void:
+	for s in DemoScenario.load_all():
+		if not s.is_fight():
+			continue
+		var simple := DemoWinRates.measure(s, 1, "simple")
+		assert_bool(simple.shown_seed_won).override_failure_message("%s: the shown fight is lost" % s.id).is_true()
+		var random := DemoWinRates.measure(s, 20, "random")
+		assert_float(random.rate).override_failure_message("%s: %.0f%% for a random player" % [s.id, random.rate]).is_between(10.0, 95.0)
+		if s.is_boss():
+			assert_float(simple.hp_left).override_failure_message("%s: %.0f%% hp left" % [s.id, simple.hp_left]).is_less(60.0)

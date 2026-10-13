@@ -1,0 +1,30 @@
+{
+	"name": "Defense",
+	"description": "South Seattle is under attack: hold or give up.",
+	"icon": "action_defend",
+	"act": 1,
+	"order": 6,
+	"kind": "map",
+	"map": "lake_washington_12",
+	"start": "renton_works",
+	"held": [
+		"renton",
+		"tukwila",
+		"south_seattle"
+	],
+	"pressure": {
+		"south_seattle": 100
+	},
+	"alert_tier": 1,
+	"day": 22,
+	"resources": {
+		"energy": 20,
+		"material": 12
+	},
+	"squad": {
+		"seed": 8,
+		"skill_ranks": 1
+	},
+	"details": "South Seattle's pressure is full: the squad must defend it, or retreat and give the district up.",
+	"group": "other"
+}

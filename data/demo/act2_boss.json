@@ -1,0 +1,35 @@
+{
+	"name": "Boss",
+	"description": "Showcase: the Continental Defense Grid.",
+	"icon": "demo_boss",
+	"act": 2,
+	"order": 4,
+	"kind": "fight",
+	"map": "north_america_19",
+	"hostile": [
+		"new_york",
+		"mid_atlantic"
+	],
+	"alert_tier": 2,
+	"day": 99,
+	"squad": {
+		"seed": 8,
+		"skill_ranks": 4
+	},
+	"fight": {
+		"region": "boss",
+		"kind": "attack",
+		"level": 5,
+		"boss": true,
+		"music": "boss",
+		"title": "Continental Defense Grid",
+		"enemies": [
+			"continental_defense_grid",
+			"rival_hunter_advanced",
+			"enhanced_trooper_advanced",
+			"splinter_swarm_advanced"
+		],
+		"boss_unit": "continental_defense_grid"
+	},
+	"details": "Showcase boss: the Continental Defense Grid, which shields and repairs its Rival AI and Enhanced escorts and Overloads when charged."
+}

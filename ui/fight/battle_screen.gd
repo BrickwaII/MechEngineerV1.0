@@ -43,14 +43,24 @@ extends Control
 ## A host may put a Home button at the right of the header
 ## (show_home_button()); RunFlow asks before leaving the battle.
 ##
+## Boss fights (show_boss()): the boss unit is drawn larger in its own row
+## above its escorts, a wide boss HP bar with its name runs under the header,
+## and the header reads "BOSS - <name>".
+##
 ## Call setup() before adding the screen to the tree.
 
 const UnitPanel := preload("res://ui/fight/unit_panel.gd")
+const PreviewBar := preload("res://ui/fight/preview_bar.gd")
 const TimelineBar := preload("res://ui/fight/timeline_bar.gd")
 const IntentArrows := preload("res://ui/fight/intent_arrows.gd")
 const OutcomeBanner := preload("res://ui/fight/outcome_banner.gd")
 
 const LOG_LINES_SHOWN := 8
+## A boss is drawn this many times the standard size, on a card this many
+## times as wide, with an HP bar this tall under the header.
+const BOSS_SIZE := 1.6
+const BOSS_CARD_WIDTH := 1.25
+const BOSS_BAR_HEIGHT := 18.0
 ## Enemy cards go two to a row past this many enemies.
 const ENEMIES_PER_COLUMN := 3
 
@@ -103,6 +113,12 @@ var outcome_banner: OutcomeBanner
 ## The Home button at the right of the header, once show_home_button() made it.
 var home_button: ActionButton
 var _header: HBoxContainer
+## The boss unit's id, or "" in a fight with no boss (show_boss()).
+var boss_id := ""
+## The wide boss HP bar under the header, or null.
+var boss_bar: PreviewBar
+var _enemy_column: VBoxContainer
+var _enemy_grid: GridContainer
 var field_root: Control
 var shake: ScreenShake
 var settings: GameSettings
@@ -283,6 +299,7 @@ func refresh() -> void:
 	timeline_bar.refresh(order if order_changes else upcoming, order_changes)
 	timeline_bar.set_highlight(hovered_id if fight.combatant(hovered_id) != null else "")
 	_refresh_commands()
+	_refresh_boss_bar()
 	var lines := fight.log_lines
 	log_label.text = "\n".join(lines.slice(maxi(0, lines.size() - LOG_LINES_SHOWN)))
 	log_toggle.text = "%s Log (%d)" % ["v" if log_label.visible else ">", lines.size()]
@@ -600,6 +617,7 @@ func _build_layout() -> void:
 	log_label.clip_text = true
 	log_label.custom_minimum_size = Vector2(0, 10 * LOG_LINES_SHOWN + 16)
 	var enemy_col := _column(field, "ENEMIES")
+	_enemy_column = enemy_col
 	var enemy_count := fight.combatants.filter(func(c: Combatant) -> bool: return c.side == Combatant.Side.ENEMY).size()
 	var enemies := GridContainer.new()
 	enemies.columns = 2 if enemy_count > ENEMIES_PER_COLUMN else 1
@@ -607,6 +625,7 @@ func _build_layout() -> void:
 	enemies.add_theme_constant_override("v_separation", 8)
 	enemies.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	enemy_col.add_child(enemies)
+	_enemy_grid = enemies
 	var used_palettes := []
 	for c in fight.combatants:
 		var panel := UnitPanel.new()
@@ -747,6 +766,58 @@ static func skill_card_face(skill: CombatSkill, attack: int) -> Dictionary:
 
 
 ## Shows or hides the battle log.
+## Shows enemy `unit_id` as this fight's boss named `title`: drawn
+## BOSS_SIZE times larger in a row of its own above the escorts, a wide HP bar
+## with its name under the header, and "BOSS - <title>" as the header.
+func show_boss(unit_id: String, title: String) -> void:
+	var unit := fight.combatant(unit_id)
+	if unit == null or not unit_panels.has(unit_id):
+		push_error("BattleScreen: no unit '%s' to show as the boss" % unit_id)
+		return
+	boss_id = unit_id
+	header_label.text = "BOSS  -  %s" % title.to_upper()
+	var panel := unit_panels[unit_id]
+	panel.get_parent().remove_child(panel)
+	var row := CenterContainer.new()
+	row.name = "BossRow"
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_enemy_column.add_child(row)
+	_enemy_column.move_child(row, _enemy_grid.get_index())
+	row.add_child(panel)
+	panel.view.set_size_factor(BOSS_SIZE)
+	panel.custom_minimum_size.x = UnitPanel.CARD_WIDTH * BOSS_CARD_WIDTH
+	if boss_bar == null:
+		var box := HBoxContainer.new()
+		box.name = "BossBarRow"
+		box.add_theme_constant_override("separation", 10)
+		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		field_root.add_child(box)
+		field_root.move_child(box, _header.get_index() + 1)
+		var name_label := _label(box, title.to_upper(), "")
+		name_label.name = "BossName"
+		name_label.add_theme_color_override("font_color", FeelData.color("danger"))
+		boss_bar = PreviewBar.new()
+		boss_bar.name = "BossBar"
+		boss_bar.kind = "hp"
+		boss_bar.custom_minimum_size = Vector2(0, BOSS_BAR_HEIGHT)
+		boss_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		boss_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		box.add_child(boss_bar)
+		boss_bar.reset(unit.hp, unit.max_hp)
+	_refresh_boss_bar()
+
+
+func _refresh_boss_bar() -> void:
+	if boss_bar == null:
+		return
+	var unit := fight.combatant(boss_id)
+	var hp: int = presenter.shown_hp(boss_id, unit.hp) if presenter != null else unit.hp
+	boss_bar.caption = "HP %d/%d" % [maxi(0, hp), unit.max_hp]
+	boss_bar.max_value = unit.max_hp
+	boss_bar.set_value(maxi(0, hp))
+	boss_bar.queue_redraw()
+
+
 ## Puts a Home button at the right end of the header; pressing it calls
 ## `on_press` (RunFlow asks before leaving the battle).
 func show_home_button(on_press: Callable) -> ActionButton:

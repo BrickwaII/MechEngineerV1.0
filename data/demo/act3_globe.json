@@ -1,0 +1,28 @@
+{
+	"name": "Globe",
+	"description": "39 countries: drag the globe, zoom in on any.",
+	"icon": "demo_globe",
+	"act": 3,
+	"order": 2,
+	"kind": "map",
+	"map": "world_39",
+	"held": [
+		"united_states",
+		"canada",
+		"mexico",
+		"british_isles"
+	],
+	"alert_tier": 1,
+	"day": 25,
+	"resources": {
+		"energy": 30,
+		"material": 24,
+		"grid": 60
+	},
+	"squad": {
+		"seed": 42,
+		"skill_ranks": 3
+	},
+	"details": "The 39-country world map: drag the globe to turn it and hover any country.",
+	"group": "other"
+}
