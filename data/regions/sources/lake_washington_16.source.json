@@ -3,7 +3,7 @@
 	"name": "Greater Seattle",
 	"variant_name": "Lake Washington, 16 areas",
 	"output": "data/regions/lake_washington_16.json",
-	"credit": "Coastline: Natural Earth 1:10m land and North America lakes (public domain). City cores: US Census Bureau TIGER/Line 2019 places (public domain), via github.com/generalpiston/geojson-us-city-boundaries. Mercer Island and Lake Sammamish are hand-drawn approximations (sources/hand_drawn_*.geojson). Built by tools/region_prep/prepare_regions.py.",
+	"credit": "Coastline: Natural Earth 1:10m land and North America lakes (public domain). City cores: US Census Bureau TIGER/Line 2019 places (public domain), via github.com/generalpiston/geojson-us-city-boundaries. Mercer Island, Lake Sammamish, Lake Union and the Ship Canal are hand-drawn approximations (sources/hand_drawn_*.geojson). Built by tools/region_prep/prepare_regions.py.",
 	"output_projection": "flat",
 	"projection": {
 		"type": "local",
@@ -131,7 +131,21 @@
 				-122.5,
 				47.585,
 				-122.2,
-				47.652
+				47.62
+			],
+			"to": "central_seattle"
+		},
+		{
+			"from": "north_seattle",
+			"box": [
+				-122.5,
+				47.62,
+				-122.2,
+				47.7
+			],
+			"seed": [
+				-122.357,
+				47.637
 			],
 			"to": "central_seattle"
 		},
@@ -420,6 +434,11 @@
 		}
 	],
 	"crossings": [
+		[
+			"north_seattle",
+			"central_seattle",
+			"Ship Canal bridges"
+		],
 		[
 			"central_seattle",
 			"bellevue",

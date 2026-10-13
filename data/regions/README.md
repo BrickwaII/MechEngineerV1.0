@@ -37,7 +37,8 @@ The outlines are public domain:
   [geojson-us-city-boundaries](https://github.com/generalpiston/geojson-us-city-boundaries):
   the city cores of act 1. Census servers were not reachable from the build
   machine; the mirror is the same data as GeoJSON.
-- Hand-drawn approximations: Mercer Island and Lake Sammamish
+- Hand-drawn approximations: Mercer Island, Lake Sammamish, and Lake Union
+  with the Ship Canal from the Ballard Locks to Union Bay
   (`sources/hand_drawn_*.geojson`), too small for Natural Earth 1:10m.
 
 ## How the files are made
