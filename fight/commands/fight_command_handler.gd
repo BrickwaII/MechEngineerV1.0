@@ -30,7 +30,7 @@ var selected_bot_id := ""
 var selected_skill_id := ""
 
 var _fallback := SimpleFightPolicy.new()
-var _rng := RandomNumberGenerator.new()
+var _rng: RandomNumberGenerator
 var _over_sent := false
 
 
@@ -38,8 +38,7 @@ func _init(p_fight: Fight, p_enemy_policy: FightPolicy = null, p_auto_resolve_en
 	fight = p_fight
 	enemy_policy = p_enemy_policy if p_enemy_policy != null else _fallback
 	auto_resolve_enemies = p_auto_resolve_enemies
-	# Seeded like HeadlessFightRunner, so a policy that draws replays exactly.
-	_rng.seed = hash("policy:%d" % fight.fight_seed)
+	_rng = HeadlessFightRunner.policy_rng(fight.fight_seed)
 	_next_turn()
 	if auto_resolve_enemies:
 		resolve_enemy_turns()
@@ -133,12 +132,7 @@ func resolve_enemy_turn() -> bool:
 	if not is_enemy_turn():
 		return false
 	var unit := actor()
-	var problem := fight.submit(enemy_policy.choose(fight, unit, _rng))
-	if not problem.is_empty():
-		# A broken policy must not stall the fight, as in HeadlessFightRunner.
-		fight.log_lines.append("  policy refused (%s), %s acts by default" % [problem, unit.display_name])
-		problem = fight.submit(_fallback.choose(fight, unit, _rng))
-		assert(problem.is_empty(), problem)
+	HeadlessFightRunner.play_turn(fight, unit, enemy_policy, _fallback, _rng)
 	_after_action(unit)
 	_next_turn()
 	changed.emit()

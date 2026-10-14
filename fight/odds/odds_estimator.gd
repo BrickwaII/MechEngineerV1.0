@@ -48,6 +48,10 @@ var tuning: OddsTuning
 var combat_tuning: CombatTuning
 var enemy_table: EnemyTable
 var _cache := {}
+## The auto-fight policies. Neither keeps anything between fights, so every
+## fight an estimator plays shares them.
+var _squad_policy := SimpleFightPolicy.new()
+var _enemy_policy := IntentFightPolicy.new()
 
 
 func _init(p_tuning: OddsTuning = null, p_combat_tuning: CombatTuning = null,
@@ -119,7 +123,7 @@ class Job:
 		while _next < result.runs:
 			var fight := HeadlessFightRunner.run(request,
 				OddsEstimator.seed_for(run_seed, request.territory_id, request.defense_level, _next),
-				SimpleFightPolicy.new(), IntentFightPolicy.new(), owner.combat_tuning, owner.enemy_table)
+				owner._squad_policy, owner._enemy_policy, owner.combat_tuning, owner.enemy_table)
 			if fight.outcome == FightResult.Outcome.VICTORY:
 				result.wins += 1
 			_next += 1

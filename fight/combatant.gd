@@ -177,7 +177,10 @@ func finish_action(threshold: int) -> void:
 
 ## A copy of the timing and guard state, for previews. Shares stats and skills.
 func clone_for_preview() -> Combatant:
-	var c := Combatant.new(id, display_name, side, order, stats, hp, skill_ids, _tuning, skill_overrides)
+	var no_skills: Array[String] = []
+	var c := Combatant.new(id, display_name, side, order, stats, hp, no_skills, _tuning, skill_overrides)
+	c.skill_ids = skill_ids.duplicate()
+	c._skills = _skills
 	c.max_hp = max_hp
 	c.guard_percent = guard_percent
 	c.reflect_percent = reflect_percent

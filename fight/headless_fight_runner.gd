@@ -19,17 +19,29 @@ static func run(
 	var fallback := SimpleFightPolicy.new()
 	if enemy_policy == null:
 		enemy_policy = fallback
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash("policy:%d" % seed_value)
+	var rng := policy_rng(seed_value)
 	var actor := fight.advance()
 	while actor != null:
-		var policy := player_policy if actor.side == Combatant.Side.PLAYER else enemy_policy
-		var action := policy.choose(fight, actor, rng)
-		var problem := fight.submit(action)
-		if not problem.is_empty():
-			# A broken policy must not stall the fight: log it and play it safe.
-			fight.log_lines.append("  policy refused (%s), %s acts by default" % [problem, actor.display_name])
-			problem = fight.submit(fallback.choose(fight, actor, rng))
-			assert(problem.is_empty(), problem)
+		play_turn(fight, actor, player_policy if actor.side == Combatant.Side.PLAYER else enemy_policy, fallback, rng)
 		actor = fight.advance()
 	return fight
+
+
+## The rng policies draw from in the fight with `seed_value`. Every player of
+## a fight seeds it this way, so a policy that draws replays exactly.
+static func policy_rng(seed_value: int) -> RandomNumberGenerator:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("policy:%d" % seed_value)
+	return rng
+
+
+## Submits `policy`'s choice for `actor`, the unit the fight waits on. A
+## broken policy must not stall the fight: a refused action is logged and
+## `fallback` plays the turn instead.
+static func play_turn(fight: Fight, actor: Combatant, policy: FightPolicy, fallback: FightPolicy,
+		rng: RandomNumberGenerator) -> void:
+	var problem := fight.submit(policy.choose(fight, actor, rng))
+	if not problem.is_empty():
+		fight.log_lines.append("  policy refused (%s), %s acts by default" % [problem, actor.display_name])
+		problem = fight.submit(fallback.choose(fight, actor, rng))
+		assert(problem.is_empty(), problem)

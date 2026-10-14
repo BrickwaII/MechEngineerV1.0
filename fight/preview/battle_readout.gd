@@ -116,15 +116,6 @@ static func energy_after(actor: Combatant, skill: CombatSkill) -> int:
 	return maxi(0, actor.energy_milli - skill.energy_cost_milli()) / Combatant.MILLI
 
 
-## Unit ids in `order` (the NEXT bar), as indexes per id: id -> [slot, ...].
-static func slots_of(order: Array[TimelineEntry], unit_id: String) -> Array[int]:
-	var out: Array[int] = []
-	for i in order.size():
-		if order[i].combatant_id == unit_id:
-			out.append(i)
-	return out
-
-
 ## The NEXT bar if the pending unit made the previewed choice: the unit acting
 ## now first, then the order once the choice resolves. Empty when the choice
 ## carries no order.

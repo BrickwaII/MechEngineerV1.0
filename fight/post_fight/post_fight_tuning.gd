@@ -51,16 +51,18 @@ var reference_defense := 0
 var combat_skill_effects: Dictionary[String, String] = {}
 
 
+## The shipped file; read from disk once, a fresh object every call.
 static func load_default() -> PostFightTuning:
-	return load_file(DEFAULT_PATH)
+	var d: Variant = JsonFile.read_object_cached(DEFAULT_PATH)
+	return from_dict(d) if d != null else load_file(DEFAULT_PATH)
 
 
 static func load_file(path: String) -> PostFightTuning:
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not parsed is Dictionary:
+	var d: Variant = JsonFile.read_object(path)
+	if d == null:
 		push_error("PostFightTuning: cannot read %s" % path)
 		return null
-	return from_dict(parsed)
+	return from_dict(d)
 
 
 static func from_dict(d: Dictionary) -> PostFightTuning:

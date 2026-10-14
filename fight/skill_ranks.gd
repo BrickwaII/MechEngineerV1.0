@@ -39,11 +39,11 @@ static func load_default() -> SkillRanks:
 
 
 static func load_file(path: String) -> SkillRanks:
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not parsed is Dictionary:
+	var d: Variant = JsonFile.read_object(path)
+	if d == null:
 		push_error("SkillRanks: cannot read %s" % path)
 		return null
-	return from_dict(parsed)
+	return from_dict(d)
 
 
 static func from_dict(d: Dictionary) -> SkillRanks:
@@ -155,14 +155,6 @@ func uses_to_rank_up(rank: int) -> int:
 	if rank < 1 or rank >= max_rank() or rank > uses_to_next.size():
 		return 0
 	return uses_to_next[rank - 1]
-
-
-## Total uses from the base rank to `rank`.
-func uses_to_reach(rank: int) -> int:
-	var total := 0
-	for r in range(1, clampi(rank, 1, max_rank())):
-		total += uses_to_rank_up(r)
-	return total
 
 
 ## A copy of `base` as a unit at `rank` holds it, named `skill_name` ("" keeps

@@ -9,16 +9,18 @@ const DEFAULT_PATH := "res://data/combat/intent/preview_rules.json"
 var random_skills: Array[String] = []
 
 
+## The shipped file; read from disk once, a fresh object every call.
 static func load_default() -> PreviewRules:
-	return load_file(DEFAULT_PATH)
+	var d: Variant = JsonFile.read_object_cached(DEFAULT_PATH)
+	return from_dict(d) if d != null else load_file(DEFAULT_PATH)
 
 
 static func load_file(path: String) -> PreviewRules:
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not parsed is Dictionary:
+	var d: Variant = JsonFile.read_object(path)
+	if d == null:
 		push_error("PreviewRules: cannot read %s" % path)
 		return null
-	return from_dict(parsed)
+	return from_dict(d)
 
 
 static func from_dict(d: Dictionary) -> PreviewRules:

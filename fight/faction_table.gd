@@ -42,11 +42,11 @@ static func load_default() -> FactionTable:
 
 
 static func load_file(path: String) -> FactionTable:
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not parsed is Dictionary:
+	var d: Variant = JsonFile.read_object(path)
+	if d == null:
 		push_error("FactionTable: cannot read %s" % path)
 		return null
-	return from_dict(parsed)
+	return from_dict(d)
 
 
 static func from_dict(d: Dictionary) -> FactionTable:
@@ -143,16 +143,6 @@ func pick(table: EnemyTable, faction: String, level: int, tier: String, rng: Ran
 	for i in (count if count >= 0 else int(table.levels[level].count)):
 		out.append(ids[rng.randi_range(0, ids.size() - 1)])
 	return out
-
-
-## Enemy ids for a fight at `territory_id`, or [] when the territory gets the
-## generic roster under `rule`.
-func pick_for_territory(table: EnemyTable, territory_id: String, level: int, rule: String,
-		rng: RandomNumberGenerator) -> Array[String]:
-	var faction := faction_for_region(territory_id, rule)
-	if faction == GENERIC:
-		return []
-	return pick(table, faction, level, tier_for(act_of(territory_id), level), rng)
 
 
 ## Problems in the table checked against `table`; empty when every faction,

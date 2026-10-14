@@ -74,7 +74,7 @@ func options_for(fight: Fight, unit: Combatant) -> Array[UnitIntent]:
 	var out: Array[UnitIntent] = []
 	if not unit.is_alive():
 		return out
-	var p := personality_of(unit)
+	var w := weights.weights_for(personality_of(unit))
 	var opponents := fight.opponents_of(unit)
 	var allies: Array[Combatant] = []
 	allies.assign(fight.combatants.filter(func(c: Combatant) -> bool: return c.side == unit.side and c.is_alive()))
@@ -88,7 +88,7 @@ func options_for(fight: Fight, unit: Combatant) -> Array[UnitIntent]:
 				for ally in allies:
 					var healed := heal_amount(unit, ally, skill)
 					if healed > 0:
-						var score := healed * weights.weight(IntentWeights.HEAL, p) - _cost_score(skill, p)
+						var score := healed * w[IntentWeights.HEAL] - _cost_score(skill, w)
 						out.append(UnitIntent.new(unit.id, UnitIntent.Kind.HEAL, FightAction.use(skill_id, ally.id), healed, score))
 			continue
 		var affordable := unit.can_afford(skill)
@@ -101,20 +101,20 @@ func options_for(fight: Fight, unit: Combatant) -> Array[UnitIntent]:
 		var bonus := WaitRules.damage_bonus_percent(unit.is_waiting() or not affordable, fight.tuning)
 		for target in aims:
 			var dmg := DamageRules.damage_to(unit, target, skill, fight.tuning, bonus)
-			var score := _attack_score(dmg, target, target == latest, skill, p)
+			var score := _attack_score(dmg, target, target == latest, skill, w)
 			if skill.hits_all():
 				dmg = 0
-				score = -_cost_score(skill, p)
+				score = -_cost_score(skill, w)
 				for o in opponents:
 					var each := DamageRules.damage_to(unit, o, skill, fight.tuning, bonus)
 					dmg += each
-					score += _attack_score(each, o, o == latest, null, p)
+					score += _attack_score(each, o, o == latest, null, w)
 			if affordable:
 				out.append(UnitIntent.new(unit.id, UnitIntent.Kind.ATTACK, FightAction.use(skill_id, target.id), dmg, score))
 			else:
 				var action := FightAction.wait_for(skill_id)
 				action.target_id = target.id
-				score *= weights.weight(IntentWeights.WAIT, p)
+				score *= w[IntentWeights.WAIT]
 				out.append(UnitIntent.new(unit.id, UnitIntent.Kind.WAIT, action, dmg, score))
 	return out
 
@@ -138,17 +138,18 @@ static func latest_opponent_actor(fight: Fight, unit: Combatant) -> Combatant:
 	return null
 
 
-## The score of dealing `dmg` to `target`; `skill`'s cost is subtracted unless null.
-func _attack_score(dmg: int, target: Combatant, is_latest: bool, skill: CombatSkill, p: Personality) -> float:
-	var score := dmg * weights.weight(IntentWeights.DAMAGE, p) - (_cost_score(skill, p) if skill != null else 0.0)
+## The score of dealing `dmg` to `target`; `skill`'s cost is subtracted unless
+## null. `w` is the unit's weights (IntentWeights.weights_for()).
+func _attack_score(dmg: int, target: Combatant, is_latest: bool, skill: CombatSkill, w: Dictionary[String, float]) -> float:
+	var score := dmg * w[IntentWeights.DAMAGE] - (_cost_score(skill, w) if skill != null else 0.0)
 	if dmg >= target.hp:
-		score += weights.weight(IntentWeights.KILL, p)
+		score += w[IntentWeights.KILL]
 	if is_latest:
-		score += weights.weight(IntentWeights.RETALIATE, p)
+		score += w[IntentWeights.RETALIATE]
 	if target.max_hp > 0:
-		score += weights.weight(IntentWeights.FOCUS, p) * (1.0 - float(target.hp) / target.max_hp)
+		score += w[IntentWeights.FOCUS] * (1.0 - float(target.hp) / target.max_hp)
 	return score
 
 
-func _cost_score(skill: CombatSkill, p: Personality) -> float:
-	return skill.energy_cost * weights.weight(IntentWeights.ENERGY_COST, p)
+func _cost_score(skill: CombatSkill, w: Dictionary[String, float]) -> float:
+	return skill.energy_cost * w[IntentWeights.ENERGY_COST]
