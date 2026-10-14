@@ -108,25 +108,64 @@ func _draw() -> void:
 			# points along their arrows, so they do not pile up at the target.
 			var nth: int = into.get(a.to, 0)
 			into[a.to] = nth + 1
-			var spots: Array = [0.62, 0.42, 0.78, 0.3, 0.52]
-			var t: float = ReadoutStyle.number("badge.at", 0.62) if nth == 0 else float(spots[nth % spots.size()])
-			var at := points[clampi(int(roundf((points.size() - 1) * t)), 0, points.size() - 1)]
-			badges.append([badge, at, focused, a.get("changed", false), player, faded])
+			badges.append([badge, points, focused, a.get("changed", false), player, faded, nth])
 	# Badges on top of every arrow, the focused ones last.
 	badges.sort_custom(func(x: Array, y: Array) -> bool: return not x[2] and y[2])
-	# A badge that would still cover another steps down below it.
+	# Each badge takes the first point along its arrow that covers no unit card
+	# (its HP bar, flags, name) and no other badge; several arrows into one
+	# target start from different points. Failing that, it steps down until
+	# it is clear of the other badges.
+	var cards := _card_rects(to_local)
 	var taken: Array[Rect2] = []
 	for b: Array in badges:
-		var r := _badge_rect(b[0], b[1], b[3])
-		var guard := 0
-		while taken.any(func(o: Rect2) -> bool: return o.intersects(r.grow(1.0))) and guard < 8:
-			r.position.y += r.size.y + 2.0
-			guard += 1
+		var pts: PackedVector2Array = b[1]
+		var first: float = ReadoutStyle.number("badge.at", 0.62)
+		var spots: Array = [first, 0.5, 0.42, 0.72, 0.34, 0.8, 0.26, 0.88, 0.18]
+		var nth: int = b[6]
+		if nth > 0:
+			spots = spots.slice(nth % spots.size()) + spots.slice(0, nth % spots.size())
+		var r := Rect2()
+		var placed := false
+		for t: float in spots:
+			var at := pts[clampi(int(roundf((pts.size() - 1) * t)), 0, pts.size() - 1)]
+			r = _badge_rect(b[0], at, b[3])
+			if not _covers(r, cards) and not _covers(r, taken):
+				placed = true
+				break
+		if not placed:
+			r = _badge_rect(b[0], pts[clampi(int(roundf((pts.size() - 1) * first)), 0, pts.size() - 1)], b[3])
+			var guard := 0
+			while _covers(r, taken) and guard < 8:
+				r.position.y += r.size.y + 2.0
+				guard += 1
 		taken.append(r)
 		b[1] = r.get_center()
 	for b: Array in badges:
 		badge_rects.append({"badge": b[0], "rect": _draw_badge(b[0], b[1], b[2], b[3], b[4], b[5])})
 	_sync_hotspots.call_deferred()
+
+
+## Every unit card's rect in this control's coordinates (a view's card is
+## its panel, two parents up).
+func _card_rects(to_local: Transform2D) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for id: String in views:
+		var view: Control = views[id]
+		if view == null or not view.is_visible_in_tree():
+			continue
+		var card := view.get_parent().get_parent() as Control
+		if card == null:
+			continue
+		var g := card.get_global_rect()
+		out.append(Rect2(to_local * g.position, g.size))
+	return out
+
+
+static func _covers(r: Rect2, rects: Array[Rect2]) -> bool:
+	for o in rects:
+		if o.intersects(r.grow(1.0)):
+			return true
+	return false
 
 
 ## One hotspot per badge, placed over it, with the badge's tooltip: what it

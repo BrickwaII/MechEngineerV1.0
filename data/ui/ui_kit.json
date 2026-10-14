@@ -18,7 +18,7 @@
 		"rank_color": "preview"
 	},
 	"action_tile": {
-		"size": [144, 112]
+		"size": [144, 120]
 	},
 	"focus_card": {
 		"size": [280, 0],

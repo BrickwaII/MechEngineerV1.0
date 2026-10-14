@@ -115,3 +115,29 @@ seeded fights and checks every previewed number against the resolution.
   order it would leave, titled AFTER.
 - Screenshots: `demo/capture_readability.gd` (needs a display) writes
   screenshots/readability_*.png. Icons: tools/asset_gen/gen_readability_icons.py.
+
+## Battle layout (UI cleanup PR 4)
+
+Laid out after Slay the Spire and Into the Breach:
+
+- **Header**: the fight's title and Defense, Home. **Turn row**: the turn
+  order as unit portraits (`UnitPortrait`; name and "when and why" on hover)
+  and, at its right end, the screen's one `ControlStrip`: speed (1x, 1.5x,
+  2x, Skip; saved to GameSettings), Log, Preview, and Detailed / Compact
+  cards (a crowded field of more than three enemies starts compact).
+- **Action dock** (bottom left): the acting bot's portrait, name and Energy,
+  and its skills as `ActionTile`s (icon, short name, cost, hotkey 1-9). A
+  disabled tile says why on hover.
+- **Focused card** (`FocusCard`, the dock's middle): picking a tile lifts it
+  into a card with the effect and its keyword links, the cost, and the damage
+  math for the target under the pointer. Every valid target meanwhile shows
+  its outcome as the first flag on its card ("-11", "KO -12", "+8"). A click
+  confirms; Esc or a right-click puts it back. With no skill picked the step
+  header ("Servo is ready. Choose a skill, or Wait.") stands there instead.
+- **Wait** and **Cancel** on the dock's right.
+- **Drawer**: the log and the choice preview in words open from the strip,
+  in the field's empty middle (on the right edge when the middle is narrow);
+  it keeps its height and scrolls.
+- **Arrows**: badges take the first point along their arrow that covers no
+  card and no other badge; hovering a unit fades every arrow that does not
+  touch it.
