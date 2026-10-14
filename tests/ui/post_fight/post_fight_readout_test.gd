@@ -35,7 +35,8 @@ func test_demo_panel_shows_counters_rank_ups_and_growth() -> void:
 	var panel: Control = demo.readout.bot_panel(r.bot_id)
 	var texts := "\n".join(_texts(panel))
 	assert_str(texts).contains(r.display_name)
-	assert_str(texts).contains("Hit an enemy")
+	# What it did sits on the Details tab.
+	assert_str("\n".join(_texts(demo.readout.bot_details(r.bot_id)))).contains("Hit an enemy")
 	assert_str(texts).contains("RANK UP")
 	assert_str(texts).contains("+%.2f" % r.growth(Personality.ENDS.find("aggressive")))
 	var grown: IconStat = panel.find_child("IconStat_trait_aggressive", true, false)
@@ -196,7 +197,7 @@ func test_the_readout_counts_up_then_shows_the_final_numbers() -> void:
 	assert_bool(readout.is_tallying()).is_true()
 	var r: BotFightReport = demo.report.bots[0]
 	var count: int = r.label_counts[ActionTag.HIT_ENEMY]
-	var row: Control = readout.bot_panel(r.bot_id).find_child("Count_%s" % ActionTag.HIT_ENEMY, true, false)
+	var row: Control = readout.bot_details(r.bot_id).find_child("Count_%s" % ActionTag.HIT_ENEMY, true, false)
 	# Rows start hidden at zero.
 	assert_str(row.get_child(1).text).is_equal("0")
 	var finished := [false]
@@ -232,3 +233,41 @@ func before() -> void:
 func after() -> void:
 	Legacy.unpin()
 
+
+
+func test_the_readout_has_summary_growth_and_details_tabs() -> void:
+	var runner := scene_runner(DEMO)
+	await runner.simulate_frames(2)
+	var readout: Control = runner.scene().readout
+	assert_array(readout.tabs.ids()).is_equal([&"summary", &"growth", &"details"])
+	# The count-up plays on Growth, so it opens there.
+	assert_str(str(readout.tabs.current)).is_equal("growth")
+
+
+func test_each_bot_has_a_summary_card_with_three_headlines() -> void:
+	var runner := scene_runner(DEMO)
+	await runner.simulate_frames(2)
+	var demo := runner.scene()
+	demo.readout.skip()
+	for r: BotFightReport in demo.report.bots:
+		var card: InfoCard = demo.readout.find_child("Summary_%s" % r.bot_id, true, false)
+		assert_object(card).is_not_null()
+		assert_array(card.strip.kinds()).is_equal(["number", "chip", "pips"])
+		assert_str(card.strip.headline(0).value_label.text).is_equal(str(r.decisions))
+		var spec: Dictionary = demo.readout.summary_detail(r)
+		assert_int((spec["sections"] as Array).size()).is_equal(3)
+		for s: Dictionary in spec["sections"]:
+			(s["content"] as Node).free()
+
+
+func test_details_hold_what_each_bot_did() -> void:
+	var runner := scene_runner(DEMO)
+	await runner.simulate_frames(2)
+	var demo := runner.scene()
+	demo.readout.skip()
+	for r: BotFightReport in demo.report.bots:
+		var details: Control = demo.readout.bot_details(r.bot_id)
+		for label: String in r.label_counts:
+			if r.label_counts[label] > 0:
+				assert_object(details.find_child("Count_%s" % label, true, false)).override_failure_message(label).is_not_null()
+		assert_object(demo.readout.bot_panel(r.bot_id).find_child("Count_*", true, false)).is_null()
