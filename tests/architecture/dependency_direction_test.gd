@@ -72,9 +72,34 @@ func test_ui_may_import_every_layer() -> void:
 			"const C := preload(\"res://fight/c.gd\")",
 			"const D := preload(\"res://campaign/d.gd\")",
 			"const E := preload(\"res://tools/e.gd\")",
+			"const F := preload(\"res://lib/f.gd\")",
 		]),
 	}
 	assert_array(_rules.find_violations(files)).is_empty()
+
+
+func test_every_code_layer_but_contracts_may_use_lib() -> void:
+	var files := {
+		"res://lib/json_file.gd": "class_name JsonFile\n",
+		"res://bot_data/a.gd": "var j: JsonFile\n",
+		"res://fight/b.gd": "var j: JsonFile\n",
+		"res://campaign/c.gd": "var j: JsonFile\n",
+		"res://tools/d.gd": "var j: JsonFile\n",
+		"res://contracts/e.gd": "var j: JsonFile\n",
+	}
+	assert_array(_rules.find_violations(files)).contains_exactly(
+		["res://contracts/e.gd: contracts/ may not import lib/"])
+
+
+func test_lib_may_not_import_any_layer() -> void:
+	var files := {
+		"res://contracts/unit_stats.gd": "class_name UnitStats\n",
+		"res://lib/helper.gd": "var s: UnitStats\nconst P := \"res://data/bot_data/tuning.json\"\n",
+	}
+	assert_array(_rules.find_violations(files)).contains_exactly_in_any_order([
+		"res://lib/helper.gd: lib/ may not import contracts/",
+		"res://lib/helper.gd: lib/ may not import data/",
+	])
 
 
 func test_data_holds_no_code() -> void:

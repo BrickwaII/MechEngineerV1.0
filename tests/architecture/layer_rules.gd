@@ -9,13 +9,16 @@ extends RefCounted
 ## The layers each layer may import. A layer may always use its own files.
 ## tests/ and addons/ are not layers and are not checked.
 ## data/ holds no code, so any code layer may read its files.
+## lib/ holds generic helpers with no game rules; it imports nothing, and
+## every code layer but contracts/ may use it.
 const ALLOWED := {
 	"contracts": [],
-	"bot_data": ["contracts", "data"],
-	"fight": ["contracts", "bot_data", "data"],
-	"campaign": ["contracts", "data"],
-	"ui": ["contracts", "bot_data", "fight", "campaign", "tools", "data"],
-	"tools": ["contracts", "bot_data", "fight", "campaign", "data"],
+	"lib": [],
+	"bot_data": ["contracts", "lib", "data"],
+	"fight": ["contracts", "lib", "bot_data", "data"],
+	"campaign": ["contracts", "lib", "data"],
+	"ui": ["contracts", "lib", "bot_data", "fight", "campaign", "tools", "data"],
+	"tools": ["contracts", "lib", "bot_data", "fight", "campaign", "data"],
 	"data": [],
 }
 

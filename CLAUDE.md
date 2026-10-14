@@ -10,6 +10,10 @@ Build Board: https://claude.ai/artifact/T31MSnVskLzhNyQiDxDYNM
 
 ## Layers and import rules
 contracts/   Shared interfaces and stubs. Imports nothing. Every folder may import it.
+lib/         Generic helpers with no game rules: JSON files, checked data
+             reading, switchboard variant sets, number text. Imports nothing.
+             Every folder but contracts/ may import it. ui-only helpers go in
+             ui/common/, tools-only ones in tools/.
 bot_data/    Layer 1. Pure state: stats, personality, skills, augment slots. No behavior.
 fight/       Layer 2. Combat, energy, intent, preview, post-fight.
              May import bot_data and contracts.
@@ -18,7 +22,7 @@ campaign/    Layer 3. Map, time, pressure, run state.
 ui/          Screens and input. May import any layer. Nothing outside ui/ imports ui/.
 tools/       Dev tools. May import any layer except ui/.
 data/        Region files, tuning tables. Hand-edited, no code.
-             Every layer except contracts/ may read it.
+             Every layer except contracts/ and lib/ may read it.
 tests/       Mirrors the source tree. May import anything.
 addons/      Third-party code (gdUnit4). Not ours; do not edit.
 scripts/     Shell scripts, such as the test runner.
@@ -46,6 +50,10 @@ real fights swap in for the stubs with no map change.
   pull request: .github/workflows/tests.yml.
 - In headless mode Godot sends no input events, so UI input tests need a
   display (xvfb-run) and a different command.
+- Golden check: `scripts/golden_check.sh [BASE_REF] [--quick]` captures
+  fixed-seed outputs (fights, tool reports, autoplay, maps, saves, journaled
+  runs) from the working tree and from BASE_REF (default origin/main) and
+  diffs them. Run it on refactors: identical output means no behavior changed.
 
 ## Working rules
 - Stay inside your own folders. A change to contracts/ is its own pull request.
