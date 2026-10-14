@@ -52,6 +52,8 @@ const MAP_STRIP_HEIGHT := 40.0
 const NEWS_TOP := 56.0
 const PANEL_WIDTH := 400.0
 const TOP_BAR_HEIGHT := 56.0
+## The top bar's compact steps (_fit_top_bar).
+const TOP_BAR_LEVELS := 4
 const CHOICE_CARD_WIDTH := 290.0
 ## The grid bar's width once the top bar also holds a Home button.
 const HOME_GRID_BAR_WIDTH := 96.0
@@ -176,6 +178,10 @@ var home_button: ActionButton
 ## SAVE, LOAD and NEW RUN in the time strip (show_run_buttons()).
 var run_buttons: Array[Button] = []
 var _top_row: HBoxContainer
+var _side: Control
+var _toast: Control
+## How far the top bar has compacted to fit (_fit_top_bar): 0 shows it all.
+var top_bar_level := 0
 
 
 func _ready() -> void:
@@ -468,8 +474,13 @@ func _build_layout() -> void:
 	body.add_theme_constant_override("separation", 0)
 	column.add_child(body)
 
+	# On a bigger view the map grows (at its own shape, MapView.frame()) and
+	# the side panel takes its share of the width (ui/README.md rule 17).
+	var share := float(UiIcons.kit("map.side_panel_share", 0.25))
 	var left := VBoxContainer.new()
 	left.custom_minimum_size.x = MAP_SIZE.x
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.size_flags_stretch_ratio = 1.0 - share
 	left.add_theme_constant_override("separation", 0)
 	body.add_child(left)
 	left.add_child(_build_map_strip())
@@ -479,7 +490,9 @@ func _build_layout() -> void:
 	left.add_child(time_strip)
 
 	var side := _build_side_panel()
+	side.size_flags_stretch_ratio = share
 	body.add_child(side)
+	_side = side
 	_hud = [column.get_child(0), map_strip, time_strip, side]
 	_popups = Control.new()
 	_popups.name = "Popups"
@@ -488,8 +501,6 @@ func _build_layout() -> void:
 	add_child(_popups)
 	escalation_hud = EscalationHud.new()
 	escalation_hud.name = "EscalationHud"
-	escalation_hud.position = Vector2(0, TOP_BAR_HEIGHT + MAP_STRIP_HEIGHT)
-	escalation_hud.size = MAP_SIZE
 	add_child(escalation_hud)
 	escalation_hud.news.can_show = can_show_changes
 	# News cards toast over the top of the side panel, not over the map.
@@ -497,8 +508,8 @@ func _build_layout() -> void:
 	toast.name = "NewsToast"
 	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# Under the side panel's tab bar, so the tabs stay reachable.
-	toast.position = Vector2(MAP_SIZE.x, TOP_BAR_HEIGHT + NEWS_TOP)
 	add_child(toast)
+	_toast = toast
 	escalation_hud.dock_news(toast, Vector2(12, 12), PANEL_WIDTH - 24.0)
 	_hover_card = PanelContainer.new()
 	_hover_card.name = "HoverCard"
@@ -511,6 +522,22 @@ func _build_layout() -> void:
 	add_child(_legend)
 	_build_act_title()
 	_build_modal()
+	resized.connect(_fit_layout)
+	body.resized.connect(_fit_layout)
+	_fit_layout.call_deferred()
+
+
+## Keeps what floats over the map on it as the view changes size: the
+## escalation hud over the map, the news toast at the side panel's top, and
+## the top bar compacted to fit (_fit_top_bar).
+func _fit_layout() -> void:
+	if map_view == null or _side == null:
+		return
+	escalation_hud.position = map_view.get_global_rect().position - get_global_rect().position
+	escalation_hud.size = map_view.size
+	_toast.position = Vector2(_side.get_global_rect().position.x - get_global_rect().position.x,
+		_side.get_global_rect().position.y - get_global_rect().position.y + NEWS_TOP)
+	_fit_top_bar()
 
 
 ## The act title card the zoom shows over the map: "ACT 2" over the act name.
@@ -531,7 +558,12 @@ func _build_act_title() -> void:
 func _new_view(globe: bool) -> MapView:
 	var view: MapView = GlobeView.new() if globe else MapView.new()
 	view.name = "GlobeView" if globe else "MapView"
-	view.custom_minimum_size = MAP_SIZE
+	# The map's smallest view: the art's width, and a little less than its
+	# height so the strips under it can take a second line; the frame keeps
+	# the map's shape either way.
+	view.custom_minimum_size = Vector2(MAP_SIZE.x, MAP_SIZE.y * float(UiIcons.kit("map.min_height_share", 0.9)))
+	view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	view.resized.connect(func() -> void: _fit_layout.call_deferred())
 	view.region_selected.connect(func(_id: String) -> void: _refresh())
 	view.region_hovered.connect(_on_region_hovered)
 	view.region_detail_requested.connect(func(id: String) -> void: DetailModal.open(self, region_detail_spec(id)))
@@ -726,15 +758,48 @@ func _build_top_bar() -> Control:
 	return bar
 
 
+## The top bar on one row whatever the view and the numbers: while it is too
+## wide it drops, in order, the day's gains (still in each stat's tooltip),
+## the grid's bar (the percent stays), the countdown's title size, and the
+## words of Repair and Home (icons, names on hover). top_bar_level says how
+## far it went.
+func _fit_top_bar() -> void:
+	if _top_row == null or size.x <= 0.0:
+		return
+	var bar := _top_row.get_parent() as PanelContainer
+	var box := bar.get_theme_stylebox("panel")
+	var room := size.x - box.content_margin_left - box.content_margin_right
+	top_bar_level = 0
+	_compact_top_bar()
+	while _top_row.get_combined_minimum_size().x > room + 0.5 and top_bar_level < TOP_BAR_LEVELS:
+		top_bar_level += 1
+		_compact_top_bar()
+
+
+func _compact_top_bar() -> void:
+	for row in _income.get_children():
+		var rate := row.get_node_or_null("Rate") as Control
+		if rate != null:
+			rate.visible = top_bar_level < 1
+	_grid_bar.visible = top_bar_level < 2
+	_countdown.add_theme_font_size_override("font_size", PixelTheme.font_size("title" if top_bar_level < 3 else "body"))
+	for b: ActionButton in [_repair_button, home_button]:
+		if b != null:
+			b.set_icon_only(top_bar_level >= 4)
+
+
 func _build_time_strip() -> Control:
 	var strip := _box(Palette.BAR_BACKGROUND, Vector4(28, 10, 28, 10))
-	strip.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var rows := VBoxContainer.new()
 	rows.add_theme_constant_override("separation", 10)
 	strip.add_child(rows)
 
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 12)
+	# Wraps onto a second line when a run shows every button (Fast-forward,
+	# SAVE, LOAD, NEW RUN) on a narrow view.
+	var header := HFlowContainer.new()
+	header.name = "TimeHeader"
+	header.add_theme_constant_override("h_separation", 12)
+	header.add_theme_constant_override("v_separation", UiStyle.space("xs"))
 	rows.add_child(header)
 	header.add_child(UiStyle.caption(_text("TIME", 10, Palette.TEXT_DIM)))
 	_time_day = _text("", PixelTheme.font_size("body"), Palette.TEXT)
@@ -904,6 +969,7 @@ func _refresh() -> void:
 	for key in ([MapRegion.MATERIAL] if shared else [MapRegion.ENERGY, MapRegion.MATERIAL]):
 		var stock: float = s.energy if key == MapRegion.ENERGY else s.material
 		_income.add_child(_resource_stat(key, floori(stock), income[key]))
+	_fit_top_bar()
 
 	_time_day.text = "DAY %d" % campaign.day()
 	var window := float(t.bar_window_points)
@@ -1348,6 +1414,7 @@ func show_home_button(on_press: Callable) -> ActionButton:
 		home_button.name = "HomeButton"
 		home_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		_top_row.add_child(home_button)
+		_fit_top_bar()
 		# Room for it at the end of the bar, even with large income numbers.
 		_grid_bar.custom_minimum_size.x = HOME_GRID_BAR_WIDTH
 	for connection in home_button.pressed.get_connections():
@@ -1733,9 +1800,14 @@ func _use_action(use: String, icon_id: String, label: String, on_press: Callable
 func _resource_stat(key: String, stock: int, per_day: int) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
-	var stat := IconStat.make(ENERGY_ICON if key == Stakes.ENERGY else key, stock, resource_tooltip(key))
+	# The day's gain is in the stat's tooltip too, for when the top bar is too
+	# crowded to show it (_fit_top_bar).
+	var stat := IconStat.make(ENERGY_ICON if key == Stakes.ENERGY else key, stock,
+		"%s Gains %+d a day." % [resource_tooltip(key), per_day])
 	row.add_child(stat)
-	row.add_child(_text("+%d" % per_day, PixelTheme.font_size("body"), Palette.TEXT_DIM))
+	var rate := _text("+%d" % per_day, PixelTheme.font_size("body"), Palette.TEXT_DIM)
+	rate.name = "Rate"
+	row.add_child(rate)
 	UiTooltip.attach(row.get_child(1), UiIcons.display_name(ENERGY_ICON if key == Stakes.ENERGY else key),
 		"Gained each day from the territories you hold.", "+%d a day" % per_day, ENERGY_ICON if key == Stakes.ENERGY else key)
 	row.set_meta("resource", key)

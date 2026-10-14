@@ -40,6 +40,9 @@ var _hotspots: Array[Control] = []
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# A resize moves the cards even while the game is paused (the Esc menu),
+	# when _process does not run; redraw once they have moved.
+	resized.connect(func() -> void: queue_redraw.call_deferred())
 
 
 func set_arrows(p_arrows: Array[Dictionary], p_focus: String) -> void:

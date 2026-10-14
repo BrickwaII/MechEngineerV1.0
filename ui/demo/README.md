@@ -28,6 +28,15 @@ in `data/demo/` (format in its README).
   each demo fight over many seeds, the win rate and squad hp left, and
   whether the exact fight the demo plays is won. The scenario test holds
   every fight to "winnable but not trivial".
+- `ScreenFit` (`screen_fit.gd`): opens every play screen (menus, the draft,
+  each demo scenario, fights in both views with a card focused, the readout
+  tabs, the Esc menu, the end panel, a run's map crowded with buttons and
+  long numbers) and checks it fits the view (see `ui/README.md`, rule 17).
+  `check_fit.gd` runs it: headless at every view size, or in a real window
+  with a picture per screen (`scripts/check_fit.sh` runs every window size
+  under xvfb). Tests: `tests/ui/fit/`.
+- `capture_sizes.gd`: shots of the menu and scenarios at one window size,
+  grabbing the whole X screen so black bars would show.
 - `capture_demo.gd`: screenshots of the menu, the picker, every scenario, the
   Esc menu and the end panel (needs a display, see the header).
   `screenshots/` holds the latest set.

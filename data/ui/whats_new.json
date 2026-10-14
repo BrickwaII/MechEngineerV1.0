@@ -1,13 +1,13 @@
 {
 	"_comment": "The one-time What's new card on the main menu (ui/main/whats_new_card.gd). Change id for each update; the card shows once per id. Hand-edited.",
-	"id": "ui-big-screens-1",
+	"id": "ui-big-screens-2",
 	"title": "What's new: a cleaner interface",
 	"lines": [
 		{"icon": "more", "text": "Every card has a ⋮ (or right-click) with everything about it."},
 		{"icon": "odds", "text": "The map has lenses: Defense, Pressure, Resources and Odds."},
 		{"icon": "action_attack", "text": "In fights, pick a skill to see what it does to every target, with the math."},
 		{"icon": "guide", "text": "A short How to play guide is on the main menu."},
-		{"icon": "action_settings", "text": "Big screens: the game fills any window. F11 or Alt+Enter for fullscreen; Interface size in Settings (F10)."}
+		{"icon": "action_settings", "text": "Big screens: the game fills any window and the map grows with it. F11 or Alt+Enter for fullscreen; Interface size in Settings (F10)."}
 	],
 	"feedback": "Tell us what you think: press F8 in a run to send a note with a screenshot."
 }
