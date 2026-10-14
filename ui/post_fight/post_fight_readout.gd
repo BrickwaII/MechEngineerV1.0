@@ -13,6 +13,10 @@ extends Control
 ## another. A click or a key skips to the end; the animation speed setting
 ## shortens it, and skip shows the end at once.
 ## Only one-shot sounds play here; the readout's music is R1-D's.
+##
+## Tabs (ui/README.md rule 16): Summary (each bot as a card: decisions, rank-
+## ups, generation, flags, ⋮ for everything), Growth (skills and personality,
+## where the count-up plays; the default) and Details (what each bot did).
 
 const BACKGROUND := Color("#0b121b")
 const PANEL := Color("#111b27")
@@ -34,6 +38,8 @@ const LABEL_NAMES := {
 	ActionTag.FIRST_AFFORDABLE: "Spent energy at once",
 }
 const ALLY_UNIT := "ally_frame"
+## How many generation pips a summary card draws.
+const GENERATION_PIPS := 5
 
 signal tally_finished
 
@@ -46,6 +52,12 @@ var _title: Label
 var _subtitle: Label
 var _hint: Label
 var _columns: HBoxContainer
+## Summary, Growth, Details.
+var tabs: UiTabs
+var _summary: HBoxContainer
+var _details: HBoxContainer
+## Bot index -> its Details column.
+var _detail_panels: Array[Control] = []
 var _popups: Control
 ## The level-up callout on screen, or null.
 var _callout: LevelUpCallout
@@ -86,20 +98,28 @@ func _init() -> void:
 	_title = _label("", 30, TEXT)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_title)
-	_hint = _label("CLICK OR PRESS ANY KEY TO SKIP", 10, TEXT_DIM)
+	_hint = _label("Click or press any key to skip", 20, TEXT_DIM)
 	_hint.visible = false
 	head.add_child(_hint)
-	_subtitle = _label("", 10, TEXT_DIM)
+	_subtitle = _label("", 20, TEXT_DIM)
 	page.add_child(_subtitle)
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	page.add_child(scroll)
+	tabs = UiTabs.new()
+	tabs.name = "ReadoutTabs"
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	page.add_child(tabs)
+	_summary = HBoxContainer.new()
+	_summary.name = "Summary"
+	_summary.add_theme_constant_override("separation", UiStyle.space("m"))
+	tabs.add_tab(&"summary", "Summary", _summary, "fights_won")
 	_columns = HBoxContainer.new()
-	_columns.add_theme_constant_override("separation", 16)
+	_columns.add_theme_constant_override("separation", UiStyle.space("m"))
 	_columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_columns)
+	tabs.add_tab(&"growth", "Growth", _scrolled(_columns, "GrowthScroll"), "intent_buff")
+	_details = HBoxContainer.new()
+	_details.add_theme_constant_override("separation", UiStyle.space("m"))
+	_details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tabs.add_tab(&"details", "Details", _scrolled(_details, "DetailsScroll"), "more")
+	tabs.select(&"growth")
 	_popups = Control.new()
 	_popups.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_popups.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -108,9 +128,11 @@ func _init() -> void:
 
 func show_report(p_report: PostFightReport) -> void:
 	report = p_report
-	for child in _columns.get_children():
-		_columns.remove_child(child)
-		child.queue_free()
+	for box: Control in [_columns, _summary, _details]:
+		for child in box.get_children():
+			box.remove_child(child)
+			child.queue_free()
+	_detail_panels.clear()
 	_step_rows.clear()
 	_grow_sounded.clear()
 	_clear_callout()
@@ -132,6 +154,10 @@ func show_report(p_report: PostFightReport) -> void:
 		var panel := _bot_panel(i, report.bots[i])
 		_panels.append(panel)
 		_columns.add_child(panel)
+		var details := _details_panel(report.bots[i])
+		_detail_panels.append(details)
+		_details.add_child(details)
+		_summary.add_child(summary_card(report.bots[i]))
 	_bind_steps()
 	for i in tally.steps.size():
 		_apply_step(i, 0.0)
@@ -168,6 +194,74 @@ func skip() -> void:
 		row.position.x = 0.0
 	_clear_callout()
 	_finish()
+
+
+## A bot's Details column: what it did, as counts. Public for tests.
+func bot_details(bot_id: String) -> Control:
+	for child in _details.get_children():
+		if child.name == bot_id:
+			return child
+	return null
+
+
+## A bot on the Summary tab: the card anatomy (ui/README.md rule 8) with its
+## decisions, rank-ups and generation, flags for a rank-up and its leaning,
+## and ⋮ for everything.
+func summary_card(r: BotFightReport) -> InfoCard:
+	var ups := r.level_ups().size()
+	var lean := growth_items(r)
+	var flags: Array = []
+	if ups > 0:
+		flags.append(Flag.make("Rank up", "intent_buff", "hint", "A skill ranked up this fight."))
+	if not lean.is_empty():
+		var end := str(lean[0][1])
+		var trait_id := "trait_%s" % end
+		flags.append(Flag.make("+%s" % end.capitalize(), trait_id if UiIcons.has(trait_id) else "", "neutral",
+			"Its personality grew most toward %s." % end))
+	var decisions := StatStrip.number("action_resume", r.decisions, "Choices it made this fight.")
+	decisions["title"] = "Decisions"
+	var ranks := StatStrip.chip("intent_buff", "+%d" % ups if ups > 0 else "none",
+		"Skills that ranked up this fight.", [], "hint" if ups > 0 else "text_quiet")
+	ranks["title"] = "Rank-ups"
+	var gen := StatStrip.pips("new", mini(r.generation, GENERATION_PIPS), GENERATION_PIPS,
+		"How grown its personality is.", [], "rare")
+	gen["title"] = "Generation"
+	gen["numbers"] = "Generation %d" % r.generation
+	var card := InfoCard.make(r.display_name, _bot_art(r.bot_id, 96), [decisions, ranks, gen], flags,
+		summary_detail.bind(r))
+	card.name = "Summary_%s" % r.bot_id
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	return card
+
+
+## Everything about a bot's fight, for its ⋮: skills, growth, counts.
+func summary_detail(r: BotFightReport) -> Dictionary:
+	var skills := UiStyle.column("xs")
+	if r.skill_changes.is_empty():
+		skills.add_child(UiStyle.label("No skills used.", "text_quiet"))
+	for c in r.skill_changes:
+		skills.add_child(_row(skill_row_left(c), skill_row_right(c), skill_row_color(c)))
+	var counts := UiStyle.column("xs")
+	for label: String in ActionTag.ALL_LABELS:
+		var n: int = r.label_counts.get(label, 0)
+		if n > 0:
+			counts.add_child(_row(LABEL_NAMES.get(label, label), str(n), TEXT))
+	if counts.get_child_count() == 0:
+		counts.add_child(UiStyle.label("Nothing of note.", "text_quiet"))
+	var hex := PersonalityHexagon.new()
+	hex.custom_minimum_size = Vector2(220, 172)
+	hex.font_size = PixelTheme.font_size("body")
+	hex.show_ends(r.personality_after)
+	var grow := UiStyle.row("m")
+	grow.add_child(hex)
+	grow.add_child(DetailModal.prose(growth_text(r)))
+	return {"title": r.display_name, "icon": "hp", "subtitle": "%d decisions · generation %d" % [r.decisions, r.generation],
+		"sections": [
+			{"id": "skills", "title": "Skills", "content": skills},
+			{"id": "growth", "title": "Personality", "content": grow},
+			{"id": "did", "title": "What it did", "content": counts},
+		]}
 
 
 ## The panel for one bot. Public so tests can read what a bot's panel says.
@@ -301,7 +395,7 @@ func _bind_steps() -> void:
 		var panel := _panels[step.bot]
 		match step.kind:
 			"count":
-				_step_rows[i] = panel.find_child("Count_%s" % step.key, true, false)
+				_step_rows[i] = _detail_panels[step.bot].find_child("Count_%s" % step.key, true, false)
 			"skill", "level_up":
 				_step_rows[i] = panel.find_child("Skill_%s" % step.change.combat_skill_id, true, false)
 			"grow":
@@ -389,23 +483,11 @@ func _bot_panel(index: int, r: BotFightReport) -> Control:
 	names.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(names)
 	names.add_child(_label(r.display_name, 20, TEXT))
-	names.add_child(_label("%d decisions · generation %d" % [r.decisions, r.generation], 10, TEXT_DIM))
-
-	box.add_child(_heading("WHAT IT DID"))
-	var any_label := false
-	for label: String in ActionTag.ALL_LABELS:
-		var count: int = r.label_counts.get(label, 0)
-		if count > 0:
-			any_label = true
-			var row := _row(LABEL_NAMES.get(label, label), str(count), TEXT)
-			row.name = "Count_%s" % label
-			box.add_child(row)
-	if not any_label:
-		box.add_child(_label("Nothing of note", 10, TEXT_DIM))
+	names.add_child(_label("%d decisions · generation %d" % [r.decisions, r.generation], 20, TEXT_DIM))
 
 	box.add_child(_heading("SKILLS"))
 	if r.skill_changes.is_empty():
-		box.add_child(_label("No skills used", 10, TEXT_DIM))
+		box.add_child(_label("No skills used", 20, TEXT_DIM))
 	for change in r.skill_changes:
 		var row := _skill_row(change)
 		row.name = "Skill_%s" % change.combat_skill_id
@@ -417,6 +499,56 @@ func _bot_panel(index: int, r: BotFightReport) -> Control:
 	box.add_child(hex_box)
 	_panel_rows[index].append(hex_box)
 	return panel
+
+
+## A bot's Details column: its name, then what it did, row by row (the
+## count-up ticks these).
+func _details_panel(r: BotFightReport) -> Control:
+	var panel := PanelContainer.new()
+	panel.name = r.bot_id
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", UiStyle.panel("plain"))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", UiStyle.space("xs"))
+	panel.add_child(box)
+	box.add_child(_label(r.display_name, 20, TEXT))
+	box.add_child(_label("%d decisions · generation %d" % [r.decisions, r.generation], 20, TEXT_DIM))
+	box.add_child(_heading("WHAT IT DID"))
+	var any_label := false
+	for label: String in ActionTag.ALL_LABELS:
+		var count: int = r.label_counts.get(label, 0)
+		if count > 0:
+			any_label = true
+			var row := _row(LABEL_NAMES.get(label, label), str(count), TEXT)
+			row.name = "Count_%s" % label
+			box.add_child(row)
+	if not any_label:
+		box.add_child(_label("Nothing of note", 20, TEXT_DIM))
+	return panel
+
+
+## A bot's still sprite in a square of `side` pixels.
+func _bot_art(bot_id: String, side: float) -> Control:
+	var art := Control.new()
+	art.custom_minimum_size = Vector2(side, side)
+	var sprite := UnitSprite.new()
+	sprite.settings = settings
+	sprite.setup(ALLY_UNIT, str(ScreenFeel.value("draft.sprite_tier", "beginner")),
+		SpriteManifest.ally_look(ALLY_UNIT, DraftCard.look_seed(bot_id)))
+	sprite.scale = Vector2.ONE * side / 32.0
+	sprite.position = Vector2(side, side) / 2.0
+	art.add_child(sprite)
+	return art
+
+
+static func _scrolled(content: Control, scroll_name: String) -> ScrollContainer:
+	var scroll := ScrollContainer.new()
+	scroll.name = scroll_name
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.add_child(content)
+	return scroll
 
 
 func _skill_name(c: SkillChange) -> String:
@@ -499,7 +631,7 @@ func _hexagon_box(r: BotFightReport) -> Control:
 	# words stay in each icon's tooltip. No growth keeps the dim words.
 	var grown := growth_items(r)
 	if grown.is_empty():
-		var growth := _label(growth_text(r), 10, TEXT_DIM)
+		var growth := _label(growth_text(r), 20, TEXT_DIM)
 		growth.name = "Growth"
 		growth.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(growth)
@@ -534,12 +666,15 @@ static func growth_text(r: BotFightReport) -> String:
 	return "  ".join(grown.map(func(g: Array) -> String: return "+%.2f %s" % [g[0], g[1]]))
 
 
+## A left and right pair of words; the right one wraps onto its own line
+## when a narrow column has no room for both (body-size text never shrinks).
 func _row(left: String, right: String, color: Color) -> Control:
-	var row := HBoxContainer.new()
-	var l := _label(left, 10, color)
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", UiStyle.space("s"))
+	var l := _label(left, 20, color)
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(l)
-	row.add_child(_label(right, 10, color))
+	row.add_child(_label(right, 20, color))
 	return row
 
 
@@ -549,7 +684,7 @@ func _heading(text: String) -> Control:
 	var gap := Control.new()
 	gap.custom_minimum_size.y = 4
 	box.add_child(gap)
-	box.add_child(_label(text, 10, TEXT_DIM))
+	box.add_child(UiStyle.caption(_label(text, 10, TEXT_DIM)))
 	var rule := ColorRect.new()
 	rule.color = RULE
 	rule.custom_minimum_size.y = 2
