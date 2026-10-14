@@ -92,7 +92,7 @@ func test_a_status_shows_as_a_flag_with_its_number() -> void:
 	var c := _screen.fight.living(Combatant.Side.PLAYER)[0]
 	c.guard_percent = 40
 	_screen.refresh()
-	var flag: Flag = _screen.unit_panels[c.id].status_row.find_child("Status_guard", true, false)
+	var flag: Flag = _screen.unit_panels[c.id].flags_row.find_child("Status_guard", true, false)
 	assert_object(flag).is_not_null()
 	assert_str(flag.label.text).is_equal("Guard 40%")
 	assert_str(_screen.unit_panels[c.id].stats_text()).contains("DEF %d+40%%" % c.stats.defense)
@@ -159,7 +159,9 @@ func test_damage_math_uses_the_real_values_and_matches_the_rules() -> void:
 	var base := DamageRules.damage(a.stats, t.stats, skill, f.tuning)
 	var lines := BattleMath.damage_lines(f, a.id, t.id, skill.id, base)
 	var text: String = (lines[0] as UiFormula).text()
-	assert_str(text).starts_with("ATK %d × Power %d%%" % [a.stats.attack, skill.power_percent])
+	assert_str(text).starts_with("ATK %d" % a.stats.attack)
+	if skill.power_percent != 100:
+		assert_str(text).contains("Power %d%%" % skill.power_percent)
 	assert_str(text).contains("DEF %d" % t.stats.defense)
 	assert_str(text).ends_with("= %d" % base)
 

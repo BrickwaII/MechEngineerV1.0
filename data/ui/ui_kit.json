@@ -17,6 +17,14 @@
 		"cost_color": "energy",
 		"rank_color": "preview"
 	},
+	"action_tile": {
+		"size": [144, 112]
+	},
+	"focus_card": {
+		"size": [280, 0],
+		"lift_px": 24,
+		"scale": 1.0
+	},
 	"grid": 8,
 	"space": {"xs": 4, "s": 8, "m": 16, "l": 24, "xl": 32},
 	"color_roles": {

@@ -6,7 +6,7 @@ extends RefCounted
 ## (DamageRules, SpeedRules, Timeline); this only explains them.
 ##
 ##   BattleMath.damage_lines(fight, "rust_hound#1", "bolt", "bite", 6)
-##   -> ["ATK 7 × Power 100% − DEF 4 × 50% × (1 − Pierce 0%) = 5", ...]
+##   -> ["ATK 7 − DEF 4 × 50% = 5", ...] (Power and Pierce when they matter)
 
 
 ## Lines explaining `amount`, the damage `from` deals `to` with `skill_id`.
@@ -20,11 +20,15 @@ static func damage_lines(fight: Fight, from_id: String, to_id: String, skill_id:
 		return []
 	var tuning := fight.tuning
 	var speed_bonus := SpeedRules.power_bonus_percent(a.stats.speed, tuning)
-	var f := UiFormula.new().term("ATK", a.stats.attack).op("×").term("Power", "%d%%" % skill.power_percent)
+	# Terms that change nothing (Power 100%, Pierce 0%) are left out.
+	var f := UiFormula.new().term("ATK", a.stats.attack)
+	if skill.power_percent != 100:
+		f.op("×").term("Power", "%d%%" % skill.power_percent)
 	if speed_bonus > 0:
 		f.op("×").term("Slow bonus", "%d%%" % (100 + speed_bonus))
 	f.op("−").term("DEF", t.stats.defense).op("×").num("%d%%" % tuning.defense_percent)
-	f.op("×").open().num(1).op("−").term("Pierce", "%d%%" % clampi(skill.pierce_percent, 0, 100)).close()
+	if skill.pierce_percent > 0:
+		f.op("×").open().num(1).op("−").term("Pierce", "%d%%" % clampi(skill.pierce_percent, 0, 100)).close()
 	var base := DamageRules.damage(a.stats, t.stats, skill, tuning)
 	f.equals(base)
 	var out: Array = [f]

@@ -75,6 +75,11 @@ var turn_info := {}
 ## The bot's personality ends (Personality.ENDS order) for the detail card's
 ## hexagon; empty for enemies, which only have a tag.
 var personality_ends: Array[float] = []
+## Compact: flags show as icons, their names on hover.
+var compact := false
+## What the aimed skill would do to this unit ({} when it is not a target):
+## {"text": "-13", "ko": bool}. Shown as the first flag.
+var target_outcome := {}
 ## The personality tag as its trait icon; the tag word is in its tooltip.
 var trait_icon: IconStat
 ## Enemies: the intent as an icon and its number at the top of the card
@@ -90,8 +95,10 @@ var _name_size := -1
 var _style := StyleBoxFlat.new()
 var _unit: Combatant
 var _bars_ready := false
-var _unit_flags: HBoxContainer
-var _trait_flags: HBoxContainer
+## The card's own flags (outcome, boss, elite, prompt, low HP) and its trait
+## flag, all in flags_row with the statuses: one row that wraps as one.
+var _unit_flags: Array[Flag] = []
+var _trait_flag: Flag
 var _flag_key := ""
 var _trait_key := ""
 
@@ -158,19 +165,12 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 	flags_row = Flag.row([])
 	flags_row.name = "Flags"
 	col.add_child(flags_row)
-	_unit_flags = HBoxContainer.new()
-	_unit_flags.name = "UnitFlags"
-	_unit_flags.add_theme_constant_override("separation", UiStyle.space("xs"))
-	_unit_flags.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	flags_row.add_child(_unit_flags)
 	status_row = StatusRow.new()
 	status_row.name = "StatusRow"
-	flags_row.add_child(status_row)
-	_trait_flags = HBoxContainer.new()
-	_trait_flags.name = "TraitFlags"
-	_trait_flags.add_theme_constant_override("separation", UiStyle.space("xs"))
-	_trait_flags.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	flags_row.add_child(_trait_flags)
+	status_row.visible = false
+	status_row.target = flags_row
+	status_row.changed.connect(_order_flags)
+	col.add_child(status_row)
 	# Kept for their words (detail card, tests); flags show them.
 	var hidden := Control.new()
 	hidden.name = "Words"
@@ -456,7 +456,7 @@ func _turn_spec() -> Dictionary:
 
 ## The flags on the edge, rebuilt only when they change.
 func _update_flags() -> void:
-	if _unit_flags == null or _unit == null:
+	if flags_row == null or _unit == null:
 		return
 	var ids: Array[String] = []
 	if is_boss:
@@ -470,25 +470,84 @@ func _update_flags() -> void:
 		ids.append("target")
 	if _unit.is_alive() and hp_bar.is_low():
 		ids.append("low_hp")
-	var key := ",".join(ids)
+	var outcome_key := "%s%s" % [target_outcome.get("text", ""), "ko" if target_outcome.get("ko", false) else ""]
+	var key := ",".join(ids) + "|" + outcome_key + ("|c" if compact else "")
 	if key == _flag_key:
 		return
 	_flag_key = key
-	for c in _unit_flags.get_children():
-		_unit_flags.remove_child(c)
-		c.queue_free()
+	for f in _unit_flags:
+		if is_instance_valid(f):
+			flags_row.remove_child(f)
+			f.queue_free()
+	_unit_flags.clear()
+	if not target_outcome.is_empty():
+		_unit_flags.append(_outcome_flag())
 	for id in ids:
 		var f: Flag
 		match id:
 			"ready":
-				f = Flag.make("Ready", "action_resume", "hint", "Its turn: choose a skill or Wait.")
+				f = Flag.make("Ready", "action_resume", "hint", "Its turn: choose a skill or Wait.", compact)
 			"target":
-				f = Flag.make("Target", "action_attack", "enemy" if is_enemy else "ally", "Click to aim the chosen skill here.")
+				# The outcome flag says it all while a skill is aimed.
+				if not target_outcome.is_empty():
+					continue
+				f = Flag.make("Target", "action_attack", "enemy" if is_enemy else "ally", "Click to aim the chosen skill here.", compact)
 			_:
-				f = Flag.of(id)
+				f = Flag.of(id, compact)
 		f.name = "Flag_%s" % id
-		_unit_flags.add_child(f)
-	_unit_flags.visible = not ids.is_empty()
+		_unit_flags.append(f)
+	for f in _unit_flags:
+		flags_row.add_child(f)
+	_order_flags()
+
+
+## The card's flags in order: its own first, then statuses, the trait last.
+func _order_flags() -> void:
+	var i := 0
+	for f in _unit_flags:
+		if is_instance_valid(f) and f.get_parent() == flags_row:
+			flags_row.move_child(f, i)
+			i += 1
+	if _trait_flag != null and is_instance_valid(_trait_flag):
+		flags_row.move_child(_trait_flag, flags_row.get_child_count() - 1)
+
+
+## The aimed skill's result on this unit as a flag: "-13", "KO -13", "+8".
+## Never compact: it is the number the player is choosing by.
+func _outcome_flag() -> Flag:
+	var text := str(target_outcome.get("text", "?"))
+	var ko: bool = target_outcome.get("ko", false)
+	var heal := text.begins_with("+")
+	var f: Flag
+	if ko:
+		f = Flag.make("KO %s" % text, "ko", "bad", "This hit would put it Down.")
+	elif heal:
+		f = Flag.make(text, "intent_heal", "good", "HP it would get back.")
+	elif text.begins_with("Guard"):
+		f = Flag.make(text, "status_guard", "info", "Guard it would gain.")
+	else:
+		f = Flag.make(text, "intent_attack", "bad", "HP it would lose.")
+	f.name = "Flag_outcome"
+	return f
+
+
+## Shows what the aimed skill would do here ({} clears it).
+func show_target_outcome(outcome: Dictionary) -> void:
+	if outcome == target_outcome:
+		return
+	target_outcome = outcome
+	_update_flags()
+
+
+## Compact cards show their flags as icons (names on hover).
+func set_compact(on: bool) -> void:
+	if on == compact:
+		return
+	compact = on
+	status_row.compact = on
+	status_row.shown = {}
+	_update_statuses()
+	_update_flags()
 
 
 ## The personality as a flag: the trait's icon and name.
@@ -496,9 +555,10 @@ func _update_trait_flag(tag: String) -> void:
 	if tag == _trait_key:
 		return
 	_trait_key = tag
-	for c in _trait_flags.get_children():
-		_trait_flags.remove_child(c)
-		c.queue_free()
+	if _trait_flag != null and is_instance_valid(_trait_flag):
+		flags_row.remove_child(_trait_flag)
+		_trait_flag.queue_free()
+	_trait_flag = null
 	if tag.is_empty():
 		return
 	var trait_id := "trait_%s" % tag.to_lower()
@@ -506,7 +566,8 @@ func _update_trait_flag(tag: String) -> void:
 	var line := UiIcons.text(trait_id) if UiIcons.has(trait_id) else "Its personality."
 	var f := Flag.make(tag.capitalize(), icon, "neutral", line, not icon.is_empty())
 	f.name = "Flag_trait"
-	_trait_flags.add_child(f)
+	_trait_flag = f
+	flags_row.add_child(f)
 
 
 ## What ⋮ opens: every stat, the skills with ranks, statuses, the

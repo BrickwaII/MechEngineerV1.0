@@ -1,4 +1,4 @@
-extends HBoxContainer
+extends HFlowContainer
 ## A unit's statuses as flags (ui/README.md rule 9): the status icon and its
 ## name with its number ("Guard 40%"), on the card's edge, color AND shape,
 ## the full word in the hover tooltip. Icons are the status_<id> ids in
@@ -19,6 +19,14 @@ const ROLES := {"guard": "info", "charging": "info", "waiting": "neutral", "low_
 
 ## Status id -> its word, for what shows now.
 var shown: Dictionary[String, String] = {}
+## Where the flags go: this row by default, or another flow (a card's one
+## flag row), so all of a card's flags wrap together.
+var target: Container
+## The flags shown now.
+var flags: Array[Flag] = []
+
+## The statuses changed (the card puts its flags back in order).
+signal changed
 ## Icons only, the name on hover.
 var compact := false
 
@@ -26,7 +34,8 @@ static var _icons := {}
 
 
 func _init() -> void:
-	add_theme_constant_override("separation", UiStyle.space("xs"))
+	add_theme_constant_override("h_separation", UiStyle.space("xs"))
+	add_theme_constant_override("v_separation", UiStyle.space("xs"))
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	custom_minimum_size = Vector2(0, 12 * ICON_SCALE)
 
@@ -40,9 +49,13 @@ func show_statuses(statuses: Dictionary) -> void:
 	if next == shown:
 		return
 	shown = next
-	for child in get_children():
-		remove_child(child)
-		child.queue_free()
+	for f in flags:
+		if is_instance_valid(f):
+			if f.get_parent() != null:
+				f.get_parent().remove_child(f)
+			f.queue_free()
+	flags.clear()
+	var into: Container = target if target != null else self
 	for id: String in shown:
 		var number := number_of(shown[id])
 		var label := UiIcons.display_name("status_" + id)
@@ -51,7 +64,9 @@ func show_statuses(statuses: Dictionary) -> void:
 		var flag := Flag.make(label, "status_" + id, ROLES.get(id, "neutral"), UiIcons.text("status_" + id), compact)
 		flag.name = "Status_%s" % id
 		UiTooltip.attach(flag, UiIcons.display_name("status_" + id), UiIcons.text("status_" + id), shown[id], "status_" + id)
-		add_child(flag)
+		into.add_child(flag)
+		flags.append(flag)
+	changed.emit()
 
 
 ## The part of a status word the card shows: the tokens with a digit.

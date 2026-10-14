@@ -5,6 +5,7 @@
 		"_comment": "The number on an arrow. at is how far along the arrow it sits (0 = the actor, 1 = the target). font_size stays a multiple of 10 (pixel font). ko_icon_px is the skull's drawn size. dim_alpha is a badge on a background arrow, ghost_alpha an arrow the previewed choice would replace.",
 		"at": 0.62,
 		"font_size": 20,
+		"unhovered_alpha": 0.3,
 		"pad_x": 6,
 		"pad_y": 2,
 		"border_px": 1,
