@@ -9,11 +9,19 @@
 		"shake_strength": 1.0,
 		"reduced_motion": false,
 		"animation_speed": "1x",
-		"ui_scale": 1.0,
+		"ui_scale": 0.0,
+		"fullscreen": false,
 		"whats_new_seen": ""
 	},
-	"ui_scale_options": [1.0, 1.25, 1.5, 2.0],
+	"_ui_scale_comment": "Interface size: 0 is Auto (the largest scale step that fits the window). A fixed size is capped so the view never gets smaller than display.min_size.",
+	"ui_scale_options": [0.0, 1.0, 1.5, 2.0, 2.5, 3.0],
+	"display": {
+		"_comment": "How the game fills the window (ui/common/window_fit.gd). min_size is the smallest view the layouts are built for, in interface pixels, and the smallest window. Above it the scale grows in scale_step steps, which keeps the pixel art (drawn at 2x) crisp; below it the view shrinks to fit.",
+		"min_size": [1280, 820],
+		"scale_step": 0.5
+	},
 	"animation_speed_options": ["1x", "1.5x", "2x", "skip"],
 	"volume_step": 0.05,
-	"open_action": "open_settings"
+	"open_action": "open_settings",
+	"fullscreen_action": "toggle_fullscreen"
 }

@@ -236,7 +236,15 @@ line in the "What's new" card, which links to F8 feedback.
 - **What's new** (`WhatsNewCard`, `data/ui/whats_new.json`) shows once per
   update id and says how to send feedback (F8 in a run). Change its id with
   each visible UI change.
-- **Interface size** (settings, F10): 100% to 200%, the root's content scale.
+- **Window and interface size** (`WindowFit`, settings F10): the view always
+  fills the window, with no black bars. A bigger window gets a bigger view:
+  layouts anchor to the full rect and grow, never sit at a fixed 1280 x 820.
+  The canvas scale is Auto by default (the largest 0.5 step that keeps the
+  view at least 1280 x 820, so 2560 x 1440 draws at 150%) or a fixed 100% to
+  300%, capped so the view never gets smaller than 1280 x 820; smaller
+  windows shrink to fit. Steps of 0.5 keep the 2x art and body text crisp.
+  Numbers in `data/feel/settings.json` "display". **Fullscreen**: F11,
+  Alt+Enter, or the Settings toggle; saved with the other settings.
 - Each act has its **tint** and **emblem** (`UiStyle.act_tint`,
   `act_emblem`; `data/ui/ui_kit.json` "acts"): the map's backdrop and side
   panel take a faint tint, and the emblem sits faintly behind the panel.

@@ -8,9 +8,16 @@ func test_textures_draw_with_nearest_filtering_by_default() -> void:
 	assert_int(ProjectSettings.get_setting("rendering/textures/canvas_textures/default_texture_filter")).is_equal(0)
 
 
-func test_the_window_scales_by_whole_steps() -> void:
+## WindowFit scales the canvas in steps that put every art pixel (drawn at 2x)
+## on a whole number of screen pixels; Godot's own integer mode letterboxed
+## big windows in black.
+func test_the_window_scales_by_crisp_steps() -> void:
 	assert_str(ProjectSettings.get_setting("display/window/stretch/mode")).is_equal("canvas_items")
-	assert_str(ProjectSettings.get_setting("display/window/stretch/scale_mode")).is_equal("integer")
+	assert_str(ProjectSettings.get_setting("display/window/stretch/aspect")).is_equal("expand")
+	var art_px := float(UiIcons.kit("icon_scale", 2))
+	assert_float(fmod(WindowFit.scale_step() * art_px, 1.0)).is_equal(0.0)
+	for size: float in FeelData.settings()["ui_scale_options"]:
+		assert_float(fmod(size * art_px, 1.0)).override_failure_message(str(size)).is_equal(0.0)
 
 
 func test_no_asset_texture_has_mipmaps() -> void:

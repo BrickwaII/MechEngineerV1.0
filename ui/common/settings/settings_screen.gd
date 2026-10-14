@@ -1,8 +1,9 @@
 class_name SettingsScreen
 extends Control
 ## The settings screen: music, effects and interface volume, screen shake
-## on/off and strength, reduced motion, and animation speed (1x, 1.5x, 2x or
-## skip). Every change applies and saves at once (user://settings.cfg).
+## on/off and strength, reduced motion, animation speed (1x, 1.5x, 2x or
+## skip), fullscreen and interface size. Every change applies and saves at
+## once (user://settings.cfg).
 ##
 ## Open it from anywhere with the open_settings action (F10), or from code:
 ##     SettingsScreen.open_overlay(get_tree().root)
@@ -21,6 +22,7 @@ var sliders := {}
 var value_labels := {}
 var shake_toggle: CheckBox
 var reduced_toggle: CheckBox
+var fullscreen_toggle: CheckBox
 var speed_option: OptionButton
 var scale_option: OptionButton
 var close_button: Button
@@ -59,6 +61,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build()
 	_refresh()
+	get_tree().root.size_changed.connect(_refresh)
 	close_button.grab_focus.call_deferred()
 
 
@@ -116,12 +119,17 @@ func _build() -> void:
 		_change("animation_speed", speed_option.get_item_metadata(index)))
 	grid.add_child(speed_option)
 	grid.add_child(Control.new())
+
+	box.add_child(_section("Display"))
+	grid = _grid(box)
+	fullscreen_toggle = _toggle_row(grid, "fullscreen", "Fullscreen")
+	fullscreen_toggle.name = "FullscreenToggle"
 	grid.add_child(_label("Interface size"))
 	scale_option = OptionButton.new()
 	scale_option.name = "UiScaleOption"
-	var scales: Array = FeelData.settings().get("ui_scale_options", [1.0])
+	var scales: Array = FeelData.settings().get("ui_scale_options", [0.0])
 	for i in scales.size():
-		scale_option.add_item("%d%%" % roundi(float(scales[i]) * 100.0), i)
+		scale_option.add_item(_scale_text(float(scales[i])), i)
 		scale_option.set_item_metadata(i, float(scales[i]))
 	scale_option.item_selected.connect(func(index: int) -> void:
 		_change("ui_scale", scale_option.get_item_metadata(index)))
@@ -129,7 +137,7 @@ func _build() -> void:
 	grid.add_child(Control.new())
 
 	var hint := Label.new()
-	hint.text = "F10 opens this screen anywhere."
+	hint.text = "F10 opens this screen anywhere. F11 or Alt+Enter: fullscreen."
 	hint.theme_type_variation = "SmallLabel"
 	box.add_child(hint)
 	box.add_child(HSeparator.new())
@@ -219,13 +227,30 @@ func _refresh() -> void:
 		value_labels[key].text = "%d%%" % roundi(settings.get(key) * 100.0)
 	shake_toggle.button_pressed = settings.shake_enabled
 	reduced_toggle.button_pressed = settings.reduced_motion
+	fullscreen_toggle.button_pressed = settings.fullscreen
 	var shake_on := settings.shake_enabled and not settings.reduced_motion
 	sliders["shake_strength"].editable = shake_on
 	sliders["shake_strength"].modulate.a = 1.0 if shake_on else 0.4
 	for i in speed_option.item_count:
 		if speed_option.get_item_metadata(i) == settings.animation_speed:
 			speed_option.select(i)
+	# Sizes too big for this window are greyed out; Auto names the size it picked.
+	var window := _window_size()
 	for i in scale_option.item_count:
-		if is_equal_approx(float(scale_option.get_item_metadata(i)), settings.ui_scale):
+		var size := float(scale_option.get_item_metadata(i))
+		scale_option.set_item_disabled(i, not WindowFit.fits(window, size))
+		if size <= 0.0:
+			scale_option.set_item_text(i, "Auto (%s)" % _scale_text(WindowFit.scale_for(window)))
+		if is_equal_approx(size, settings.ui_scale):
 			scale_option.select(i)
 	_refreshing = false
+
+
+## "Auto" for 0, else the percent: "150%".
+func _scale_text(size: float) -> String:
+	return "Auto" if size <= 0.0 else "%d%%" % roundi(size * 100.0)
+
+
+func _window_size() -> Vector2:
+	var window := get_tree().root if is_inside_tree() else null
+	return Vector2(window.size) if window != null else WindowFit.min_size()
