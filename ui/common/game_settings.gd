@@ -1,7 +1,7 @@
 class_name GameSettings
 extends RefCounted
-## The player's presentation settings: volumes, screen shake, reduced motion and
-## animation speed. Defaults come from data/feel/settings.json; choices are
+## The player's presentation settings: volumes, screen shake, reduced motion,
+## animation speed, interface size and fullscreen. Defaults come from data/feel/settings.json; choices are
 ## saved to user://settings.cfg and survive between runs.
 ##
 ## Screens use GameSettings.shared(). Tests make their own instance with a
@@ -27,9 +27,12 @@ var shake_strength := 1.0
 var reduced_motion := false
 ## One of "1x", "1.5x", "2x", "skip".
 var animation_speed := "1x"
-## How big the whole interface draws: 1.0 is the design size; larger suits big
-## screens (ui/README.md). One of ui_scale_options in data/feel/settings.json.
-var ui_scale := 1.0
+## How big the whole interface draws: 0 is Auto (the largest crisp size that
+## fits the window), 1.0 is the design size, larger suits big screens; capped
+## to what fits (WindowFit). One of ui_scale_options in data/feel/settings.json.
+var ui_scale := 0.0
+## Fullscreen (F11, Alt+Enter, or the settings screen).
+var fullscreen := false
 ## The id of the last "What's new" card the player closed.
 var whats_new_seen := ""
 var path := ""
@@ -48,7 +51,7 @@ func _init() -> void:
 
 static func keys() -> Array[String]:
 	return ["music_volume", "effects_volume", "interface_volume", "shake_enabled",
-		"shake_strength", "reduced_motion", "animation_speed", "ui_scale", "whats_new_seen"]
+		"shake_strength", "reduced_motion", "animation_speed", "ui_scale", "fullscreen", "whats_new_seen"]
 
 
 func reset_to_defaults(notify := true) -> void:
@@ -121,10 +124,15 @@ func shake_scale() -> float:
 	return shake_strength
 
 
-## Draws the whole interface at ui_scale (the root's content scale).
+## Draws the whole interface at ui_scale, fitted to the window (WindowFit).
 func apply_ui_scale(tree: SceneTree) -> void:
 	if tree != null and tree.root != null:
-		tree.root.content_scale_factor = ui_scale
+		WindowFit.apply(tree.root, ui_scale)
+
+
+## Puts the window in or out of fullscreen to match the setting.
+func apply_fullscreen() -> void:
+	WindowFit.set_fullscreen(fullscreen)
 
 
 ## Sets the Music, Effects and Interface bus volumes. A bus that does not
@@ -141,15 +149,15 @@ func apply_to_buses() -> void:
 
 func _assign(key: String, value: Variant) -> void:
 	match key:
-		"shake_enabled", "reduced_motion":
+		"shake_enabled", "reduced_motion", "fullscreen":
 			set(key, bool(value))
 		"animation_speed":
 			var text := str(value)
 			set(key, text if SPEED_MULTIPLIERS.has(text) else "1x")
 		"ui_scale":
-			var options: Array = FeelData.settings().get("ui_scale_options", [1.0])
+			var options: Array = FeelData.settings().get("ui_scale_options", [0.0])
 			var v := float(value)
-			var best := 1.0
+			var best := float(options[0]) if not options.is_empty() else 0.0
 			for o: Variant in options:
 				if absf(float(o) - v) < absf(best - v):
 					best = float(o)

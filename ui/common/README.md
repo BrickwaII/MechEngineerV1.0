@@ -10,9 +10,10 @@ holds a tunable number.
 |---|---|
 | `feel_data.gd` | `FeelData`: reads `data/feel/*.json`; `FeelData.color("hp")` |
 | `pixel_theme.gd`, `pixel_theme.tres` | `PixelTheme.theme()`: font, boxes, colors. Rebuild the .tres with `build_theme.gd` |
-| `game_settings.gd` | `GameSettings.shared()`: volumes, shake, reduced motion, animation speed; saved to `user://settings.cfg` |
+| `game_settings.gd` | `GameSettings.shared()`: volumes, shake, reduced motion, animation speed, interface size, fullscreen; saved to `user://settings.cfg` |
+| `window_fit.gd` | `WindowFit`: the view fills the window at a crisp scale (Auto or the interface size, capped to keep at least 1280 x 820); fullscreen; the minimum window |
 | `settings/settings_screen.tscn` | The settings screen. F10 (`open_settings`) opens it anywhere, or `SettingsScreen.open_overlay(get_tree().root)` |
-| `presentation.gd` | Autoload `Presentation`: applies settings to buses, owns the sound player and the music director, handles F10 |
+| `presentation.gd` | Autoload `Presentation`: applies settings to buses and the window (fit on every resize, fullscreen), owns the sound player and the music director, handles F10, F11 and Alt+Enter |
 | `sound_player.gd`, `sound_throttle.gd` | `SoundPlayer.fire(&"hit_light")`: pitch and sample variation, throttled repeats |
 | `music_director.gd` | `MusicDirector.current`: the one music player, owned by `Presentation`. Crossfades between contexts (menu, map per act, battle and boss, readout, victory and defeat stings) from `data/feel/audio.json` "music_director"; RunFlow's stage changes drive it |
 | `feel_tween.gd` | `FeelTween.to(node, "position", v, "ui")`: named presets |

@@ -60,16 +60,23 @@ func test_whats_new_shows_once_per_id() -> void:
 		assert_bool(UiIcons.has(str(line["icon"]))).is_true()
 
 
-func test_the_interface_size_snaps_to_its_options_and_scales_the_root() -> void:
+func test_the_interface_size_snaps_to_its_options_and_fits_the_root() -> void:
 	var s := GameSettings.new()
 	s._assign("ui_scale", 1.3)
-	assert_float(s.ui_scale).is_equal(1.25)
+	assert_float(s.ui_scale).is_equal(1.5)
 	s._assign("ui_scale", 9.0)
-	assert_float(s.ui_scale).is_equal(2.0)
-	var before := get_tree().root.content_scale_factor
+	assert_float(s.ui_scale).is_equal(3.0)
+	s._assign("ui_scale", -1.0)
+	assert_float(s.ui_scale).is_equal(0.0)
+	var root := get_tree().root
+	var before := [root.content_scale_factor, root.content_scale_size]
 	s.apply_ui_scale(get_tree())
-	assert_float(get_tree().root.content_scale_factor).is_equal(2.0)
-	get_tree().root.content_scale_factor = before
+	# Capped to what fits the window, so the view never drops below the minimum.
+	var expected := WindowFit.scale_for(Vector2(root.size), 3.0)
+	assert_float(root.content_scale_factor).is_equal_approx(expected, 0.0001)
+	assert_bool(root.get_visible_rect().size.x >= WindowFit.min_size().x - 0.5).is_true()
+	root.content_scale_factor = before[0]
+	root.content_scale_size = before[1]
 
 
 func test_the_settings_screen_offers_the_interface_size() -> void:
