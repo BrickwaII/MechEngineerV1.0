@@ -56,6 +56,15 @@ const IntentArrows := preload("res://ui/fight/intent_arrows.gd")
 const OutcomeBanner := preload("res://ui/fight/outcome_banner.gd")
 
 const LOG_LINES_SHOWN := 8
+## The action dock's portrait and the room for the acting bot's name.
+const DOCK_PORTRAIT := 72.0
+const DOCK_NAME_WIDTH := 112.0
+## The drawer for the log and the preview, on the right edge.
+const DRAWER_WIDTH := 400.0
+## The narrowest middle the drawer opens in rather than on the right edge.
+const DRAWER_MIN_WIDTH := 320.0
+## Animation speeds the control strip offers, as GameSettings names them.
+const SPEEDS: Array[String] = ["1x", "1.5x", "2x", "skip"]
 ## A boss is drawn this many times the standard size, on a card this many
 ## times as wide, with an HP bar this tall under the header.
 const BOSS_SIZE := 1.6
@@ -113,6 +122,24 @@ var outcome_banner: OutcomeBanner
 ## The Home button at the right of the header, once show_home_button() made it.
 var home_button: ActionButton
 var _header: HBoxContainer
+## The screen's one control strip: speed, log, preview, compact or detailed.
+var control_strip: ControlStrip
+## The chosen skill lifted into the middle of the screen.
+var focus_card: FocusCard
+## The log and preview drawer on the right edge.
+var drawer: PanelContainer
+## The acting bot's name and Energy in the action dock.
+var dock_name: Label
+var dock_energy: IconStat
+## Compact cards: icon-only flags.
+var compact := false
+## The skill Wait would wait for ("" for a plain wait), as its name.
+var wait_for_skill := ""
+var _dock_portrait: Control
+var _dock_portrait_id := ""
+var _middle: VBoxContainer
+var _log_box: VBoxContainer
+var _drawer_scroll: ScrollContainer
 ## The boss unit's id, or "" in a fight with no boss (show_boss()).
 var boss_id := ""
 ## The wide boss HP bar under the header, or null.
@@ -325,6 +352,7 @@ func refresh() -> void:
 			shown_preview != null and shown_preview.change_for(c.id) != null and not _goes_down(c.id))
 		panel.show_energy_preview(_energy_preview_for(c))
 	var arrow_dicts := arrow_list(action)
+	arrows.hover_id = hovered_id
 	arrows.set_arrows(arrow_dicts, _arrow_focus())
 	_refresh_intent_chips(arrow_dicts)
 	_refresh_preview_box(action)
@@ -336,7 +364,12 @@ func refresh() -> void:
 	_refresh_boss_bar()
 	var lines := fight.log_lines
 	log_label.text = "\n".join(lines.slice(maxi(0, lines.size() - LOG_LINES_SHOWN)))
-	log_toggle.text = "%s Log (%d)" % ["v" if log_label.visible else ">", lines.size()]
+	log_toggle.text = "Log %d" % lines.size()
+	if drawer != null and drawer.visible:
+		_place_drawer()
+		_drawer_scroll.scroll_vertical = int(_drawer_scroll.get_v_scroll_bar().max_value)
+	_refresh_dock()
+	_refresh_focus()
 	if fight.is_over():
 		prompt_label.text = "VICTORY" if fight.outcome == FightResult.Outcome.VICTORY else "DEFEAT"
 	elif actor == null:
@@ -496,10 +529,16 @@ func _refresh_commands() -> void:
 	var wait_skill := handler.default_wait_skill() if can_act else ""
 	var ticks := exact_wait_ticks()
 	wait_button.disabled = wait_skill.is_empty() and (ticks == 0 or not can_act)
+	# The button stays short ("Wait"); what it waits for is in its tooltip.
 	if ticks > 0:
 		wait_button.label.text = "Wait %d ticks" % ticks
+		UiTooltip.attach(wait_button, wait_button.label.text, "Hold this many ticks, filling Energy.", "", "action_wait")
 	else:
-		wait_button.label.text = "Wait" if wait_skill.is_empty() else "Wait for %s" % handler.actor().skill(wait_skill).display_name
+		wait_button.label.text = "Wait"
+		var why := "End the turn and let time pass, filling Energy." if wait_skill.is_empty() \
+			else "Wait for %s: hold until it is affordable, filling Energy." % handler.actor().skill(wait_skill).display_name
+		UiTooltip.attach(wait_button, "Wait", why, "", "action_wait")
+	wait_for_skill = "" if wait_skill.is_empty() else handler.actor().skill(wait_skill).display_name
 	cancel_button.disabled = not can_act or not handler.is_choosing_target()
 
 
@@ -551,14 +590,14 @@ func _panel_preview(unit_id: String) -> String:
 
 func _refresh_preview_box(action: FightAction) -> void:
 	if action != null:
-		preview_label.text = "PREVIEW\n" + telegraph.describe_choice(fight, action, shown_preview)
+		preview_label.text = telegraph.describe_choice(fight, action, shown_preview)
 		preview_label.add_theme_color_override("font_color", FeelData.color("preview"))
 	elif handler.is_player_turn() and handler.is_choosing_target():
-		preview_label.text = "PREVIEW\n%s: point at a target to see what it does." % (
+		preview_label.text = "%s: point at a target to see what it does." % (
 			handler.actor().skill(handler.selected_skill_id).display_name)
 		preview_label.add_theme_color_override("font_color", FeelData.color("text_dim"))
 	else:
-		preview_label.text = "PREVIEW\nChoose a skill, then point at a target."
+		preview_label.text = "Choose a skill, then point at a target."
 		preview_label.add_theme_color_override("font_color", FeelData.color("text_dim"))
 
 
@@ -622,9 +661,18 @@ func _build_layout() -> void:
 	timeline_bar = TimelineBar.new()
 	timeline_bar.turn_info = func(id: String) -> Dictionary:
 		return unit_panels[id].turn_info if unit_panels.has(id) else {}
+	timeline_bar.look_for = func(id: String) -> Dictionary:
+		return unit_panels[id].view.look if unit_panels.has(id) else {}
 	timeline_bar.name = "TimelineBar"
 	timeline_bar.settings = settings
-	root.add_child(timeline_bar)
+	# The turn order and, on the same row's right end, the screen's one
+	# control strip.
+	var turn_row := UiStyle.row("m")
+	turn_row.name = "TurnRow"
+	root.add_child(turn_row)
+	timeline_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	turn_row.add_child(timeline_bar)
+	turn_row.add_child(_build_control_strip())
 
 	var field := HBoxContainer.new()
 	field.name = "Field"
@@ -638,23 +686,15 @@ func _build_layout() -> void:
 	middle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	middle.alignment = BoxContainer.ALIGNMENT_END
 	field.add_child(middle)
-	log_toggle = Button.new()
-	log_toggle.name = "LogToggle"
-	log_toggle.flat = true
-	log_toggle.focus_mode = Control.FOCUS_NONE
-	log_toggle.theme_type_variation = &"SmallLabel"
-	log_toggle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	log_toggle.pressed.connect(toggle_log)
-	middle.add_child(log_toggle)
-	log_label = _label(middle, "", "SmallLabel")
-	log_label.name = "LogLabel"
-	log_label.visible = false
-	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	log_label.clip_text = true
-	log_label.custom_minimum_size = Vector2(0, 10 * LOG_LINES_SHOWN + 16)
+	_middle = middle
 	var enemy_col := _column(field, "ENEMIES")
 	_enemy_column = enemy_col
 	var enemy_count := fight.combatants.filter(func(c: Combatant) -> bool: return c.side == Combatant.Side.ENEMY).size()
+	# A crowded field (two columns of enemies) starts with compact cards so
+	# everything fits; the strip switches to detailed.
+	if enemy_count > ENEMIES_PER_COLUMN:
+		compact = true
+		control_strip.set_value(&"view", &"compact")
 	var enemies := GridContainer.new()
 	enemies.columns = 2 if enemy_count > ENEMIES_PER_COLUMN else 1
 	enemies.add_theme_constant_override("h_separation", 8)
@@ -671,6 +711,7 @@ func _build_layout() -> void:
 		if c.side == Combatant.Side.PLAYER:
 			look = BattleArt.with_distinct_palette(look, used_palettes)
 		panel.setup(c, look)
+		panel.set_compact(compact)
 		if bot != null and bot.personality != null:
 			panel.personality_ends = bot.personality.get_ends()
 		panel.view.settings = settings
@@ -679,37 +720,69 @@ func _build_layout() -> void:
 		unit_panels[c.id] = panel
 		_energy_after_turn[c.id] = c.energy()
 
+	# The action dock (bottom left): the bot whose turn it is, its portrait and
+	# name, and its skills as compact action tiles; the step header in the
+	# middle; Wait (end the turn) and Cancel on the right.
 	var bar := PanelContainer.new()
 	bar.name = "CommandBar"
+	bar.add_theme_stylebox_override("panel", UiStyle.panel("plain"))
 	root.add_child(bar)
-	var bar_row := HBoxContainer.new()
-	bar_row.add_theme_constant_override("separation", 16)
+	var bar_row := UiStyle.row("m")
 	bar.add_child(bar_row)
-	var commands := VBoxContainer.new()
-	commands.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bar_row.add_child(commands)
-	prompt_label = _label(commands, "", "")
-	prompt_label.add_theme_color_override("font_color", FeelData.color("text_bright"))
-	var buttons := HFlowContainer.new()
-	buttons.add_theme_constant_override("h_separation", 8)
-	buttons.add_theme_constant_override("v_separation", 6)
-	commands.add_child(buttons)
+	var dock := UiStyle.row("s")
+	dock.name = "ActionDock"
+	bar_row.add_child(dock)
+	_dock_portrait = Control.new()
+	_dock_portrait.name = "ActivePortrait"
+	_dock_portrait.custom_minimum_size = Vector2(DOCK_PORTRAIT, DOCK_PORTRAIT)
+	_dock_portrait.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	dock.add_child(_dock_portrait)
+	var who := UiStyle.column("xs")
+	who.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	who.custom_minimum_size.x = DOCK_NAME_WIDTH
+	dock.add_child(who)
+	dock_name = Label.new()
+	dock_name.name = "ActiveName"
+	dock_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UiTooltip._bold(dock_name, UiStyle.role("title"))
+	who.add_child(dock_name)
+	dock_energy = IconStat.make("energy", 0)
+	dock_energy.name = "ActiveEnergy"
+	who.add_child(dock_energy)
+	var buttons := UiStyle.row("s")
+	buttons.name = "Tiles"
+	dock.add_child(buttons)
+	var hotkey := 0
 	for skill_id in _all_player_skills():
 		var skill := fight.tuning.skill(skill_id)
-		var button := SkillCard.make(skill.display_name, skill.energy_cost, "")
+		var button := ActionTile.make_tile(skill.display_name, skill.energy_cost, "", "", _skill_icon(skill))
 		button.name = "Skill_%s" % skill_id
 		buttons.add_child(button)
 		button.toggle_mode = true
 		button.pressed.connect(on_skill_pressed.bind(skill_id))
 		skill_buttons[skill_id] = button
-	# Wait and Cancel stack in a column beside the cards.
-	var moves := VBoxContainer.new()
+	var commands := UiStyle.column("xs")
+	commands.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	commands.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar_row.add_child(commands)
+	prompt_label = _label(commands, "", "")
+	prompt_label.name = "StepHeader"
+	prompt_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	prompt_label.add_theme_color_override("font_color", FeelData.color("text_bright"))
+	message_label = _label(commands, "", "")
+	message_label.name = "Message"
+	message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	message_label.add_theme_color_override("font_color", UiStyle.role("bad"))
+	# The chosen skill lifts into the dock's middle, where the step header is,
+	# so it never covers a target on the board.
+	focus_card = FocusCard.new()
+	commands.add_child(focus_card)
+	var moves := UiStyle.column("xs")
 	moves.name = "Moves"
-	moves.alignment = BoxContainer.ALIGNMENT_CENTER
-	moves.add_theme_constant_override("separation", 6)
-	buttons.add_child(moves)
+	moves.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar_row.add_child(moves)
 	wait_button = ActionButton.make("action_wait", "Wait")
-	wait_button.custom_minimum_size.y = 34
+	wait_button.custom_minimum_size.y = 40
 	moves.add_child(wait_button)
 	wait_button.name = "WaitButton"
 	wait_button.pressed.connect(on_wait_pressed)
@@ -726,20 +799,10 @@ func _build_layout() -> void:
 	wait_ticks_box.value_changed.connect(func(_v: float) -> void: _refresh_commands())
 	moves.add_child(wait_ticks_box)
 	cancel_button = ActionButton.make("action_cancel", "Cancel")
-	cancel_button.custom_minimum_size.y = 34
+	cancel_button.custom_minimum_size.y = 40
 	moves.add_child(cancel_button)
 	cancel_button.name = "CancelButton"
 	cancel_button.pressed.connect(on_cancel_pressed)
-	message_label = _label(commands, "", "SmallLabel")
-	message_label.add_theme_color_override("font_color", FeelData.color("danger"))
-
-	preview_area = PanelContainer.new()
-	preview_area.name = "PreviewArea"
-	preview_area.custom_minimum_size = Vector2(380, 0)
-	bar_row.add_child(preview_area)
-	preview_label = _label(preview_area, "", "SmallLabel")
-	preview_label.name = "PreviewLabel"
-	preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	# Overlays: intent arrows, then the action presenter, then the outcome.
 	var views := {}
@@ -763,6 +826,7 @@ func _build_layout() -> void:
 	shake.name = "Shake"
 	add_child(shake)
 	presenter.shake = shake
+	_build_drawer()
 	outcome_banner = OutcomeBanner.new()
 	outcome_banner.name = "OutcomeBanner"
 	outcome_banner.settings = settings
@@ -876,8 +940,235 @@ func show_home_button(on_press: Callable) -> ActionButton:
 
 
 func toggle_log() -> void:
-	log_label.visible = not log_label.visible
-	refresh()
+	control_strip.press(&"log")
+
+
+## The screen's one control strip (ui/README.md rule 10), on the header's
+## top edge: animation speed, the log and preview drawer, compact or
+## detailed cards.
+func _build_control_strip() -> ControlStrip:
+	control_strip = ControlStrip.new()
+	control_strip.name = "BattleStrip"
+	var speeds: Array = []
+	for sp in SPEEDS:
+		speeds.append([StringName(sp), "Skip" if sp == "skip" else sp, "", "Animation speed. Skip plays every action at once."])
+	control_strip.add_choice(&"speed", "", speeds, StringName(settings.animation_speed if settings.animation_speed in SPEEDS else "1x"))
+	log_toggle = control_strip.add_toggle(&"log", "Log", false, "status_waiting", "The fight's log, in the drawer.")
+	control_strip.add_toggle(&"preview", "Preview", false, "status_intent_changed", "What the chosen action would do, in words, in the drawer.")
+	control_strip.add_choice(&"view", "", [
+		[&"detailed", "Detailed", "", "Cards show every flag with its name."],
+		[&"compact", "Compact", "", "Cards show flags as icons; names on hover."],
+	], &"compact" if compact else &"detailed")
+	control_strip.changed.connect(_on_strip_changed)
+	return control_strip
+
+
+func _on_strip_changed(id: StringName, value: Variant) -> void:
+	match id:
+		&"speed":
+			settings.animation_speed = str(value)
+			settings.save()
+		&"log", &"preview":
+			_refresh_drawer()
+			refresh()
+		&"view":
+			compact = value == &"compact"
+			for pid: String in unit_panels:
+				unit_panels[pid].set_compact(compact)
+
+
+## The drawer on the right edge for the log and the preview: closed unless the
+## strip opens one; it slides over the field's empty middle, never the cards.
+func _build_drawer() -> void:
+	drawer = PanelContainer.new()
+	drawer.name = "Drawer"
+	drawer.visible = false
+	drawer.mouse_filter = Control.MOUSE_FILTER_STOP
+	drawer.add_theme_stylebox_override("panel", UiStyle.panel("overlay"))
+	drawer.custom_minimum_size.x = DRAWER_WIDTH
+	add_child(drawer)
+	# The drawer keeps its height; a long log scrolls inside it, newest last.
+	var scroll := ScrollContainer.new()
+	scroll.name = "Scroll"
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = false
+	drawer.add_child(scroll)
+	_drawer_scroll = scroll
+	var col := UiStyle.column("m")
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(col)
+	preview_area = PanelContainer.new()
+	preview_area.name = "PreviewArea"
+	preview_area.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	col.add_child(preview_area)
+	var pcol := UiStyle.column("xs")
+	preview_area.add_child(pcol)
+	var pcap := UiStyle.caption(Label.new())
+	pcap.text = "PREVIEW"
+	pcol.add_child(pcap)
+	preview_label = _label(pcol, "", "")
+	preview_label.name = "PreviewLabel"
+	preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_log_box = UiStyle.column("xs")
+	_log_box.name = "LogBox"
+	col.add_child(_log_box)
+	var lcap := UiStyle.caption(Label.new())
+	lcap.text = "LOG"
+	_log_box.add_child(lcap)
+	log_label = _label(_log_box, "", "")
+	log_label.name = "LogLabel"
+	log_label.visible = false
+	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_refresh_drawer()
+
+
+func _refresh_drawer() -> void:
+	if drawer == null:
+		return
+	var show_log: bool = control_strip.value(&"log")
+	var show_preview: bool = control_strip.value(&"preview")
+	log_label.visible = show_log
+	_log_box.visible = show_log
+	preview_area.visible = show_preview
+	drawer.visible = show_log or show_preview
+	if drawer.visible:
+		_place_drawer()
+
+
+## The drawer opens in the field's empty middle when there is room, so no
+## card is covered; on a crowded field it opens on the right edge.
+func _place_drawer() -> void:
+	var top := _header.get_global_rect().end.y + UiStyle.space("s")
+	var bottom := (field_root.get_node("CommandBar") as Control).get_global_rect().position.y - UiStyle.space("s")
+	var mid := _middle.get_global_rect()
+	var w := DRAWER_WIDTH
+	var x := size.x - DRAWER_WIDTH - UiStyle.space("m")
+	if mid.size.x >= DRAWER_MIN_WIDTH:
+		w = minf(DRAWER_WIDTH, mid.size.x)
+		x = mid.get_center().x - w / 2.0
+		top = maxf(top, mid.position.y)
+	drawer.custom_minimum_size.x = w
+	drawer.position = Vector2(x, top)
+	drawer.size = Vector2(w, maxf(120.0, bottom - top))
+
+
+## The icon a skill's tile shows, by what it does.
+static func _skill_icon(skill: CombatSkill) -> String:
+	if skill.is_heal():
+		return "intent_heal"
+	if skill.is_guard():
+		return "intent_guard"
+	return "intent_attack"
+
+
+## The dock shows the bot whose turn it is (or the one selected): portrait,
+## name and Energy.
+func _refresh_dock() -> void:
+	var can_act := handler.is_player_turn() and handler.selected_bot_id == handler.actor().id
+	var shown := handler.actor() if can_act else handler.selected_bot()
+	if shown == null or shown.side != Combatant.Side.PLAYER:
+		shown = handler.selected_bot()
+	if shown == null:
+		dock_name.text = ""
+		return
+	dock_name.text = shown.display_name
+	@warning_ignore("integer_division")
+	dock_energy.set_value("%d/%d" % [shown.energy(), shown.max_energy_milli / Combatant.MILLI])
+	if _dock_portrait_id != shown.id and unit_panels.has(shown.id):
+		_dock_portrait_id = shown.id
+		for c in _dock_portrait.get_children():
+			c.queue_free()
+		var p := UnitPortrait.make(unit_panels[shown.id].view.look, false, DOCK_PORTRAIT)
+		_dock_portrait.add_child(p)
+		UiTooltip.attach(p, shown.display_name, "Its turn: pick a skill below, or Wait.", "", "hp")
+	for c in _dock_portrait.get_children():
+		if c is UnitPortrait:
+			(c as UnitPortrait).now = can_act
+	var i := 0
+	for skill_id in skill_buttons:
+		var tile: ActionTile = skill_buttons[skill_id]
+		if tile.visible:
+			i += 1
+			tile.hotkey = i
+			tile.hotkey_label.text = str(i) if i <= 9 else ""
+
+
+## While a skill is aimed: the focused card with its math for the target under
+## the pointer, and on every valid target what the skill would do to it.
+func _refresh_focus() -> void:
+	var aiming := handler.is_player_turn() and handler.is_choosing_target() and not fight.is_over()
+	var targets := {}
+	if aiming:
+		var actor := handler.actor()
+		var skill := actor.skill(handler.selected_skill_id)
+		for c in fight.combatants:
+			if c.is_alive() and handler.target_problem(c.id).is_empty():
+				targets[c.id] = _outcome_on(FightAction.use(skill.id, c.id), c.id)
+		var face := skill_card_face(skill, actor.stats.attack)
+		var math: Array = []
+		if targets.has(hovered_id):
+			math = _focus_math(actor, skill, hovered_id, targets[hovered_id])
+		elif skill.is_damage():
+			math = [UiFormula.new().term("ATK", actor.stats.attack).op("×").term("Power", "%d%%" % skill.power_percent)
+				.equals(actor.stats.attack * skill.power_percent / 100, "before Defense"),
+				"Point at a target for its exact damage."]
+		var hint := "Click %s. Esc cancels." % ("an enemy" if skill.targets_opponents() else "a bot")
+		focus_card.show_skill(skill.id, face, skill.energy_cost, math, hint)
+	else:
+		focus_card.hide_card()
+	prompt_label.visible = not focus_card.visible
+	for id: String in unit_panels:
+		var o: Variant = targets.get(id)
+		unit_panels[id].show_target_outcome(o if o != null else {})
+
+
+## What `action` would do to `unit_id`: {"text": "-13" | "+8" | "Guard 40%",
+## "ko": bool, "amount": int}.
+func _outcome_on(action: FightAction, unit_id: String) -> Dictionary:
+	var preview := telegraph.preview_choice(fight, action)
+	var u := fight.combatant(unit_id)
+	var effect: UnitEffect = preview.effect_on(unit_id) if preview != null else null
+	if effect == null or not effect.hp_after.known:
+		var skill := handler.actor().skill(action.skill_id)
+		if skill != null and skill.is_guard():
+			return {"text": "Guard %d%%" % skill.power_percent, "ko": false, "amount": 0}
+		return {"text": "?", "ko": false, "amount": 0}
+	var after := int(effect.hp_after.value)
+	var change := after - u.hp
+	return {"text": ("+%d" % change) if change > 0 else str(change), "ko": after <= 0, "amount": absi(change)}
+
+
+func _focus_math(actor: Combatant, skill: CombatSkill, target_id: String, outcome: Dictionary) -> Array:
+	if skill.is_heal():
+		return BattleMath.heal_lines(fight, actor.id, target_id, skill.id, int(outcome.get("amount", 0)))
+	if skill.is_guard():
+		return BattleMath.guard_lines(fight, actor.id, skill.id, skill.power_percent)
+	var lines := BattleMath.damage_lines(fight, actor.id, target_id, skill.id, int(outcome.get("amount", 0)))
+	if outcome.get("ko", false):
+		lines.append("%s goes Down." % fight.combatant(target_id).display_name)
+	return lines
+
+
+## Esc or a right-click puts an aimed skill back; 1-9 pick the dock's tiles.
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel") and not event.is_echo() and _has_choice_to_cancel():
+		send(FightCommand.cancel())
+		get_viewport().set_input_as_handled()
+		return
+	var key := event as InputEventKey
+	if key != null and key.pressed and not key.echo and key.keycode >= KEY_1 and key.keycode <= KEY_9:
+		if press_hotkey(key.keycode - KEY_0):
+			get_viewport().set_input_as_handled()
+
+
+## Presses the dock tile with hotkey `n` (1-9). True when one was pressed.
+func press_hotkey(n: int) -> bool:
+	for skill_id in skill_buttons:
+		var tile: ActionTile = skill_buttons[skill_id]
+		if tile.visible and tile.hotkey == n and not tile.disabled:
+			on_skill_pressed(skill_id)
+			return true
+	return false
 
 
 ## Skill ids any bot in the fight has, in roster then menu order. Each bot

@@ -25,6 +25,9 @@ var arrows: Array[Dictionary] = []
 var focus_id := ""
 ## Unit id -> its UnitView, to find where units stand.
 var views: Dictionary = {}
+## The unit under the pointer, or "": arrows that neither start nor end at it
+## fade back, so the hovered unit's arrows stand out.
+var hover_id := ""
 ## Explains a badge for its tooltip: badge -> {"title", "body", "math"}
 ## (math: BattleMath lines). Unset: badges have no tooltip.
 var describe: Callable
@@ -75,6 +78,7 @@ func _draw() -> void:
 	var ghost_alpha := ReadoutStyle.number("badge.ghost_alpha", 0.14)
 	var to_local := get_global_transform().affine_inverse()
 	var badges: Array = []
+	var into := {}
 	badge_rects.clear()
 	for a in arrows:
 		var from_view: Control = views.get(a.from)
@@ -92,18 +96,76 @@ func _draw() -> void:
 		var focused: bool = player or a.from == focus_id or a.get("changed", false)
 		var color := ReadoutStyle.color("player_arrow.color") if player else kind_color(a.kind, a.get("changed", false))
 		color.a = ghost_alpha if ghost else (bright if focused else dim)
+		var faded: bool = not hover_id.is_empty() and not player and a.from != hover_id and a.to != hover_id
+		if faded:
+			color.a *= ReadoutStyle.number("badge.unhovered_alpha", 0.3)
 		var w := ReadoutStyle.number("player_arrow.width_px", 3.0) if player else width + (1.0 if focused else 0.0)
 		var points := _arrow_points(start, end, player, a.from == a.to)
 		_draw_arrow(points, color, w, a.kind)
 		var badge: ArrowBadge = a.get("badge")
 		if badge != null and not ghost and points.size() >= 2:
-			var at := points[clampi(int(roundf((points.size() - 1) * ReadoutStyle.number("badge.at", 0.62))), 0, points.size() - 1)]
-			badges.append([badge, at, focused, a.get("changed", false), player])
+			# Several arrows into one target put their badges at different
+			# points along their arrows, so they do not pile up at the target.
+			var nth: int = into.get(a.to, 0)
+			into[a.to] = nth + 1
+			badges.append([badge, points, focused, a.get("changed", false), player, faded, nth])
 	# Badges on top of every arrow, the focused ones last.
 	badges.sort_custom(func(x: Array, y: Array) -> bool: return not x[2] and y[2])
+	# Each badge takes the first point along its arrow that covers no unit card
+	# (its HP bar, flags, name) and no other badge; several arrows into one
+	# target start from different points. Failing that, it steps down until
+	# it is clear of the other badges.
+	var cards := _card_rects(to_local)
+	var taken: Array[Rect2] = []
 	for b: Array in badges:
-		badge_rects.append({"badge": b[0], "rect": _draw_badge(b[0], b[1], b[2], b[3], b[4])})
+		var pts: PackedVector2Array = b[1]
+		var first: float = ReadoutStyle.number("badge.at", 0.62)
+		var spots: Array = [first, 0.5, 0.42, 0.72, 0.34, 0.8, 0.26, 0.88, 0.18]
+		var nth: int = b[6]
+		if nth > 0:
+			spots = spots.slice(nth % spots.size()) + spots.slice(0, nth % spots.size())
+		var r := Rect2()
+		var placed := false
+		for t: float in spots:
+			var at := pts[clampi(int(roundf((pts.size() - 1) * t)), 0, pts.size() - 1)]
+			r = _badge_rect(b[0], at, b[3])
+			if not _covers(r, cards) and not _covers(r, taken):
+				placed = true
+				break
+		if not placed:
+			r = _badge_rect(b[0], pts[clampi(int(roundf((pts.size() - 1) * first)), 0, pts.size() - 1)], b[3])
+			var guard := 0
+			while _covers(r, taken) and guard < 8:
+				r.position.y += r.size.y + 2.0
+				guard += 1
+		taken.append(r)
+		b[1] = r.get_center()
+	for b: Array in badges:
+		badge_rects.append({"badge": b[0], "rect": _draw_badge(b[0], b[1], b[2], b[3], b[4], b[5])})
 	_sync_hotspots.call_deferred()
+
+
+## Every unit card's rect in this control's coordinates (a view's card is
+## its panel, two parents up).
+func _card_rects(to_local: Transform2D) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for id: String in views:
+		var view: Control = views[id]
+		if view == null or not view.is_visible_in_tree():
+			continue
+		var card := view.get_parent().get_parent() as Control
+		if card == null:
+			continue
+		var g := card.get_global_rect()
+		out.append(Rect2(to_local * g.position, g.size))
+	return out
+
+
+static func _covers(r: Rect2, rects: Array[Rect2]) -> bool:
+	for o in rects:
+		if o.intersects(r.grow(1.0)):
+			return true
+	return false
 
 
 ## One hotspot per badge, placed over it, with the badge's tooltip: what it
@@ -194,9 +256,23 @@ func _draw_arrow(points: PackedVector2Array, color: Color, width: float, kind: S
 
 ## A badge centered on `at`: the number, a skull before it for a KO, and the
 ## old number struck out before it when the choice changed it. Returns its rect.
-func _draw_badge(badge: ArrowBadge, at: Vector2, focused: bool, changed: bool, player := false) -> Rect2:
+## Where a badge centered on `at` sits, before drawing it.
+func _badge_rect(badge: ArrowBadge, at: Vector2, changed: bool) -> Rect2:
 	var font := PixelTheme.font()
-	var font_size := int(ReadoutStyle.number("badge.font_size", 10))
+	var font_size := int(ReadoutStyle.number("badge.font_size", 20))
+	var pad := Vector2(ReadoutStyle.number("badge.pad_x", 4), ReadoutStyle.number("badge.pad_y", 3))
+	var icon_px := ReadoutStyle.number("badge.ko_icon_px", 12) if badge.knocks_out else 0.0
+	var old := badge.old_amount.text() if changed and badge.old_amount != null else ""
+	var text_w := font.get_string_size(badge.text(), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var old_w := font.get_string_size(old + " ", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x if not old.is_empty() else 0.0
+	var gap := 2.0 if icon_px > 0.0 else 0.0
+	var size_px := Vector2(icon_px + gap + old_w + text_w, maxf(icon_px, font.get_height(font_size))) + pad * 2.0
+	return Rect2((at - size_px / 2.0).round(), size_px.round())
+
+
+func _draw_badge(badge: ArrowBadge, at: Vector2, focused: bool, changed: bool, player := false, faded := false) -> Rect2:
+	var font := PixelTheme.font()
+	var font_size := int(ReadoutStyle.number("badge.font_size", 20))
 	var pad := Vector2(ReadoutStyle.number("badge.pad_x", 4), ReadoutStyle.number("badge.pad_y", 3))
 	var icon_px := ReadoutStyle.number("badge.ko_icon_px", 12) if badge.knocks_out else 0.0
 	var label := badge.text()
@@ -208,6 +284,8 @@ func _draw_badge(badge: ArrowBadge, at: Vector2, focused: bool, changed: bool, p
 	var size_px := Vector2(icon_px + gap + old_w + text_w, inner_h) + pad * 2.0
 	var rect := Rect2((at - size_px / 2.0).round(), size_px.round())
 	var alpha := 1.0 if focused else ReadoutStyle.number("badge.dim_alpha", 0.8)
+	if faded:
+		alpha *= ReadoutStyle.number("badge.unhovered_alpha", 0.3)
 	var border_color := ReadoutStyle.color("badge.changed") if changed else ReadoutStyle.color("badge." + badge.kind)
 	if player:
 		border_color = ReadoutStyle.color("player_arrow.badge_border")

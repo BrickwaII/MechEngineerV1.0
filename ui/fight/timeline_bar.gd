@@ -1,6 +1,7 @@
 extends Control
-## The upcoming actions, left to right, as Fight.upcoming() gives them. The
-## first chip is the unit acting now. When the order changes, chips slide to
+## The upcoming actions, left to right, as Fight.upcoming() gives them: each a
+## small portrait of the unit (its name and when and why it acts on hover),
+## edged in its side's color. The first chip is the unit acting now. When the order changes, chips slide to
 ## their new places (feel tween "ui_slow"), new chips fade in and dropped ones
 ## fade out, so a change in the order is seen, not just redrawn.
 ##
@@ -10,7 +11,9 @@ extends Control
 ## chips slide there; the order comes back when the preview ends.
 ## Hover and preview look: data/feel/battle_readout.json "timeline".
 
-const CHIP_HEIGHT := 28
+const CHIP_HEIGHT := 44
+## A chip's portrait, inside its frame.
+const PORTRAIT := 36.0
 const GAP := 6
 const TITLE_WIDTH := 60
 
@@ -24,6 +27,8 @@ var showing_preview := false
 ## When a unit acts and why: unit id -> BattleMath.turn()'s dictionary, for
 ## each chip's tooltip. Unset: the tooltip names the tick only.
 var turn_info: Callable
+## unit id -> its BattleArt look, for the portraits. Unset: name chips.
+var look_for: Callable
 
 var _entries: Array[TimelineEntry] = []
 
@@ -39,7 +44,7 @@ func _init() -> void:
 	_title = Label.new()
 	_title.text = "NEXT"
 	_title.theme_type_variation = &"DimLabel"
-	_title.position = Vector2(0, 2)
+	_title.position = Vector2(0, (CHIP_HEIGHT - 20) / 2.0)
 	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_title)
 
@@ -101,7 +106,7 @@ func refresh(entries: Array[TimelineEntry], preview := false) -> void:
 			add_child(chip)
 		chip.set_meta("slot", i)
 		_restyle_chip(chip)
-		var label: Label = chip.get_child(0)
+		var label := _name_of(chip)
 		label.text = entries[i].display_name + (" (wait)" if entries[i].ends_wait else "")
 		var info: Dictionary = turn_info.call(entries[i].combatant_id) if turn_info.is_valid() else {}
 		var when := "Acts now." if i == 0 else "Acts %s, in %d ticks." % [BattleMath.ordinal(i + 1), entries[i].tick - entries[0].tick]
@@ -143,20 +148,36 @@ func _restyle_chip(chip: PanelContainer) -> void:
 	var entry := _entries[i]
 	var lit := not highlight_id.is_empty() and entry.combatant_id == highlight_id
 	_style_chip(chip, entry, i == 0, lit)
-	var label: Label = chip.get_child(0)
 	var dim := not highlight_id.is_empty() and not lit
-	label.modulate.a = ReadoutStyle.number("timeline.dim_alpha", 0.35) if dim else 1.0
+	chip.modulate.a = ReadoutStyle.number("timeline.dim_alpha", 0.35) if dim else 1.0
 
 
 func _chip(entry: TimelineEntry) -> PanelContainer:
 	var chip := PanelContainer.new()
 	chip.mouse_filter = Control.MOUSE_FILTER_PASS
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.add_child(row)
+	# The name stays on the chip for its words (tests, the tooltip) but shows
+	# only without a portrait.
 	var label := Label.new()
-	label.theme_type_variation = &"SmallLabel"
+	label.name = "Name"
 	label.add_theme_color_override("font_color", FeelData.color("text_bright"))
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	chip.add_child(label)
+	row.add_child(label)
+	if look_for.is_valid():
+		var look: Dictionary = look_for.call(entry.combatant_id)
+		if not look.is_empty():
+			label.visible = false
+			var p := UnitPortrait.make(look, entry.side == Combatant.Side.ENEMY, PORTRAIT)
+			p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			row.add_child(p)
 	return chip
+
+
+## A chip's name label.
+static func _name_of(chip: PanelContainer) -> Label:
+	return chip.get_child(0).get_child(0)
 
 
 func _style_chip(chip: PanelContainer, entry: TimelineEntry, is_now: bool, lit := false) -> void:
@@ -171,10 +192,11 @@ func _style_chip(chip: PanelContainer, entry: TimelineEntry, is_now: bool, lit :
 		style.border_color = ReadoutStyle.color("timeline.hover_color")
 		style.set_border_width_all(int(ReadoutStyle.number("timeline.hover_border_px", 3)))
 		style.bg_color = side_color.darkened(0.35)
-	style.content_margin_left = 8
-	style.content_margin_right = 8
-	style.content_margin_top = 6
-	style.content_margin_bottom = 6
+	var pad := 2 if look_for.is_valid() else 8
+	style.content_margin_left = pad
+	style.content_margin_right = pad
+	style.content_margin_top = 2 if look_for.is_valid() else 6
+	style.content_margin_bottom = 2 if look_for.is_valid() else 6
 	style.anti_aliasing = false
 	chip.add_theme_stylebox_override("panel", style)
 
