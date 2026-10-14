@@ -22,6 +22,7 @@ var value_labels := {}
 var shake_toggle: CheckBox
 var reduced_toggle: CheckBox
 var speed_option: OptionButton
+var scale_option: OptionButton
 var close_button: Button
 var reset_button: Button
 
@@ -114,6 +115,17 @@ func _build() -> void:
 	speed_option.item_selected.connect(func(index: int) -> void:
 		_change("animation_speed", speed_option.get_item_metadata(index)))
 	grid.add_child(speed_option)
+	grid.add_child(Control.new())
+	grid.add_child(_label("Interface size"))
+	scale_option = OptionButton.new()
+	scale_option.name = "UiScaleOption"
+	var scales: Array = FeelData.settings().get("ui_scale_options", [1.0])
+	for i in scales.size():
+		scale_option.add_item("%d%%" % roundi(float(scales[i]) * 100.0), i)
+		scale_option.set_item_metadata(i, float(scales[i]))
+	scale_option.item_selected.connect(func(index: int) -> void:
+		_change("ui_scale", scale_option.get_item_metadata(index)))
+	grid.add_child(scale_option)
 	grid.add_child(Control.new())
 
 	var hint := Label.new()
@@ -213,4 +225,7 @@ func _refresh() -> void:
 	for i in speed_option.item_count:
 		if speed_option.get_item_metadata(i) == settings.animation_speed:
 			speed_option.select(i)
+	for i in scale_option.item_count:
+		if is_equal_approx(float(scale_option.get_item_metadata(i)), settings.ui_scale):
+			scale_option.select(i)
 	_refreshing = false

@@ -17,7 +17,7 @@ extends Control
 ## MENU comes back here.
 
 const RUN_SCENE := preload("res://ui/run/run_flow.tscn")
-const MENU_WIDTH := 520.0
+const MENU_WIDTH := 1040.0
 const BUTTON_SIZE := Vector2(320, 52)
 const LIST_SIZE := Vector2(860, 520)
 const ROW_BUTTON_SIZE := Vector2(110, 36)
@@ -39,6 +39,9 @@ var demo_picker: DemoPicker
 var demo_flow: DemoRunFlow
 ## Set on a demo run before it starts; tests use it.
 var configure_demo: Callable
+## Shows the one-time What's new card when it is due (tests turn it off).
+var show_whats_new := true
+var _modal: DetailModal
 ## Where the demo picker reads scenarios; tests point it elsewhere.
 var demo_dir := DemoScenario.DEFAULT_DIR
 
@@ -51,6 +54,9 @@ var continue_icons: HBoxContainer
 var load_button: Button
 var new_run_button: Button
 var demo_button: Button
+## The Continue tile (continue_button is the same node).
+var continue_tile: EntryTile
+var how_to_play_button: Button
 var load_list: Control
 ## Folder path -> that run's LOAD button in the list.
 var load_buttons: Dictionary[String, Button] = {}
@@ -64,6 +70,11 @@ func _ready() -> void:
 	refresh()
 	if MusicDirector.current != null:
 		MusicDirector.current.play_context(MusicDirector.MENU)
+	if show_whats_new and WhatsNewCard.is_due():
+		_open_modal.call_deferred(WhatsNewCard.open.bind(self))
+	tree_exiting.connect(func() -> void:
+		if _modal != null and is_instance_valid(_modal):
+			_modal.close())
 
 
 func runs_folder() -> String:
@@ -79,7 +90,11 @@ func refresh() -> void:
 	var latest := RunFolder.latest_continuable(runs_folder())
 	continue_button.disabled = latest.is_empty()
 	continue_label.text = "No run to continue." if latest.is_empty() else latest.get_file()
-	_fill_run_icons(continue_icons, {} if latest.is_empty() else _summary_of(latest))
+	var summary := {} if latest.is_empty() else _summary_of(latest)
+	_fill_run_icons(continue_icons, summary)
+	# The tile's art follows the run's act: a city map, then a globe in act 3.
+	var art := continue_tile.art as TextureRect
+	art.texture = UiIcons.texture("demo_globe" if int(summary.get("act", 1)) >= 3 else "demo_map")
 	load_button.disabled = RunFolder.list(runs_folder(), 1).is_empty()
 	legacy_panel.visible = RunFolder.legacy_pending(runs_folder(), legacy_path())
 
@@ -102,6 +117,25 @@ static func _fill_run_icons(row: HBoxContainer, summary: Dictionary) -> void:
 	for item: Array in items:
 		var stat := IconStat.make(item[0], item[1], line)
 		row.add_child(stat)
+
+
+## Opens the How to play guide.
+func show_how_to_play() -> DetailModal:
+	_modal = DetailModal.open(self, HowToPlay.spec())
+	return _modal
+
+
+func _open_modal(opener: Callable) -> void:
+	if is_inside_tree():
+		_modal = opener.call()
+
+
+## A bot from the squad, standing still, for the New Run tile.
+static func _bot_art() -> Control:
+	var look := {"unit_id": "ally_frame", "tier": "medium", "look": SpriteManifest.ally_look("ally_frame", 7)}
+	var p := UnitPortrait.make(look, false, 96)
+	p.name = "Art"
+	return p
 
 
 ## Starts a new run on the draft.
@@ -275,30 +309,50 @@ func _build() -> void:
 	menu = VBoxContainer.new()
 	menu.name = "Menu"
 	menu.custom_minimum_size = Vector2(MENU_WIDTH, 0)
-	menu.add_theme_constant_override("separation", 14)
+	menu.add_theme_constant_override("separation", UiStyle.space("m"))
 	stack.add_child(menu)
 	menu.add_child(_label("MECH ENGINEER", "accent", 30, true))
-	menu.add_child(_label("A squad of bots against a countdown.", "text_dim", 10, true))
-	menu.add_child(_spacer(12))
-	continue_button = _button("CONTINUE", func() -> void: continue_latest())
-	menu.add_child(_centered(continue_button))
-	continue_label = _label("", "text_dim", 10, true)
+	menu.add_child(_label("A squad of bots against a countdown.", "text_dim", 20, true))
+	menu.add_child(_spacer(UiStyle.space("s")))
+	# Entry tiles with art (ui/README.md: the homepage starts you off).
+	var tiles := UiStyle.row("m")
+	tiles.name = "Tiles"
+	tiles.alignment = BoxContainer.ALIGNMENT_CENTER
+	menu.add_child(tiles)
+	continue_tile = EntryTile.make("Continue", "", EntryTile.icon_art("demo_map"))
+	continue_tile.pressed.connect(func() -> void: continue_latest())
+	continue_button = continue_tile
+	continue_button.name = "ContinueButton"
+	tiles.add_child(continue_tile)
+	continue_label = continue_tile.line_label
 	continue_label.name = "ContinueLabel"
-	menu.add_child(continue_label)
 	continue_icons = HBoxContainer.new()
 	continue_icons.name = "ContinueIcons"
 	continue_icons.alignment = BoxContainer.ALIGNMENT_CENTER
-	continue_icons.add_theme_constant_override("separation", 14)
-	menu.add_child(continue_icons)
-	load_button = _button("LOAD", show_load_list)
-	menu.add_child(_centered(load_button))
-	new_run_button = _button("NEW RUN", start_new_run)
-	menu.add_child(_centered(new_run_button))
-	demo_button = _button("DEMO", show_demos)
-	demo_button.tooltip_text = "Jump into ready-made moments of each act: maps, fights and bosses. Nothing is saved."
-	menu.add_child(_centered(demo_button))
-	menu.add_child(_spacer(12))
-	var where := _label("Runs are kept in %s" % ProjectSettings.globalize_path(runs_folder()), "text_dim", 10, true)
+	continue_icons.add_theme_constant_override("separation", UiStyle.space("s"))
+	continue_tile.extra.add_child(continue_icons)
+	var new_tile := EntryTile.make("New Run", "Draft a squad and take the city.", _bot_art())
+	new_tile.pressed.connect(start_new_run)
+	new_run_button = new_tile
+	new_run_button.name = "NewRunButton"
+	tiles.add_child(new_tile)
+	var demo_tile := EntryTile.make("Demo", "A map, fight or boss of any act.", EntryTile.icon_art("demo_boss"))
+	demo_tile.pressed.connect(show_demos)
+	UiTooltip.attach(demo_tile, "Demo", "Ready-made moments of each act: maps, fights and bosses. Nothing is saved.", "", "demo_boss")
+	demo_button = demo_tile
+	demo_button.name = "DemoButton"
+	tiles.add_child(demo_tile)
+	how_to_play_button = EntryTile.make("How to play", "The run, the map and fights.", EntryTile.icon_art("guide"))
+	how_to_play_button.name = "HowToPlayButton"
+	how_to_play_button.pressed.connect(show_how_to_play)
+	tiles.add_child(how_to_play_button)
+	var below := UiStyle.row("m")
+	below.alignment = BoxContainer.ALIGNMENT_CENTER
+	menu.add_child(below)
+	load_button = _button("Load a run", show_load_list)
+	load_button.name = "LoadButton"
+	below.add_child(load_button)
+	var where := _label("Runs are kept in %s" % ProjectSettings.globalize_path(runs_folder()), "text_dim", 20, true)
 	where.name = "RunsFolderLabel"
 	menu.add_child(where)
 

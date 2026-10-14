@@ -59,6 +59,7 @@
 		"elite": {"texture": "res://assets/ui/icons/elite.png", "name": "Elite", "color": "changed", "text": "A stronger enemy than its kind."},
 		"new": {"texture": "res://assets/ui/icons/new.png", "name": "New", "color": "accent", "text": "Appeared since you last looked."},
 		"multiplier": {"texture": "res://assets/ui/icons/multiplier.png", "name": "Multiplier", "color": "preview", "text": "Scales another number."},
+		"guide": {"texture": "res://assets/ui/icons/guide.png", "name": "How to play", "color": "text", "text": "A short guide to a run, the map and fights."},
 		"unknown": {"texture": "res://assets/ui/icons/unknown.png", "name": "Unknown", "color": "changed", "text": "Not known yet."}
 	}
 }

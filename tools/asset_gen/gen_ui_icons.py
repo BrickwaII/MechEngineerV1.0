@@ -523,6 +523,21 @@ ICONS = {
         "....oooo....",
         "............",
     ]),
+    # An open book: the how-to-play guide.
+    "guide": ("text", [
+        "............",
+        ".ooooo.oooo.",
+        "oaaaaaoaaaao",
+        "oabbbaoabbao",
+        "oaaaaaoaaaao",
+        "oabbbaoabbao",
+        "oaaaaaoaaaao",
+        "oabbaaoabbao",
+        "oaaaaaoaaaao",
+        ".ooooo.oooo.",
+        "......o.....",
+        "............",
+    ]),
 }
 
 

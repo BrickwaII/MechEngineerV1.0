@@ -226,6 +226,21 @@ Related content on one page goes in `UiTabs` (Region / Squad / Log; Summary /
 Growth / Details) rather than one long column. A visible UI change gets a
 line in the "What's new" card, which links to F8 feedback.
 
+### 17. Identity: entry tiles, guide, what's new, size, acts
+
+- The main menu starts you off with big `EntryTile`s with art (Continue, New
+  Run, Demo, How to play); Load sits under them.
+- **How to play** (`HowToPlay`, text in `data/ui/how_to_play.json`) is a
+  short illustrated guide: a tab per topic, each line an icon and a sentence
+  whose keywords link to the glossary.
+- **What's new** (`WhatsNewCard`, `data/ui/whats_new.json`) shows once per
+  update id and says how to send feedback (F8 in a run). Change its id with
+  each visible UI change.
+- **Interface size** (settings, F10): 100% to 200%, the root's content scale.
+- Each act has its **tint** and **emblem** (`UiStyle.act_tint`,
+  `act_emblem`; `data/ui/ui_kit.json` "acts"): the map's backdrop and side
+  panel take a faint tint, and the emblem sits faintly behind the panel.
+
 ### Exceptions
 
 Dev tools (the F4 switchboard, `ui/dev/`) may stay text-heavy.

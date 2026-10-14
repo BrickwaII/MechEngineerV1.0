@@ -145,3 +145,22 @@ static func label(text: String, color_role := "text", size := "body") -> Label:
 	if size != "body":
 		l.add_theme_font_size_override("font_size", PixelTheme.font_size(size))
 	return l
+
+
+## The tint of act `act` (0 for act 1): its color from data/ui/ui_kit.json
+## "acts" (the demo picker's act colors).
+static func act_tint(act: int) -> Color:
+	var tints: Array = UiIcons.kit("acts.tints", ["ally"])
+	return FeelData.color(str(tints[clampi(act, 0, tints.size() - 1)]))
+
+
+## `base` with act `act`'s tint mixed in by the kit's share for `what`
+## ("background" or "panel").
+static func act_tinted(base: Color, act: int, what := "background") -> Color:
+	return base.lerp(act_tint(act), float(UiIcons.kit("acts.%s_share" % what, 0.05)))
+
+
+## The icon id of act `act`'s emblem.
+static func act_emblem(act: int) -> String:
+	var emblems: Array = UiIcons.kit("acts.emblems", ["demo_map"])
+	return str(emblems[clampi(act, 0, emblems.size() - 1)])

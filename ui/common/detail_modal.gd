@@ -196,6 +196,8 @@ func _build(spec: Dictionary) -> void:
 		var s: Dictionary = spec["sections"][i]
 		tabs.add_tab(StringName(str(s.get("id", "s%d" % i))), str(s.get("title", "")), s["content"], str(s.get("icon", "")))
 	tabs.changed.connect(func(_id: StringName) -> void: _fit.call_deferred())
+	# Wrapped text settles its height after the first layout: fit again then.
+	tabs.minimum_size_changed.connect(func() -> void: _fit.call_deferred())
 	_fit.call_deferred()
 
 
@@ -207,6 +209,7 @@ func _fit() -> void:
 	var view := get_viewport_rect().size
 	var want := tabs.get_combined_minimum_size().y
 	scroll.custom_minimum_size.y = minf(want, view.y * float(UiIcons.kit("detail_modal.max_height_share", 0.85)) - 120.0)
+	panel.reset_size()
 
 
 func _input(event: InputEvent) -> void:
