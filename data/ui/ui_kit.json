@@ -95,6 +95,12 @@
 	"map": {
 		"hint_days": 2,
 		"lens": "defense",
-		"hover_card_offset": [20, 20]
+		"hover_card_offset": [20, 20],
+		"_frame": "The map art's shape and the map's smallest size, in interface pixels. A bigger view draws the map bigger at this shape.",
+		"frame": [880, 580],
+		"_side_panel_share": "The side panel's share of the extra width the map screen gets on a bigger view; the map takes the rest.",
+		"side_panel_share": 0.25,
+		"_min_height_share": "The map view's smallest height as a share of the frame's, so the time strip can wrap onto a second line on the smallest view.",
+		"min_height_share": 0.9
 	}
 }

@@ -72,6 +72,9 @@ const BOSS_CARD_WIDTH := 1.25
 const BOSS_BAR_HEIGHT := 18.0
 ## Enemy cards go two to a row past this many enemies.
 const ENEMIES_PER_COLUMN := 3
+## How much more of the header's free width the boss bar takes than the gap
+## before Home.
+const BOSS_BAR_STRETCH := 6.0
 
 ## Emitted once, when the fight is over.
 signal fight_finished(result: FightResult)
@@ -133,6 +136,11 @@ var dock_name: Label
 var dock_energy: IconStat
 ## Compact cards: icon-only flags.
 var compact := false
+## The player's view choice; the cards are compact anyway while detailed ones
+## do not fit (_fit_view).
+var _view_choice := &"detailed"
+var _view_forced := false
+var _fit_pending := false
 ## The skill Wait would wait for ("" for a plain wait), as its name.
 var wait_for_skill := ""
 var _dock_portrait: Control
@@ -191,6 +199,8 @@ func _ready() -> void:
 		tier_rule = BattleTierRule.load_active(variants_path)
 	_build_layout()
 	refresh()
+	resized.connect(func() -> void: _fit_view(true))
+	_fit_view.call_deferred(true)
 	if fight.is_over():
 		_on_fight_over.call_deferred(fight.result())
 
@@ -213,6 +223,7 @@ func _process(delta: float) -> void:
 func send(command: FightCommand) -> String:
 	var problem := handler.apply(command)
 	message_label.text = problem
+	message_label.visible = not problem.is_empty()
 	command_sent.emit(command, problem)
 	return problem
 
@@ -385,6 +396,7 @@ func refresh() -> void:
 	else:
 		prompt_label.text = "%s is ready. Choose a skill, or Wait." % actor.display_name
 	_announce_turn(actor)
+	_fit_view()
 
 
 ## Each enemy's intent as an icon and number on its card, from the arrows
@@ -549,6 +561,7 @@ func _on_event_raised(event: FightEvent) -> void:
 func _on_action_resolved(actor_id: String, _tag: String) -> void:
 	_last_actor_id = actor_id
 	message_label.text = ""
+	message_label.visible = false
 	var events := _pending_events
 	_pending_events = []
 	var actor := fight.combatant(actor_id)
@@ -639,9 +652,9 @@ func _build_layout() -> void:
 	root.name = "Root"
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.offset_left = 16
-	root.offset_top = 10
+	root.offset_top = 8
 	root.offset_right = -16
-	root.offset_bottom = -10
+	root.offset_bottom = -8
 	root.add_theme_constant_override("separation", 8)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
@@ -694,6 +707,7 @@ func _build_layout() -> void:
 	# everything fits; the strip switches to detailed.
 	if enemy_count > ENEMIES_PER_COLUMN:
 		compact = true
+		_view_choice = &"compact"
 		control_strip.set_value(&"view", &"compact")
 	var enemies := GridContainer.new()
 	enemies.columns = 2 if enemy_count > ENEMIES_PER_COLUMN else 1
@@ -773,6 +787,8 @@ func _build_layout() -> void:
 	message_label.name = "Message"
 	message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	message_label.add_theme_color_override("font_color", UiStyle.role("bad"))
+	# Takes no line while there is nothing to say.
+	message_label.visible = false
 	# The chosen skill lifts into the dock's middle, where the step header is,
 	# so it never covers a target on the board.
 	focus_card = FocusCard.new()
@@ -895,11 +911,14 @@ func show_boss(unit_id: String, title: String) -> void:
 		box.name = "BossBarRow"
 		box.add_theme_constant_override("separation", 10)
 		box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		field_root.add_child(box)
-		field_root.move_child(box, _header.get_index() + 1)
-		var name_label := _label(box, title.to_upper(), "")
-		name_label.name = "BossName"
-		name_label.add_theme_color_override("font_color", FeelData.color("danger"))
+		# In the header's free middle, not a row of its own, so a boss fight
+		# keeps the room its bigger card needs (ui/README.md rule 17).
+		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		box.size_flags_stretch_ratio = BOSS_BAR_STRETCH
+		box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_header.add_child(box)
+		_header.move_child(box, defense_stat.get_index() + 1)
+		# The header beside it already names the boss.
 		boss_bar = PreviewBar.new()
 		boss_bar.name = "BossBar"
 		boss_bar.kind = "hp"
@@ -972,9 +991,53 @@ func _on_strip_changed(id: StringName, value: Variant) -> void:
 			_refresh_drawer()
 			refresh()
 		&"view":
-			compact = value == &"compact"
-			for pid: String in unit_panels:
-				unit_panels[pid].set_compact(compact)
+			_view_choice = StringName(value)
+			_fit_view(true)
+
+
+## Detailed cards when they fit the window's height; else compact cards, with
+## Detailed greyed out and saying why until the window has room again (then
+## the player's choice comes back). `remeasure` tries detailed cards again,
+## for a resize or a new choice. The cards' flags wrap a frame after they
+## change, so the height is read then.
+func _fit_view(remeasure := false) -> void:
+	if field_root == null or control_strip == null or unit_panels.is_empty() or size.y <= 0.0:
+		return
+	if _view_choice == &"compact":
+		_view_forced = false
+		_set_cards_compact(true)
+		_show_view_state()
+		return
+	if _view_forced and not remeasure:
+		return
+	_set_cards_compact(false)
+	if _fit_pending:
+		return
+	_fit_pending = true
+	await get_tree().process_frame
+	_fit_pending = false
+	if not is_inside_tree() or _view_choice == &"compact":
+		return
+	var room := size.y - field_root.offset_top + field_root.offset_bottom
+	_view_forced = field_root.get_combined_minimum_size().y > room + 0.5
+	if _view_forced:
+		_set_cards_compact(true)
+	_show_view_state()
+
+
+func _show_view_state() -> void:
+	control_strip.set_value(&"view", &"compact" if compact else &"detailed")
+	var detailed := control_strip.button(&"view", &"detailed")
+	if detailed.disabled != _view_forced:
+		detailed.disabled = _view_forced
+		UiTooltip.attach(detailed, "Detailed", "Cards show every flag with its name." if not _view_forced
+			else "Needs a taller window: the cards are compact until there is room.")
+
+
+func _set_cards_compact(on: bool) -> void:
+	compact = on
+	for pid: String in unit_panels:
+		unit_panels[pid].set_compact(on)
 
 
 ## The drawer on the right edge for the log and the preview: closed unless the

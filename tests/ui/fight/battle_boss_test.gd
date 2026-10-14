@@ -44,9 +44,9 @@ func test_the_boss_reads_as_a_boss() -> void:
 		return c.side == Combatant.Side.ENEMY and c.id != boss)[0].id]
 	assert_float(panel.global_position.y).is_less(escort.global_position.y)
 	assert_float(panel.size.x).is_greater(escort.size.x)
-	# The wide bar under the header names the boss and shows its hp.
+	# The wide bar in the header, beside the boss's name, shows its hp.
 	assert_object(screen.boss_bar).is_not_null()
-	assert_int(screen.boss_bar.get_parent().get_index()).is_equal(screen.header_label.get_parent().get_index() + 1)
+	assert_object(screen.boss_bar.get_parent().get_parent()).is_same(screen.header_label.get_parent())
 	var unit := screen.fight.combatant(boss)
 	assert_str(screen.boss_bar.caption).is_equal("HP %d/%d" % [unit.hp, unit.max_hp])
 	assert_float(screen.boss_bar.size.x).is_greater(600.0)

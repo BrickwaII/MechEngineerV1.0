@@ -62,6 +62,16 @@ func _build() -> void:
 	custom_minimum_size = row.get_combined_minimum_size() + Vector2(16, 8)
 
 
+## Icon (and cost) only, the label in the tooltip: the last step a crowded
+## bar takes before anything would leave the screen.
+func set_icon_only(on: bool) -> void:
+	label.visible = not on
+
+
+func is_icon_only() -> bool:
+	return not label.visible
+
+
 func _retip() -> void:
 	var numbers := "" if cost_stat == null else "Cost: %s %s" % [cost_stat.value_text(), UiIcons.display_name(cost_icon_id)]
 	UiTooltip.attach(self, label_text, UiIcons.text(action_icon_id), numbers, action_icon_id)

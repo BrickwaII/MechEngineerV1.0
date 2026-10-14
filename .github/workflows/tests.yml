@@ -40,3 +40,43 @@ jobs:
           name: test-reports
           path: reports/
           if-no-files-found: ignore
+
+  # Every play screen fits a real window at each supported size (needs a
+  # display: xvfb). The headless half runs in the test job above.
+  fit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GODOT_VERSION: 4.6.1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Godot
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64
+
+      - name: Download Godot
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$HOME/godot"
+          curl -sSfL -o /tmp/godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d "$HOME/godot"
+          mv "$HOME/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" "$HOME/godot/godot"
+
+      - name: Install a virtual display
+        run: sudo apt-get update -q && sudo apt-get install -yq xvfb libgl1-mesa-dri
+
+      - name: Check every screen fits, in a window
+        run: GODOT_BIN="$HOME/godot/godot" scripts/check_fit.sh reports/fit
+
+      - name: Upload the screens
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screen-fit
+          path: reports/fit/
+          if-no-files-found: ignore

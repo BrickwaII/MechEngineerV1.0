@@ -112,6 +112,8 @@ const PIN_PAD := 4.0
 
 ## Map-space ends of each of the map's crossings, in its order.
 var _crossing_ends: Array[PackedVector2Array] = []
+## The map art's shape, from data (frame()).
+static var _art := Vector2.ZERO
 ## True when the last draw had a pulsing ring, so the next frame redraws.
 var _pulsing := false
 
@@ -177,7 +179,8 @@ func project_shape(points: PackedVector2Array) -> Array[PackedVector2Array]:
 ## The map-space point under a point in this control's coordinates, or null
 ## when there is none.
 func view_to_map(point: Vector2) -> Variant:
-	return (point / size - Vector2(0.5, 0.5)) / zoom + zoom_center
+	var f := frame()
+	return ((point - f.position) / f.size - Vector2(0.5, 0.5)) / zoom + zoom_center
 
 
 ## The zoom-space rectangle a map-space outline covers. The act zoom starts
@@ -247,9 +250,21 @@ func _hover_at(point: Variant) -> void:
 	queue_redraw()
 
 
+## Where zoom space's unit square sits in this control: the largest rect of
+## the map art's shape ("map.frame" in data/ui/ui_kit.json), centered, so a
+## bigger view shows a bigger map, never a stretched one. The backdrop fills
+## the rest.
+func frame() -> Rect2:
+	if _art == Vector2.ZERO:
+		_art = UiIcons.kit_vector("map.frame", Vector2(880, 580))
+	var fitted := _art * minf(size.x / _art.x, size.y / _art.y)
+	return Rect2(((size - fitted) / 2.0).round(), fitted)
+
+
 ## Zoom space to this control's coordinates.
 func _point(p: Vector2) -> Vector2:
-	return ((p - zoom_center) * zoom + Vector2(0.5, 0.5)) * size
+	var f := frame()
+	return f.position + ((p - zoom_center) * zoom + Vector2(0.5, 0.5)) * f.size
 
 
 func _to_view(points: PackedVector2Array) -> PackedVector2Array:
@@ -626,7 +641,7 @@ func _outline(points: PackedVector2Array, color: Color, width: float) -> void:
 func _draw_inset() -> void:
 	var back := Palette.MAP_BACKGROUND
 	back.a = inset_alpha
-	draw_rect(Rect2(_point(inset_rect.position), inset_rect.size * zoom * size), back)
+	draw_rect(Rect2(_point(inset_rect.position), inset_rect.size * zoom * frame().size), back)
 	var water := Palette.WATER
 	water.a = inset_alpha
 	for shape in inset_map.water:

@@ -18,6 +18,10 @@ extends RefCounted
 ##
 ## Presentation applies it at start and on every window resize.
 
+## True while a check lays the root out at a fixed view (ScreenFit.emulate):
+## apply() then leaves the root alone.
+static var held := false
+
 ## The smallest view the layouts are built for, in interface pixels; also the
 ## smallest window.
 static func min_size() -> Vector2:
@@ -56,7 +60,7 @@ static func fits(window: Vector2, requested: float) -> bool:
 ## Sets the root's stretch so its view fills `root`'s window at the scale
 ## above. Safe to call on every resize: it only writes what changed.
 static func apply(root: Window, requested := 0.0) -> void:
-	if root == null:
+	if root == null or held:
 		return
 	var window := Vector2(root.size)
 	if window.x <= 0.0 or window.y <= 0.0:

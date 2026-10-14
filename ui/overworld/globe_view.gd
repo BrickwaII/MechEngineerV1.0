@@ -58,6 +58,12 @@ func drag_by(relative: Vector2) -> void:
 	center_lat += relative.y * per_pixel
 
 
+## The globe keeps its own shape (a disk of radius()), so zoom space covers
+## the whole view.
+func frame() -> Rect2:
+	return Rect2(Vector2.ZERO, size)
+
+
 ## The globe's radius in pixels at zoom 1.
 func radius() -> float:
 	var fraction := campaign.tuning.globe_size if campaign != null else 1.0
