@@ -1,0 +1,49 @@
+{
+	"_comment": "The How to play guide (ui/main/how_to_play.gd): one page per tab, each line an icon id from icons.json and a short sentence. Glossary keywords in the text become links. Hand-edited.",
+	"pages": [
+		{
+			"id": "run",
+			"title": "The run",
+			"icon": "time",
+			"lines": [
+				{"icon": "time", "text": "Each act is a countdown. When it reaches 0 the payload lands and you fight the act's boss."},
+				{"icon": "regions", "text": "Take territory before then: every region you hold pays out each day."},
+				{"icon": "losses", "text": "Lose three battles in an act, or lose to a boss, and the run is over."},
+				{"icon": "map_energy", "text": "Energy and Material pay for Reinforce, Retreat, Breach and Repair."}
+			]
+		},
+		{
+			"id": "map",
+			"title": "The map",
+			"icon": "defense_level",
+			"lines": [
+				{"icon": "action_attack", "text": "Attack a region next to yours. Its Defense sets how hard the fight is."},
+				{"icon": "odds", "text": "The Odds lens shows your chance, from simulated fights."},
+				{"icon": "pressure", "text": "Your regions build Pressure. Reinforce them before it boils over."},
+				{"icon": "alert", "text": "The more you take, the higher the Alert: enemies grow stronger and neglected regions Fortify."}
+			]
+		},
+		{
+			"id": "fights",
+			"title": "Fights",
+			"icon": "action_attack",
+			"lines": [
+				{"icon": "spd", "text": "The turn order runs along the top: faster units act more often."},
+				{"icon": "energy", "text": "Each skill costs Energy, which refills a little every tick up to the Battery."},
+				{"icon": "intent_attack", "text": "Enemies show their next move as arrows with numbers. Hover a number for its math."},
+				{"icon": "status_guard", "text": "Pick a skill and every target shows what it would do. Guard and Pierce change the numbers."},
+				{"icon": "action_wait", "text": "Wait to let Energy build for a bigger skill."}
+			]
+		},
+		{
+			"id": "growth",
+			"title": "Growth",
+			"icon": "intent_buff",
+			"lines": [
+				{"icon": "intent_buff", "text": "Skills a bot uses gain Rank; tier names like Mega mark big steps."},
+				{"icon": "trait_aggressive", "text": "How a bot fights shapes its personality: Aggressive, Defensive, Supportive and more."},
+				{"icon": "more", "text": "The ⋮ on any card, or a right-click, shows everything about it."}
+			]
+		}
+	]
+}

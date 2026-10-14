@@ -17,6 +17,9 @@
 		"cost_color": "energy",
 		"rank_color": "preview"
 	},
+	"entry_tile": {
+		"size": [240, 256]
+	},
 	"action_tile": {
 		"size": [144, 120]
 	},
@@ -80,6 +83,14 @@
 		"color_role": "hint",
 		"operator_role": "text_quiet",
 		"max_width": 720
+	},
+	"acts": {
+		"_comment": "Each act's identity: a tint (palette name, the demo picker's act colors) mixed into the map screen's backdrop and side panel, and an emblem drawn faintly behind the side panel.",
+		"tints": ["ally", "warning", "energy"],
+		"emblems": ["demo_map", "demo_map", "demo_globe"],
+		"background_share": 0.06,
+		"panel_share": 0.05,
+		"emblem_alpha": 0.06
 	},
 	"map": {
 		"hint_days": 2,

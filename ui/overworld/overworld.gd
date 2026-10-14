@@ -138,6 +138,9 @@ var _day_line: Label
 var _countdown_box: HBoxContainer
 ## The side panel's tabs: Region, Squad, Log.
 var side_tabs: UiTabs
+var _background: ColorRect
+var _side_box: StyleBoxFlat
+var _emblem: TextureRect
 ## The map's control strip: lens and legend.
 var map_strip: ControlStrip
 var _legend: Control
@@ -326,6 +329,16 @@ func _region_names(region_ids: PackedStringArray) -> String:
 	return ", ".join(Array(region_ids).map(func(id: String) -> String: return campaign.map.get_region(id).name))
 
 
+## The act's identity on the map screen (ui/README.md): a faint tint of its
+## color in the backdrop and side panel, and its emblem behind the panel.
+func apply_act_identity(act: int) -> void:
+	if _background == null:
+		return
+	_background.color = UiStyle.act_tinted(Palette.BACKGROUND, act, "background")
+	_side_box.bg_color = UiStyle.act_tinted(Palette.PANEL, act, "panel")
+	_emblem.texture = UiIcons.texture(UiStyle.act_emblem(act))
+
+
 func _use_campaign(c: Campaign) -> void:
 	campaign = c
 	campaign_started.emit(c)
@@ -339,6 +352,7 @@ func _use_campaign(c: Campaign) -> void:
 	_seen = {}
 	_unshown = null
 	music.play_map(campaign.state.act)
+	apply_act_identity(campaign.state.act)
 	_hide_modal()
 	_refresh()
 
@@ -437,6 +451,7 @@ func _income_label(key: String) -> Control:
 
 func _build_layout() -> void:
 	var background := ColorRect.new()
+	_background = background
 	background.color = Palette.BACKGROUND
 	background.set_anchors_preset(Control.PRESET_FULL_RECT)
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -779,6 +794,14 @@ func _build_side_panel() -> Control:
 	box.bg_color = Palette.PANEL
 	box.set_content_margin_all(UiStyle.space("m"))
 	side.add_theme_stylebox_override("panel", box)
+	_side_box = box
+	# The act's emblem, large and faint, behind the panel's content.
+	_emblem = EntryTile.icon_art("demo_map", 20)
+	_emblem.name = "ActEmblem"
+	_emblem.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_emblem.size_flags_vertical = Control.SIZE_SHRINK_END
+	_emblem.modulate.a = float(UiIcons.kit("acts.emblem_alpha", 0.06))
+	side.add_child(_emblem)
 	side_tabs = UiTabs.new()
 	side_tabs.name = "SideTabs"
 	side.add_child(side_tabs)

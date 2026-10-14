@@ -8,8 +8,11 @@
 		"shake_enabled": true,
 		"shake_strength": 1.0,
 		"reduced_motion": false,
-		"animation_speed": "1x"
+		"animation_speed": "1x",
+		"ui_scale": 1.0,
+		"whats_new_seen": ""
 	},
+	"ui_scale_options": [1.0, 1.25, 1.5, 2.0],
 	"animation_speed_options": ["1x", "1.5x", "2x", "skip"],
 	"volume_step": 0.05,
 	"open_action": "open_settings"

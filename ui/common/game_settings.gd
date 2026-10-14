@@ -27,6 +27,11 @@ var shake_strength := 1.0
 var reduced_motion := false
 ## One of "1x", "1.5x", "2x", "skip".
 var animation_speed := "1x"
+## How big the whole interface draws: 1.0 is the design size; larger suits big
+## screens (ui/README.md). One of ui_scale_options in data/feel/settings.json.
+var ui_scale := 1.0
+## The id of the last "What's new" card the player closed.
+var whats_new_seen := ""
 var path := ""
 
 
@@ -43,7 +48,7 @@ func _init() -> void:
 
 static func keys() -> Array[String]:
 	return ["music_volume", "effects_volume", "interface_volume", "shake_enabled",
-		"shake_strength", "reduced_motion", "animation_speed"]
+		"shake_strength", "reduced_motion", "animation_speed", "ui_scale", "whats_new_seen"]
 
 
 func reset_to_defaults(notify := true) -> void:
@@ -116,6 +121,12 @@ func shake_scale() -> float:
 	return shake_strength
 
 
+## Draws the whole interface at ui_scale (the root's content scale).
+func apply_ui_scale(tree: SceneTree) -> void:
+	if tree != null and tree.root != null:
+		tree.root.content_scale_factor = ui_scale
+
+
 ## Sets the Music, Effects and Interface bus volumes. A bus that does not
 ## exist is skipped.
 func apply_to_buses() -> void:
@@ -135,5 +146,15 @@ func _assign(key: String, value: Variant) -> void:
 		"animation_speed":
 			var text := str(value)
 			set(key, text if SPEED_MULTIPLIERS.has(text) else "1x")
+		"ui_scale":
+			var options: Array = FeelData.settings().get("ui_scale_options", [1.0])
+			var v := float(value)
+			var best := 1.0
+			for o: Variant in options:
+				if absf(float(o) - v) < absf(best - v):
+					best = float(o)
+			ui_scale = best
+		"whats_new_seen":
+			whats_new_seen = str(value)
 		_:
 			set(key, clampf(float(value), 0.0, 1.0))

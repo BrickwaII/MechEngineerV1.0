@@ -2,7 +2,7 @@ extends Node
 ## Autoload "Presentation": applies the saved settings to the audio buses at
 ## start and whenever they change, owns the one SoundPlayer (registered as
 ## SoundPlayer.current) and the one MusicDirector (MusicDirector.current),
-## and opens the settings screen on the open_settings
+## applies the UI scale, and opens the settings screen on the open_settings
 ## action (F10) from any screen.
 
 var sound: SoundPlayer
@@ -14,6 +14,8 @@ func _ready() -> void:
 	var settings := GameSettings.shared()
 	settings.apply_to_buses()
 	settings.changed.connect(settings.apply_to_buses)
+	settings.apply_ui_scale(get_tree())
+	settings.changed.connect(func() -> void: settings.apply_ui_scale(get_tree()))
 	sound = SoundPlayer.new()
 	sound.name = "Sound"
 	add_child(sound)
