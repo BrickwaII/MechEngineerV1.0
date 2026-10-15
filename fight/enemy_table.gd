@@ -17,19 +17,22 @@ var factions: FactionTable
 ## The shipped table, with the shipped factions.
 
 
+## The shipped table, with the factions; the file is read from disk once,
+## a fresh object every call.
 static func load_default() -> EnemyTable:
-	var t := load_file(DEFAULT_PATH)
+	var d: Variant = JsonFile.read_object_cached(DEFAULT_PATH)
+	var t := from_dict(d) if d != null else load_file(DEFAULT_PATH)
 	if t != null:
 		t.factions = FactionTable.load_default()
 	return t
 
 
 static func load_file(path: String) -> EnemyTable:
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not parsed is Dictionary:
+	var d: Variant = JsonFile.read_object(path)
+	if d == null:
 		push_error("EnemyTable: cannot read %s" % path)
 		return null
-	return from_dict(parsed)
+	return from_dict(d)
 
 
 static func from_dict(d: Dictionary) -> EnemyTable:

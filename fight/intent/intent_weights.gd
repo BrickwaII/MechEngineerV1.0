@@ -35,16 +35,18 @@ var _roles: Dictionary[String, String] = {}
 var lean_floor := 1.0
 
 
+## The shipped file; read from disk once, a fresh object every call.
 static func load_default() -> IntentWeights:
-	return load_file(DEFAULT_PATH)
+	var d: Variant = JsonFile.read_object_cached(DEFAULT_PATH)
+	return from_dict(d) if d != null else load_file(DEFAULT_PATH)
 
 
 static func load_file(path: String) -> IntentWeights:
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not parsed is Dictionary:
+	var d: Variant = JsonFile.read_object(path)
+	if d == null:
 		push_error("IntentWeights: cannot read %s" % path)
 		return null
-	return from_dict(parsed)
+	return from_dict(d)
 
 
 static func from_dict(d: Dictionary) -> IntentWeights:
@@ -76,6 +78,15 @@ func weight(name: String, personality: Personality) -> float:
 			if personality.is_active(scale):
 				value += leans[scale] * personality.get_lean(scale, lean_floor)
 	return value
+
+
+## Every weight in NAMES for a unit with `personality`, by name: what
+## weight() gives, worked out once for a unit's whole set of options.
+func weights_for(personality: Personality) -> Dictionary[String, float]:
+	var out: Dictionary[String, float] = {}
+	for name in NAMES:
+		out[name] = weight(name, personality)
+	return out
 
 
 ## ROLE_ATTACK or ROLE_HEAL.

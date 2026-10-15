@@ -22,12 +22,12 @@ static func load_default() -> OddsTuning:
 
 
 static func load_file(path: String) -> OddsTuning:
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not parsed is Dictionary:
+	var d: Variant = JsonFile.read_object(path)
+	if d == null:
 		var t := OddsTuning.new()
 		t.errors.append("cannot read %s" % path)
 		return t
-	return from_dict(parsed)
+	return from_dict(d)
 
 
 static func from_dict(d: Dictionary) -> OddsTuning:
