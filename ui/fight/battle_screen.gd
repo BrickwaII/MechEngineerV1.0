@@ -210,6 +210,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_check_view_fits()
 	# The next enemy waits for the current action to finish playing.
 	if presenter != null and presenter.is_busy():
 		_enemy_clock = 0.0
@@ -1017,19 +1018,36 @@ func _fit_view(remeasure := false) -> void:
 		return
 	if _view_forced and not remeasure:
 		return
+	_view_forced = false
 	_set_cards_compact(false)
 	if _fit_pending:
 		return
 	_fit_pending = true
 	await get_tree().process_frame
 	_fit_pending = false
-	if not is_inside_tree() or _view_choice == &"compact":
+	# _check_view_fits() may already have switched to compact meanwhile.
+	if not is_inside_tree() or _view_choice == &"compact" or _view_forced:
 		return
 	var room := size.y - field_root.offset_top + field_root.offset_bottom
 	_view_forced = field_root.get_combined_minimum_size().y > room + 0.5
 	if _view_forced:
 		_set_cards_compact(true)
 	_show_view_state()
+
+
+## Detailed cards that grew too tall after they were measured (their flags
+## wrap a frame or more after a change) switch to compact at once. The
+## minimum size is cached, so this costs a comparison a frame.
+func _check_view_fits() -> void:
+	if field_root == null or size.y <= 0.0:
+		return
+	if compact or _view_forced or _view_choice == &"compact":
+		return
+	var room := size.y - field_root.offset_top + field_root.offset_bottom
+	if field_root.get_combined_minimum_size().y > room + 0.5:
+		_view_forced = true
+		_set_cards_compact(true)
+		_show_view_state()
 
 
 func _show_view_state() -> void:

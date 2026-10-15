@@ -102,5 +102,15 @@ func _read() -> Vector2:
 func _write(value: Vector2) -> void:
 	if target is Camera2D:
 		target.offset = value
+	elif target is Control:
+		# Shift all four offsets alike: setting position would write the
+		# control's current size into its offsets, so an anchored screen
+		# would keep that size after a resize or its contents shrinking.
+		var c := target as Control
+		var d: Vector2 = value - c.position
+		c.offset_left += d.x
+		c.offset_right += d.x
+		c.offset_top += d.y
+		c.offset_bottom += d.y
 	else:
 		target.position = value
