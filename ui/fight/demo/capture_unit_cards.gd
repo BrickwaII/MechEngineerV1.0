@@ -1,4 +1,4 @@
-extends SceneTree
+extends CaptureScript
 ## Shots of the battle unit cards for pull requests (ui/README.md rule 8):
 ## each fight and boss demo scenario as it opens, then with the first enemy's
 ## detail modal open (stats, then skills), a damage badge's math tooltip, and a turn-order chip's
@@ -8,19 +8,9 @@ extends SceneTree
 
 const DEFAULT_IDS: Array[String] = ["act1_fight", "act1_boss", "act2_fight", "act2_boss", "act3_fight", "act3_boss"]
 
-var out_dir := "user://capture_out"
-var only: PackedStringArray = []
-
 
 func _init() -> void:
-	var args := OS.get_cmdline_user_args()
-	if args.size() > 0:
-		out_dir = args[0]
-		only = args.slice(1)
-	if only.is_empty():
-		only = PackedStringArray(DEFAULT_IDS)
-	DirAccess.make_dir_recursive_absolute(out_dir)
-	_run.call_deferred()
+	start("user://capture_out", true, DEFAULT_IDS)
 
 
 func _run() -> void:
@@ -31,15 +21,15 @@ func _run() -> void:
 		flow.scenario = s
 		flow.folder_opener = func(_path: String) -> void: pass
 		root.add_child(flow)
-		await _frames(30)
-		await _save(s.id)
+		await frames(30)
+		await save(s.id)
 		var battle: BattleScreen = flow.battle_screen
 		if battle != null:
 			await _detail(battle, s.id)
 			await _badge(battle, s.id)
 			await _turn(battle, s.id)
 		flow.queue_free()
-		await _frames(3)
+		await frames(3)
 	quit()
 
 
@@ -54,17 +44,17 @@ func _detail(battle: BattleScreen, id: String) -> void:
 	if enemy.is_empty():
 		return
 	var modal := battle.open_unit_detail(enemy)
-	await _frames(4)
-	await _save("%s_detail" % id)
+	await frames(4)
+	await save("%s_detail" % id)
 	modal.tabs.select(&"skills")
-	await _frames(4)
-	await _save("%s_detail_skills" % id)
+	await frames(4)
+	await save("%s_detail_skills" % id)
 	DetailModal.close_current()
-	await _frames(2)
+	await frames(2)
 
 
 func _badge(battle: BattleScreen, id: String) -> void:
-	await _frames(2)
+	await frames(2)
 	for b: Dictionary in battle.arrows.badge_rects:
 		var badge: ArrowBadge = b["badge"]
 		var h := battle.arrows.hotspot_for(badge.from_id, badge.to_id)
@@ -72,8 +62,8 @@ func _badge(battle: BattleScreen, id: String) -> void:
 			continue
 		root.warp_mouse(h.get_global_rect().get_center())
 		UiTooltip.show_at(h, h.global_position + Vector2(h.size.x + 8, 0))
-		await _frames(3)
-		await _save("%s_badge" % id)
+		await frames(3)
+		await save("%s_badge" % id)
 		UiTooltip.hide_tooltip()
 		return
 
@@ -84,18 +74,7 @@ func _turn(battle: BattleScreen, id: String) -> void:
 			var chip := c as Control
 			root.warp_mouse(chip.get_global_rect().get_center())
 			UiTooltip.show_at(chip, chip.global_position + Vector2(0, chip.size.y + 4))
-			await _frames(3)
-			await _save("%s_turn" % id)
+			await frames(3)
+			await save("%s_turn" % id)
 			UiTooltip.hide_tooltip()
 			return
-
-
-func _frames(n: int) -> void:
-	for i in n:
-		await process_frame
-
-
-func _save(file: String) -> void:
-	await RenderingServer.frame_post_draw
-	root.get_texture().get_image().save_png(out_dir.path_join(file + ".png"))
-	print("saved ", file)

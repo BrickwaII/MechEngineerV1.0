@@ -1,4 +1,4 @@
-extends SceneTree
+extends CaptureScript
 ## Renders the battle readability readouts (R1-B) to PNGs for pull requests.
 ## Needs a display:
 ##     xvfb-run -a -s "-screen 0 1600x1000x24" godot --path . --rendering-driver opengl3 \
@@ -14,15 +14,9 @@ extends SceneTree
 const BATTLE_SCENE := preload("res://ui/fight/battle_screen.tscn")
 const UnitDetail := preload("res://ui/fight/unit_detail.gd")
 
-var out_dir := "res://ui/fight/screenshots"
-
 
 func _init() -> void:
-	var args := OS.get_cmdline_user_args()
-	if not args.is_empty():
-		out_dir = args[0]
-	DirAccess.make_dir_recursive_absolute(out_dir)
-	_run.call_deferred()
+	start("res://ui/fight/screenshots")
 
 
 func _squad() -> Array[SquadMemberSummary]:
@@ -56,20 +50,13 @@ func _run() -> void:
 	quit()
 
 
-func _until_player_turn(screen: BattleScreen) -> void:
-	var guard := 0
-	while (not screen.handler.is_player_turn() or screen.presenter.is_busy()) and guard < 2000 and not screen.fight.is_over():
-		await process_frame
-		guard += 1
-
-
 func _capture_badges_ko_and_slices() -> void:
 	var screen := _screen()
-	await _settle(20)
-	await _until_player_turn(screen)
+	await frames(20)
+	await until_player_turn(screen)
 	screen.enemy_turn_delay = 1000.0
-	await _settle(8)
-	await _save("readability_arrow_badges")
+	await frames(8)
+	await save("readability_arrow_badges")
 	var actor := screen.handler.actor()
 	var skill := "heavy_strike" if actor.has_skill("heavy_strike") and screen.handler.skill_problem("heavy_strike").is_empty() else "strike"
 	var target := screen.fight.living(Combatant.Side.ENEMY)[0]
@@ -78,13 +65,13 @@ func _capture_badges_ko_and_slices() -> void:
 	screen.refresh()
 	screen.on_skill_pressed(skill)
 	screen.preview_target(target.id)
-	await _settle(12)
-	await _save("readability_ko_preview")
+	await frames(12)
+	await save("readability_ko_preview")
 	screen.preview_target("")
 	target.hp = target.max_hp
 	screen.refresh()
 	screen.preview_target(target.id)
-	await _settle(12)
+	await frames(12)
 	# Close-up: the bot's card (energy cost) above the target's card (hp slice), 2x.
 	await RenderingServer.frame_post_draw
 	var shot := root.get_texture().get_image()
@@ -99,15 +86,15 @@ func _capture_badges_ko_and_slices() -> void:
 	out.save_png(out_dir.path_join("readability_hp_slice.png"))
 	print("saved readability_hp_slice")
 	screen.queue_free()
-	await _settle(4)
+	await frames(4)
 
 
 ## A hit that makes an enemy change its plan: try each target until one does.
 func _capture_changed() -> void:
 	for seed_value in [11, 5, 3, 8, 13, 21]:
 		var screen := _screen(3, seed_value)
-		await _settle(20)
-		await _until_player_turn(screen)
+		await frames(20)
+		await until_player_turn(screen)
 		screen.enemy_turn_delay = 1000.0
 		var actor := screen.handler.actor()
 		for skill in actor.skills():
@@ -117,43 +104,43 @@ func _capture_changed() -> void:
 			for target in screen.fight.living(Combatant.Side.ENEMY):
 				screen.preview_target(target.id)
 				if screen.arrows.arrows.any(func(x: Dictionary) -> bool: return x.changed and not x.player and not x.ghost):
-					await _settle(12)
-					await _save("readability_changed_arrows")
+					await frames(12)
+					await save("readability_changed_arrows")
 					screen.queue_free()
-					await _settle(4)
+					await frames(4)
 					return
 			screen.on_cancel_pressed()
 		screen.queue_free()
-		await _settle(4)
+		await frames(4)
 	print("no changed arrow found")
 
 
 func _capture_stats() -> void:
 	var screen := _screen()
-	await _settle(20)
-	await _until_player_turn(screen)
+	await frames(20)
+	await until_player_turn(screen)
 	screen.enemy_turn_delay = 1000.0
 	var enemy := screen.fight.living(Combatant.Side.ENEMY)[0]
 	var panel: Control = screen.unit_panels[enemy.id]
 	var card: Control = panel._make_custom_tooltip("")
 	screen.add_child(card)
-	await _settle(2)
+	await frames(2)
 	card.position = (panel.global_position + Vector2(-card.size.x - 12, panel.size.y * 2.0 + 24)).round()
 	var bot_panel: Control = screen.unit_panels["bolt"]
 	var bot_card: Control = bot_panel._make_custom_tooltip("")
 	screen.add_child(bot_card)
-	await _settle(2)
+	await frames(2)
 	bot_card.position = (bot_panel.global_position + Vector2(bot_panel.size.x + 12, 0)).round()
-	await _settle(6)
-	await _save("readability_stat_panels")
+	await frames(6)
+	await save("readability_stat_panels")
 	screen.queue_free()
-	await _settle(4)
+	await frames(4)
 
 
 func _capture_turn_order() -> void:
 	var screen := _screen()
-	await _settle(20)
-	await _until_player_turn(screen)
+	await frames(20)
+	await until_player_turn(screen)
 	screen.enemy_turn_delay = 1000.0
 	# An enemy that acts within the bar.
 	var enemy := screen.fight.living(Combatant.Side.ENEMY)[0]
@@ -162,14 +149,14 @@ func _capture_turn_order() -> void:
 			enemy = screen.fight.combatant(id)
 			break
 	screen.preview_target(enemy.id)
-	await _settle(10)
+	await frames(10)
 	await RenderingServer.frame_post_draw
 	var hover := _bar_strip(screen, "Hover %s: its slots light up" % enemy.display_name)
 	screen.preview_target("")
 	# An empty battery, so WAIT has a skill to wait for; point at WAIT.
 	screen.handler.actor().energy_milli = 0
 	screen.on_wait_hovered(true)
-	await _settle(20)
+	await frames(20)
 	await RenderingServer.frame_post_draw
 	var wait := _bar_strip(screen, "Point at WAIT: the order after the wait")
 	var full := root.get_texture().get_image()
@@ -182,7 +169,7 @@ func _capture_turn_order() -> void:
 	out.save_png(out_dir.path_join("readability_turn_order.png"))
 	print("saved readability_turn_order (order shifts: %s)" % screen.timeline_bar.showing_preview)
 	screen.queue_free()
-	await _settle(4)
+	await frames(4)
 
 
 ## The NEXT bar, cropped, at 2x.
@@ -194,15 +181,3 @@ func _bar_strip(screen: BattleScreen, _label: String) -> Image:
 	var strip := shot.get_region(rect)
 	strip.resize(strip.get_width() * 2, strip.get_height() * 2, Image.INTERPOLATE_NEAREST)
 	return strip
-
-
-func _settle(frames: int) -> void:
-	for i in frames:
-		await process_frame
-
-
-func _save(name: String) -> void:
-	await RenderingServer.frame_post_draw
-	var img := root.get_texture().get_image()
-	img.save_png(out_dir.path_join(name + ".png"))
-	print("saved ", name)

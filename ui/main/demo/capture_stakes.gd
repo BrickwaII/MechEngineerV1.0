@@ -1,4 +1,4 @@
-extends SceneTree
+extends CaptureScript
 ## Renders the stakes and economy screens (R2-A) for pull requests. Needs a
 ## display:
 ##     xvfb-run -a -s "-screen 0 1600x1000x24" godot --path . --rendering-driver opengl3 \
@@ -12,19 +12,13 @@ extends SceneTree
 
 const ROOT := "user://capture_stakes_runs"
 
-var out_dir := "user://capture_out"
-
 
 func _init() -> void:
-	var args := OS.get_cmdline_user_args()
-	if args.size() > 0:
-		out_dir = args[0]
-	DirAccess.make_dir_recursive_absolute(out_dir)
-	_run.call_deferred()
+	start("user://capture_out")
 
 
 func _run() -> void:
-	_remove_tree(ROOT)
+	remove_tree(ROOT)
 	await _stakes_run()
 	await _losing_run()
 	await _menu()
@@ -39,12 +33,12 @@ func _flow(seed_value: int) -> RunFlow:
 	flow.variants_path = "user://capture_stakes_variants.json"
 	flow.folder_opener = func(path: String) -> void: print("would open ", path)
 	root.add_child(flow)
-	await _settle(10)
+	await frames(10)
 	var screen := flow.draft_screen
 	for i in screen.picker.squad_size():
 		screen.cards[screen.picker.bots()[i].id].pressed.emit()
 	screen.start_button.pressed.emit()
-	await _settle(20)
+	await frames(20)
 	return flow
 
 
@@ -58,23 +52,23 @@ func _stakes_run() -> void:
 	c.state.material = 14.0
 	c.state.grid = 72.0
 	c.changed.emit()
-	var target := _weakest(c)
+	var target := weakest(c)
 	ow.map_view.select(target)
-	await _settle(30)
-	await _save("stakes_map")
+	await frames(30)
+	await save("stakes_map")
 	print("energy tooltip:\n", ow.resource_tooltip("energy"))
 	print("material tooltip:\n", ow.resource_tooltip("material"))
 	ow.show_pre_fight(target)
-	await _settle(20)
-	await _save("stakes_pre_fight")
+	await frames(20)
+	await save("stakes_pre_fight")
 	ow._hide_modal()
 
 	var held: String = c.state.owned[0]
 	c.state.pressure[held] = c.tuning.forces_defense_at
 	c.changed.emit()
 	ow._check_forced()
-	await _settle(20)
-	await _save("stakes_forced_defense_retreat")
+	await frames(20)
+	await save("stakes_forced_defense_retreat")
 	ow._hide_modal()
 	c.state.pressure[held] = 10.0
 
@@ -85,15 +79,15 @@ func _stakes_run() -> void:
 	c.state.energy = 60.0
 	c.changed.emit()
 	ow.map_view.select("")
-	await _settle(30)
-	await _save("stakes_fast_forward_button")
+	await frames(30)
+	await save("stakes_fast_forward_button")
 	ow._on_fast_forward()
-	await _settle(30)
-	await _save("stakes_fast_forward_summary")
+	await frames(30)
+	await save("stakes_fast_forward_summary")
 	ow._hide_modal()
 
 	flow.queue_free()
-	await _settle(2)
+	await frames(2)
 
 
 ## A fight service that loses every fight, a frame after it starts.
@@ -123,20 +117,20 @@ func _losing_run() -> void:
 			if target.is_empty():
 				break
 			ow._on_attack(target)
-		await _settle(4)
+		await frames(4)
 		if ow._modal.visible and not c.is_over():
 			(ow._modal_buttons.get_child(0) as Button).pressed.emit()
-			await _settle(2)
+			await frames(2)
 	print("losing run: %s after %d fights, %d lost" % [c.end_reason(), guard, c.state.losses])
 	# The last defeat's message first, then the run-over message.
 	(ow._modal_buttons.get_child(0) as Button).pressed.emit()
-	await _settle(20)
-	await _save("stakes_loss_limit_message")
+	await frames(20)
+	await save("stakes_loss_limit_message")
 	(ow._modal_buttons.get_child(0) as Button).pressed.emit()
-	await _settle(30)
-	await _save("run_over_screen")
+	await frames(30)
+	await save("run_over_screen")
 	flow.queue_free()
-	await _settle(2)
+	await frames(2)
 
 
 func _menu() -> void:
@@ -144,16 +138,16 @@ func _menu() -> void:
 	menu.runs_root = ROOT
 	menu.legacy_save = "user://capture_stakes_no_legacy.res"
 	root.add_child(menu)
-	await _settle(10)
+	await frames(10)
 	menu.show_load_list()
-	await _settle(20)
-	await _save("load_list_view_finished")
+	await frames(20)
+	await save("load_list_view_finished")
 	for dir: String in menu.load_buttons:
 		if menu.load_buttons[dir].text == "VIEW":
 			menu.view_finished_run(dir)
 			break
-	await _settle(20)
-	await _save("run_over_read_only")
+	await frames(20)
+	await save("run_over_read_only")
 	menu.queue_free()
 
 
@@ -163,32 +157,3 @@ func _toughest(c: Campaign) -> String:
 		if c.standing(region.id) == Campaign.Standing.IN_RANGE and (best == null or region.defense > best.defense):
 			best = region
 	return best.id if best != null else ""
-
-
-func _weakest(c: Campaign) -> String:
-	var best: MapRegion = null
-	for region in c.map.regions:
-		if c.standing(region.id) == Campaign.Standing.IN_RANGE and (best == null or region.defense < best.defense):
-			best = region
-	return best.id if best != null else ""
-
-
-func _settle(frames: int) -> void:
-	for i in frames:
-		await process_frame
-
-
-func _save(name: String) -> void:
-	await RenderingServer.frame_post_draw
-	root.get_texture().get_image().save_png(out_dir.path_join(name + ".png"))
-	print("saved ", name)
-
-
-func _remove_tree(path: String) -> void:
-	if not DirAccess.dir_exists_absolute(path):
-		return
-	for name in DirAccess.get_files_at(path):
-		DirAccess.remove_absolute(path.path_join(name))
-	for name in DirAccess.get_directories_at(path):
-		_remove_tree(path.path_join(name))
-	DirAccess.remove_absolute(path)

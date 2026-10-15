@@ -1,4 +1,4 @@
-extends SceneTree
+extends CaptureScript
 ## Shots of the battle layout for pull requests: each fight and boss demo
 ## scenario on the player's turn, then with a skill focused (the lifted card
 ## and every target's outcome), the log and preview drawer open, compact
@@ -8,19 +8,9 @@ extends SceneTree
 
 const DEFAULT_IDS: Array[String] = ["act1_fight", "act1_boss", "act2_fight", "act2_boss", "act3_fight", "act3_boss"]
 
-var out_dir := "user://capture_out"
-var only: PackedStringArray = []
-
 
 func _init() -> void:
-	var args := OS.get_cmdline_user_args()
-	if args.size() > 0:
-		out_dir = args[0]
-		only = args.slice(1)
-	if only.is_empty():
-		only = PackedStringArray(DEFAULT_IDS)
-	DirAccess.make_dir_recursive_absolute(out_dir)
-	_run.call_deferred()
+	start("user://capture_out", true, DEFAULT_IDS)
 
 
 func _run() -> void:
@@ -32,29 +22,29 @@ func _run() -> void:
 		flow.scenario = s
 		flow.folder_opener = func(_path: String) -> void: pass
 		root.add_child(flow)
-		await _frames(20)
+		await frames(20)
 		var battle: BattleScreen = flow.battle_screen
 		if battle != null:
 			var guard := 0
 			while not battle.handler.is_player_turn() and guard < 600:
 				guard += 1
 				await process_frame
-			await _frames(6)
-			await _save(s.id)
+			await frames(6)
+			await save(s.id)
 			await _focused(battle, s.id)
 			battle.control_strip.press(&"log")
 			battle.control_strip.press(&"preview")
-			await _frames(4)
-			await _save("%s_drawer" % s.id)
+			await frames(4)
+			await save("%s_drawer" % s.id)
 			battle.control_strip.press(&"log")
 			battle.control_strip.press(&"preview")
 			battle.control_strip.press(&"view", &"compact")
-			await _frames(4)
-			await _save("%s_compact" % s.id)
+			await frames(4)
+			await save("%s_compact" % s.id)
 			battle.control_strip.press(&"view", &"detailed")
 			await _hover(battle, s.id)
 		flow.queue_free()
-		await _frames(3)
+		await frames(3)
 	GameSettings.shared().animation_speed = "1x"
 	quit()
 
@@ -67,33 +57,22 @@ func _focused(battle: BattleScreen, id: String) -> void:
 			break
 	if not battle.handler.is_choosing_target():
 		return
-	await _frames(3)
+	await frames(3)
 	for c in battle.fight.living(Combatant.Side.ENEMY):
 		if battle.handler.target_problem(c.id).is_empty():
 			battle.on_unit_hovered(c.id, true)
 			break
-	await _frames(6)
-	await _save("%s_focused" % id)
+	await frames(6)
+	await save("%s_focused" % id)
 	battle.send(FightCommand.cancel())
 	battle.on_unit_hovered(battle.hovered_id, false)
-	await _frames(3)
+	await frames(3)
 
 
 func _hover(battle: BattleScreen, id: String) -> void:
 	for c in battle.fight.living(Combatant.Side.ENEMY):
 		battle.on_unit_hovered(c.id, true)
-		await _frames(4)
-		await _save("%s_hover" % id)
+		await frames(4)
+		await save("%s_hover" % id)
 		battle.on_unit_hovered(c.id, false)
 		return
-
-
-func _frames(n: int) -> void:
-	for i in n:
-		await process_frame
-
-
-func _save(file: String) -> void:
-	await RenderingServer.frame_post_draw
-	root.get_texture().get_image().save_png(out_dir.path_join(file + ".png"))
-	print("saved ", file)

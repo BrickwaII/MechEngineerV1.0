@@ -192,9 +192,3 @@ func cost_text(use: String) -> String:
 	if c[MATERIAL] > 0.0:
 		parts.append("%s material" % TextFormat.short_number(c[MATERIAL]))
 	return " + ".join(parts) if not parts.is_empty() else "free"
-
-
-## TextFormat.short_number(). TODO: callers in ui/ move to TextFormat with
-## the ui/ cleanup; then this goes.
-static func _n(value: float) -> String:
-	return TextFormat.short_number(value)

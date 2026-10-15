@@ -20,10 +20,8 @@ static func load_default() -> FightScreenTuning:
 
 
 static func load_file(path: String) -> FightScreenTuning:
-	var parsed: Variant = null
-	if FileAccess.file_exists(path):
-		parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not parsed is Dictionary:
+	var parsed: Variant = JsonFile.read_object(path) if FileAccess.file_exists(path) else null
+	if parsed == null:
 		var t := FightScreenTuning.new()
 		t.errors.append("cannot read %s" % path)
 		return t

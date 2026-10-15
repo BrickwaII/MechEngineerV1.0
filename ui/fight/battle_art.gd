@@ -26,8 +26,8 @@ static var _frames := {}
 
 static func data() -> Dictionary:
 	if _data.is_empty():
-		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(DATA_PATH))
-		if parsed is Dictionary:
+		var parsed: Variant = JsonFile.read_object(DATA_PATH)
+		if parsed != null:
 			_data = parsed
 		else:
 			push_error("BattleArt: could not read %s" % DATA_PATH)

@@ -134,7 +134,7 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 	var name_row := UiStyle.row("xs")
 	name_row.name = "TitleRow"
 	col.add_child(name_row)
-	name_label = _label(name_row, unit.display_name, "")
+	name_label = UiStyle.add_label(name_row, unit.display_name, "")
 	name_label.name = "Name"
 	UiTooltip._bold(name_label, UiStyle.role("title"))
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -176,9 +176,9 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 	hidden.name = "Words"
 	hidden.visible = false
 	col.add_child(hidden)
-	status_label = _label(hidden, "", "")
+	status_label = UiStyle.add_label(hidden, "", "")
 	status_label.name = "StatusLabel"
-	tag_label = _label(hidden, "", "")
+	tag_label = UiStyle.add_label(hidden, "", "")
 	tag_label.name = "TagLabel"
 	trait_icon = IconStat.make("unknown")
 	trait_icon.name = "TraitIcon"
@@ -192,12 +192,12 @@ func setup(unit: Combatant, look: Dictionary = {}) -> void:
 		intent_icon = TextureRect.new()
 		intent_icon.name = "IntentIcon"
 		intent_row.add_child(intent_icon)
-		intent_label = _label(intent_row, "Intent: ?", "")
+		intent_label = UiStyle.add_label(intent_row, "Intent: ?", "")
 		intent_label.name = "IntentLabel"
-		change_label = _label(hidden, "", "")
+		change_label = UiStyle.add_label(hidden, "", "")
 		change_label.name = "ChangeLabel"
 		change_label.visible = false
-	preview_label = _label(hidden, "", "")
+	preview_label = UiStyle.add_label(hidden, "", "")
 	preview_label.name = "PreviewLabel"
 	preview_label.visible = false
 	mouse_entered.connect(func() -> void: hovered.emit(unit_id, true))
@@ -623,13 +623,3 @@ func name_fits() -> bool:
 				return false
 		return true
 	return font.get_string_size(name_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x <= name_label.size.x + 0.5
-
-
-static func _label(parent: Node, text: String, variation: String) -> Label:
-	var label := Label.new()
-	label.text = text
-	if not variation.is_empty():
-		label.theme_type_variation = StringName(variation)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	parent.add_child(label)
-	return label

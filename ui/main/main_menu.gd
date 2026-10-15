@@ -464,12 +464,6 @@ func _small_button(text: String, on_press: Callable) -> Button:
 	return b
 
 
-func _centered(c: Control) -> Control:
-	var box := CenterContainer.new()
-	box.add_child(c)
-	return box
-
-
 func _spacer(height: float) -> Control:
 	var c := Control.new()
 	c.custom_minimum_size = Vector2(0, height)

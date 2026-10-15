@@ -83,11 +83,7 @@ func reset() -> void:
 
 
 func save() -> Error:
-	var file := FileAccess.open(user_path, FileAccess.WRITE)
-	if file == null:
-		return FileAccess.get_open_error()
-	file.store_string(JSON.stringify({"choices": choices}, "\t", true))
-	return OK
+	return JsonFile.write(user_path, {"choices": choices}, "\t")
 
 
 ## "d-wait=extra_energy · draft-rule=damage_guarantee", in decision order;
@@ -163,5 +159,4 @@ static func has_option_in(d: Dictionary, option: String) -> bool:
 static func _read_json(path: String) -> Dictionary:
 	if path.is_empty() or not FileAccess.file_exists(path):
 		return {}
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	return parsed if parsed is Dictionary else {}
+	return JsonFile.read_dict(path)
