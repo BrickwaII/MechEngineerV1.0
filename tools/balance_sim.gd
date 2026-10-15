@@ -21,6 +21,8 @@ extends SceneTree
 const OLD_CHOICES := {"speed-range": "wide", "strike-cost": "free", "tag-weight": "per_action",
 	"difficulty-curve": "flat"}
 
+const USAGE := "Usage: godot --headless --path . -s res://tools/balance_sim.gd -- [--runs N] [--seed N] [--set d=o,...] [--old 1] [--markdown 1]"
+
 
 func _initialize() -> void:
 	quit(main(OS.get_cmdline_user_args()))
@@ -28,23 +30,13 @@ func _initialize() -> void:
 
 static func main(args: PackedStringArray) -> int:
 	var settings := DevToolSettings.load_default()
-	var opts := {"runs": "-1", "seed": str(settings.default_base_seed), "set": "", "old": "0", "markdown": "0",
-		"targets": BalanceCurve.DEFAULT_PATH}
-	var i := 0
-	while i < args.size():
-		var key := args[i].trim_prefix("--")
-		if not opts.has(key) or i + 1 >= args.size():
-			printerr("Unknown or incomplete option: %s" % args[i])
-			printerr("Usage: godot --headless --path . -s res://tools/balance_sim.gd -- [--runs N] [--seed N] [--set d=o,...] [--old 1] [--markdown 1]")
-			return 1
-		opts[key] = args[i + 1]
-		i += 2
+	var opts := CliOptions.parse(args, {"runs": "-1", "seed": str(settings.default_base_seed), "set": "", "old": "0", "markdown": "0",
+		"targets": BalanceCurve.DEFAULT_PATH}, USAGE)
+	if opts.is_empty():
+		return 1
 	var choices := OLD_CHOICES.duplicate() if opts.old == "1" else {}
-	for pair in String(opts.set).split(",", false):
-		if not "=" in pair:
-			printerr("--set wants decision=option, got %s" % pair)
-			return 1
-		choices[pair.get_slice("=", 0).strip_edges()] = pair.get_slice("=", 1).strip_edges()
+	if not CliOptions.parse_choices(opts.set, choices):
+		return 1
 	var curve := BalanceCurve.run(int(opts.runs), int(opts.seed), choices, opts.targets)
 	if not curve.problems.is_empty():
 		printerr(curve.format_text())

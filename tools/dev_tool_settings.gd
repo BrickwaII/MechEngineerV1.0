@@ -40,8 +40,8 @@ static func load_default() -> DevToolSettings:
 
 
 static func load_file(path: String) -> DevToolSettings:
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not parsed is Dictionary:
+	var parsed: Variant = JsonFile.read_object(path)
+	if parsed == null:
 		push_error("DevToolSettings: cannot read %s" % path)
 		return null
 	var d: Dictionary = parsed

@@ -246,7 +246,4 @@ func _choices_text() -> String:
 
 
 static func _read(path: String) -> Dictionary:
-	if not FileAccess.file_exists(path):
-		return {}
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	return parsed if parsed is Dictionary else {}
+	return JsonFile.read_dict(path) if FileAccess.file_exists(path) else {}

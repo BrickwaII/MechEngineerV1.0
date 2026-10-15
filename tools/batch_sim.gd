@@ -19,16 +19,10 @@ func _initialize() -> void:
 
 static func main(args: PackedStringArray) -> int:
 	var settings := DevToolSettings.load_default()
-	var opts := {"runs": str(settings.default_runs), "seed": str(settings.default_base_seed),
-		"log": settings.stats_log_path, "scenario": ""}
-	var i := 0
-	while i < args.size():
-		var key := args[i].trim_prefix("--")
-		if not opts.has(key) or i + 1 >= args.size():
-			printerr("Unknown or incomplete option: %s" % args[i])
-			return 1
-		opts[key] = args[i + 1]
-		i += 2
+	var opts := CliOptions.parse(args, {"runs": str(settings.default_runs), "seed": str(settings.default_base_seed),
+		"log": settings.stats_log_path, "scenario": ""})
+	if opts.is_empty():
+		return 1
 	if opts.scenario.is_empty():
 		printerr("Usage: godot --headless --path . -s res://tools/batch_sim.gd -- --scenario PATH [--runs N] [--seed N] [--log PATH|none]")
 		return 1

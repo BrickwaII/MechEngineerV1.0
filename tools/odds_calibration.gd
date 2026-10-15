@@ -41,9 +41,7 @@ static func run(squads: int, regions_per_act: int, base_seed := 1, estimator: Od
 	var acts: Array = factions.regions_by_act.keys()
 	acts.sort()
 	for i in squads:
-		var squad: Array[SquadMemberSummary] = []
-		for bot in factory.build_squad(base_seed + i).get_fielded():
-			squad.append(bot.to_summary())
+		var squad := BotSquadProvider.new(factory.build_squad(base_seed + i)).get_squad()
 		for act: String in acts:
 			var regions: Array = (factions.regions_by_act[act] as Dictionary).keys()
 			regions.sort()

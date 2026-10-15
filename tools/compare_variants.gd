@@ -29,18 +29,12 @@ func _initialize() -> void:
 
 static func main(args: PackedStringArray) -> int:
 	var settings := DevToolSettings.load_default()
-	var opts := {"decision": "", "runs": "", "seed": str(settings.default_base_seed),
+	var opts := CliOptions.parse(args, {"decision": "", "runs": "", "seed": str(settings.default_base_seed),
 		"level": str(settings.compare_defense_level), "policy": settings.compare_player_policy,
 		"enemy-policy": settings.compare_enemy_policy,
-		"chain": str(settings.compare_chain_fights)}
-	var i := 0
-	while i < args.size():
-		var key := args[i].trim_prefix("--")
-		if not opts.has(key) or i + 1 >= args.size():
-			printerr("Unknown or incomplete option: %s" % args[i])
-			return 1
-		opts[key] = args[i + 1]
-		i += 2
+		"chain": str(settings.compare_chain_fights)})
+	if opts.is_empty():
+		return 1
 	if opts.decision.is_empty():
 		printerr("Usage: godot --headless --path . -s res://tools/compare_variants.gd -- --decision ID [--runs N] [--seed N] [--level N] [--policy NAME] [--enemy-policy NAME] [--chain N]")
 		printerr("Decisions: " + ", ".join(VariantComparison.comparable() + CampaignComparison.comparable()))

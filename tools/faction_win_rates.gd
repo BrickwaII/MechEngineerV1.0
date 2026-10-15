@@ -99,9 +99,7 @@ func _play(id: String, faction: String, act: String, table: EnemyTable, factions
 		var wins := 0
 		for i in runs:
 			var run_seed := base_seed + i
-			var squad: Array[SquadMemberSummary] = []
-			for bot in factory.build_squad(run_seed).get_fielded():
-				squad.append(bot.to_summary())
+			var squad := BotSquadProvider.new(factory.build_squad(run_seed)).get_squad()
 			var request := FightRequest.new(FightRequest.Kind.ATTACK, "faction_check", level, squad)
 			var sim := SimulatedFight.new(request, run_seed,
 				FightScenario.make_policy(player_policy, unused), FightScenario.make_policy(enemy_policy, unused),
