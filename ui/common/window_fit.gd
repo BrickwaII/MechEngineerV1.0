@@ -6,13 +6,16 @@ extends RefCounted
 ##
 ## The root draws its canvas at one scale (content_scale_factor) over a
 ## content size equal to the window, so the view in interface pixels is
-## window / scale. The scale is:
-##   - Auto (interface size 0): the largest scale_step multiple that keeps the
-##     view at least min_size (data/feel/settings.json "display"). Steps of 0.5
-##     keep the 2x pixel art and body text crisp: 1920x1080 draws at 100% over
-##     a 1920x1080 view, 2560x1440 at 150% over 1707x960.
-##   - A fixed interface size, capped the same way, so a big size never pushes
-##     the screens past the window's edge.
+## window / scale. The scale (scale_for()) depends on the Scaling setting:
+##   - Fit window (default): Auto scales the min_size design (data/feel/
+##     settings.json "display") up until it fills the window on one axis, and
+##     the other axis gets the extra room: 1920x1080 draws at 132% over a
+##     1456x820 view.
+##   - Crisp pixels: Auto takes the largest scale_step multiple that keeps the
+##     view at least min_size; steps of 0.5 keep every art pixel the same
+##     size: 1920x1080 draws at 100%, 2560x1440 at 150%.
+##   - A fixed interface size works in either mode, capped the same way, so a
+##     big size never pushes the screens past the window's edge.
 ##   - Below min_size (a small fullscreen display) the view shrinks to fit
 ##     instead, so min_size is the smallest layout any screen has to handle.
 ##
@@ -33,13 +36,26 @@ static func scale_step() -> float:
 	return float(FeelData.settings().get("display", {}).get("scale_step", 0.5))
 
 
+## The scale modes (the "Scaling" setting). TODO(decision: ui-scale-mode):
+## Fit window is the default.
+const FIT := "fit"
+const CRISP := "crisp"
+
+
 ## The canvas scale for a window of `window` pixels at interface size
-## `requested` (0 for Auto).
-static func scale_for(window: Vector2, requested := 0.0) -> float:
+## `requested` (0 for Auto), in scale mode `mode`:
+##   - FIT: Auto scales the min_size design up to fill the window
+##     (1920x1080 draws at about 132%); a fixed size is used as it is.
+##   - CRISP: whole scale_step steps only, which keep every art pixel the
+##     same size.
+## Either way the scale is capped so the view stays at least min_size.
+static func scale_for(window: Vector2, requested := 0.0, mode := FIT) -> float:
 	var least := min_size()
 	var fit := minf(window.x / least.x, window.y / least.y)
 	if fit < 1.0:
 		return fit
+	if mode != CRISP:
+		return fit if requested <= 0.0 else clampf(requested, 1.0, fit)
 	var step := scale_step()
 	var largest := maxf(1.0, floorf(fit / step + 0.0001) * step)
 	if requested <= 0.0:
@@ -47,25 +63,28 @@ static func scale_for(window: Vector2, requested := 0.0) -> float:
 	return clampf(snappedf(requested, step), 1.0, largest)
 
 
-## The view in interface pixels for that window and interface size.
-static func view_size(window: Vector2, requested := 0.0) -> Vector2:
-	return window / scale_for(window, requested)
+## The view in interface pixels for that window, interface size and mode.
+static func view_size(window: Vector2, requested := 0.0, mode := FIT) -> Vector2:
+	return window / scale_for(window, requested, mode)
 
 
 ## True when interface size `requested` fits `window` uncapped.
-static func fits(window: Vector2, requested: float) -> bool:
-	return requested <= 0.0 or is_equal_approx(scale_for(window, requested), snappedf(requested, scale_step()))
+static func fits(window: Vector2, requested: float, mode := FIT) -> bool:
+	if requested <= 0.0:
+		return true
+	var wanted := requested if mode != CRISP else snappedf(requested, scale_step())
+	return is_equal_approx(scale_for(window, requested, mode), wanted)
 
 
 ## Sets the root's stretch so its view fills `root`'s window at the scale
 ## above. Safe to call on every resize: it only writes what changed.
-static func apply(root: Window, requested := 0.0) -> void:
+static func apply(root: Window, requested := 0.0, mode := FIT) -> void:
 	if root == null or held:
 		return
 	var window := Vector2(root.size)
 	if window.x <= 0.0 or window.y <= 0.0:
 		return
-	var scale := scale_for(window, requested)
+	var scale := scale_for(window, requested, mode)
 	if root.content_scale_mode != Window.CONTENT_SCALE_MODE_CANVAS_ITEMS:
 		root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 	if root.content_scale_aspect != Window.CONTENT_SCALE_ASPECT_EXPAND:

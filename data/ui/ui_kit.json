@@ -92,14 +92,19 @@
 		"panel_share": 0.05,
 		"emblem_alpha": 0.06
 	},
+	"battle": {
+		"_max_field_width": "The widest the squad and enemy columns spread on a wide view, in interface pixels; the formation stays centred so intent arrows stay short.",
+		"max_field_width": 1440
+	},
 	"map": {
 		"hint_days": 2,
 		"lens": "defense",
 		"hover_card_offset": [20, 20],
 		"_frame": "The map art's shape and the map's smallest size, in interface pixels. A bigger view draws the map bigger at this shape.",
 		"frame": [880, 580],
-		"_side_panel_share": "The side panel's share of the extra width the map screen gets on a bigger view; the map takes the rest.",
+		"_side_panel_share": "The side panel's share of the map screen's width, at least 400 and at most side_panel_max; the map takes the rest.",
 		"side_panel_share": 0.25,
+		"side_panel_max": 560,
 		"_min_height_share": "The map view's smallest height as a share of the frame's, so the time strip can wrap onto a second line on the smallest view.",
 		"min_height_share": 0.9
 	}

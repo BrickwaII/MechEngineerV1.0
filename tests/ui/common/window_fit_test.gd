@@ -18,44 +18,74 @@ func test_the_minimum_comes_from_data() -> void:
 	assert_vector(WindowFit.min_size()).is_equal(Vector2(v[0], v[1]))
 
 
-func test_auto_picks_the_largest_step_that_fits() -> void:
-	assert_float(WindowFit.scale_for(Vector2(1280, 820))).is_equal(1.0)
-	assert_float(WindowFit.scale_for(Vector2(1920, 1080))).is_equal(1.0)
-	assert_float(WindowFit.scale_for(Vector2(2560, 1440))).is_equal(1.5)
-	assert_float(WindowFit.scale_for(Vector2(3440, 1440))).is_equal(1.5)
-	assert_float(WindowFit.scale_for(Vector2(3840, 2160))).is_equal(2.5)
+func test_fit_window_scales_the_design_up_to_fill_the_window() -> void:
+	var fit := WindowFit.FIT
+	assert_float(WindowFit.scale_for(Vector2(1280, 820), 0.0, fit)).is_equal(1.0)
+	assert_float(WindowFit.scale_for(Vector2(1920, 1080), 0.0, fit)).is_equal_approx(1080.0 / 820.0, 0.0001)
+	assert_float(WindowFit.scale_for(Vector2(2560, 1440), 0.0, fit)).is_equal_approx(1440.0 / 820.0, 0.0001)
+	# The other axis gets the extra room.
+	var view := WindowFit.view_size(Vector2(1920, 1080), 0.0, fit)
+	assert_float(view.y).is_equal_approx(820.0, 0.01)
+	assert_float(view.x).is_greater(1280.0)
+	# A fixed size is used as it is, capped to what fits.
+	assert_float(WindowFit.scale_for(Vector2(2560, 1440), 1.5, fit)).is_equal(1.5)
+	assert_float(WindowFit.scale_for(Vector2(1920, 1080), 2.0, fit)).is_equal_approx(1080.0 / 820.0, 0.0001)
+	assert_bool(WindowFit.fits(Vector2(1920, 1080), 2.0, fit)).is_false()
 
 
-func test_big_windows_get_a_bigger_view_not_black_bars() -> void:
-	assert_vector(WindowFit.view_size(Vector2(1920, 1080))).is_equal(Vector2(1920, 1080))
-	var wide := WindowFit.view_size(Vector2(3440, 1440))
+func test_fit_window_is_the_default_scale_mode() -> void:
+	assert_str(str(FeelData.settings()["defaults"]["scale_mode"])).is_equal(WindowFit.FIT)
+	assert_str(GameSettings.new().scale_mode).is_equal(WindowFit.FIT)
+	var s := GameSettings.new()
+	s._assign("scale_mode", "sideways")
+	assert_str(s.scale_mode).is_equal(WindowFit.FIT)
+	s._assign("scale_mode", "crisp")
+	assert_str(s.scale_mode).is_equal(WindowFit.CRISP)
+
+
+func test_crisp_pixels_picks_the_largest_step_that_fits() -> void:
+	var crisp := WindowFit.CRISP
+	assert_float(WindowFit.scale_for(Vector2(1280, 820), 0.0, crisp)).is_equal(1.0)
+	assert_float(WindowFit.scale_for(Vector2(1920, 1080), 0.0, crisp)).is_equal(1.0)
+	assert_float(WindowFit.scale_for(Vector2(2560, 1440), 0.0, crisp)).is_equal(1.5)
+	assert_float(WindowFit.scale_for(Vector2(3440, 1440), 0.0, crisp)).is_equal(1.5)
+	assert_float(WindowFit.scale_for(Vector2(3840, 2160), 0.0, crisp)).is_equal(2.5)
+
+
+func test_crisp_pixels_gives_big_windows_a_bigger_view() -> void:
+	var crisp := WindowFit.CRISP
+	assert_vector(WindowFit.view_size(Vector2(1920, 1080), 0.0, crisp)).is_equal(Vector2(1920, 1080))
+	var wide := WindowFit.view_size(Vector2(3440, 1440), 0.0, crisp)
 	assert_float(wide.x).is_equal_approx(3440.0 / 1.5, 0.01)
 	assert_float(wide.y).is_equal(960.0)
 
 
 func test_a_fixed_size_is_capped_to_what_fits() -> void:
-	assert_float(WindowFit.scale_for(Vector2(1280, 820), 2.0)).is_equal(1.0)
-	assert_float(WindowFit.scale_for(Vector2(2560, 1640), 2.0)).is_equal(2.0)
-	assert_float(WindowFit.scale_for(Vector2(2560, 1440), 2.0)).is_equal(1.5)
-	assert_bool(WindowFit.fits(Vector2(2560, 1440), 2.0)).is_false()
-	assert_bool(WindowFit.fits(Vector2(2560, 1440), 1.5)).is_true()
-	assert_bool(WindowFit.fits(Vector2(1280, 820), 0.0)).is_true()
+	var crisp := WindowFit.CRISP
+	assert_float(WindowFit.scale_for(Vector2(1280, 820), 2.0, crisp)).is_equal(1.0)
+	assert_float(WindowFit.scale_for(Vector2(2560, 1640), 2.0, crisp)).is_equal(2.0)
+	assert_float(WindowFit.scale_for(Vector2(2560, 1440), 2.0, crisp)).is_equal(1.5)
+	assert_bool(WindowFit.fits(Vector2(2560, 1440), 2.0, crisp)).is_false()
+	assert_bool(WindowFit.fits(Vector2(2560, 1440), 1.5, crisp)).is_true()
+	assert_bool(WindowFit.fits(Vector2(1280, 820), 0.0, crisp)).is_true()
 
 
 func test_every_view_is_at_least_the_minimum() -> void:
 	var least := WindowFit.min_size()
 	for window: Vector2 in [Vector2(1280, 820), Vector2(1366, 768), Vector2(1600, 900),
 			Vector2(1920, 1080), Vector2(2560, 1440), Vector2(3440, 1440), Vector2(1024, 600)]:
-		for size: float in FeelData.settings()["ui_scale_options"]:
-			var view := WindowFit.view_size(window, size)
-			assert_bool(view.x >= least.x - 0.01 and view.y >= least.y - 0.01) \
-				.override_failure_message("%s at %s gives %s" % [window, size, view]).is_true()
+		for mode: String in FeelData.settings()["scale_mode_options"]:
+			for size: float in FeelData.settings()["ui_scale_options"]:
+				var view := WindowFit.view_size(window, size, mode)
+				assert_bool(view.x >= least.x - 0.01 and view.y >= least.y - 0.01) \
+					.override_failure_message("%s at %s %s gives %s" % [window, size, mode, view]).is_true()
 
 
 func test_small_screens_shrink_to_fit() -> void:
 	var view := WindowFit.view_size(Vector2(1366, 768))
 	assert_float(view.y).is_equal_approx(820.0, 0.01)
 	assert_bool(WindowFit.scale_for(Vector2(1366, 768)) < 1.0).is_true()
+	assert_bool(WindowFit.scale_for(Vector2(1366, 768), 0.0, WindowFit.CRISP) < 1.0).is_true()
 
 
 func test_apply_sets_the_root_to_fill_its_window() -> void:
@@ -109,3 +139,6 @@ func test_the_settings_screen_has_fullscreen_and_auto_size() -> void:
 	assert_bool(s.fullscreen).is_true()
 	screen.fullscreen_toggle.button_pressed = false
 	assert_str(screen.scale_option.get_item_text(0)).starts_with("Auto")
+	screen.scale_mode_option.select(1)
+	screen.scale_mode_option.item_selected.emit(1)
+	assert_str(s.scale_mode).is_equal(str(screen.scale_mode_option.get_item_metadata(1)))

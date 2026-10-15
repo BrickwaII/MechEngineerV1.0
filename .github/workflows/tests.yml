@@ -45,7 +45,7 @@ jobs:
   # display: xvfb). The headless half runs in the test job above.
   fit:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       GODOT_VERSION: 4.6.1
     steps:

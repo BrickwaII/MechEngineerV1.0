@@ -75,6 +75,24 @@ func test_shake_moves_the_target_and_puts_it_back() -> void:
 	assert_object(target.position).is_equal(Vector2(10, 20))
 
 
+func test_shaking_an_anchored_control_keeps_it_anchored() -> void:
+	var parent: Control = auto_free(Control.new())
+	add_child(parent)
+	parent.size = Vector2(400, 300)
+	var target := Control.new()
+	parent.add_child(target)
+	target.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	target.offset_bottom = -8
+	var shake: ScreenShake = auto_free(ScreenShake.new(target, settings))
+	shake.shake("big")
+	for i in 40:
+		shake.advance(0.01)
+	assert_float(target.offset_bottom).is_equal(-8.0)
+	# It still follows its parent's size, as a screen must on a resize.
+	parent.size = Vector2(400, 200)
+	assert_float(target.size.y).is_equal(192.0)
+
+
 func test_no_shake_when_off_or_reduced_motion() -> void:
 	var target: Node2D = auto_free(Node2D.new())
 	var shake: ScreenShake = auto_free(ScreenShake.new(target, settings))
