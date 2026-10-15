@@ -33,6 +33,9 @@ var animation_speed := "1x"
 var ui_scale := 0.0
 ## Fullscreen (F11, Alt+Enter, or the settings screen).
 var fullscreen := false
+## How the interface scales to the window: WindowFit.FIT ("fit", the
+## default) or WindowFit.CRISP ("crisp", whole steps only).
+var scale_mode := "fit"
 ## The id of the last "What's new" card the player closed.
 var whats_new_seen := ""
 var path := ""
@@ -51,7 +54,7 @@ func _init() -> void:
 
 static func keys() -> Array[String]:
 	return ["music_volume", "effects_volume", "interface_volume", "shake_enabled",
-		"shake_strength", "reduced_motion", "animation_speed", "ui_scale", "fullscreen", "whats_new_seen"]
+		"shake_strength", "reduced_motion", "animation_speed", "ui_scale", "fullscreen", "scale_mode", "whats_new_seen"]
 
 
 func reset_to_defaults(notify := true) -> void:
@@ -127,7 +130,7 @@ func shake_scale() -> float:
 ## Draws the whole interface at ui_scale, fitted to the window (WindowFit).
 func apply_ui_scale(tree: SceneTree) -> void:
 	if tree != null and tree.root != null:
-		WindowFit.apply(tree.root, ui_scale)
+		WindowFit.apply(tree.root, ui_scale, scale_mode)
 
 
 ## Puts the window in or out of fullscreen to match the setting.
@@ -162,6 +165,9 @@ func _assign(key: String, value: Variant) -> void:
 				if absf(float(o) - v) < absf(best - v):
 					best = float(o)
 			ui_scale = best
+		"scale_mode":
+			var mode := str(value)
+			scale_mode = mode if mode in FeelData.settings().get("scale_mode_options", [WindowFit.FIT]) else WindowFit.FIT
 		"whats_new_seen":
 			whats_new_seen = str(value)
 		_:

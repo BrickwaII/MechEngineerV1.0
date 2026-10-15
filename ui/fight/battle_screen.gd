@@ -141,6 +141,7 @@ var compact := false
 var _view_choice := &"detailed"
 var _view_forced := false
 var _fit_pending := false
+var _field: HBoxContainer
 ## The skill Wait would wait for ("" for a plain wait), as its name.
 var wait_for_skill := ""
 var _dock_portrait: Control
@@ -199,13 +200,17 @@ func _ready() -> void:
 		tier_rule = BattleTierRule.load_active(variants_path)
 	_build_layout()
 	refresh()
-	resized.connect(func() -> void: _fit_view(true))
+	resized.connect(func() -> void:
+		_fit_field()
+		_fit_view(true))
+	_fit_field()
 	_fit_view.call_deferred(true)
 	if fight.is_over():
 		_on_fight_over.call_deferred(fight.result())
 
 
 func _process(delta: float) -> void:
+	_check_view_fits()
 	# The next enemy waits for the current action to finish playing.
 	if presenter != null and presenter.is_busy():
 		_enemy_clock = 0.0
@@ -701,9 +706,12 @@ func _build_field(root: VBoxContainer) -> void:
 	var field := HBoxContainer.new()
 	field.name = "Field"
 	field.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# Centred and no wider than battle.max_field_width (_fit_field()).
+	field.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	field.add_theme_constant_override("separation", 12)
 	field.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(field)
+	_field = field
 	var bots := _column(field, "SQUAD")
 	var middle := VBoxContainer.new()
 	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1024,19 +1032,36 @@ func _fit_view(remeasure := false) -> void:
 		return
 	if _view_forced and not remeasure:
 		return
+	_view_forced = false
 	_set_cards_compact(false)
 	if _fit_pending:
 		return
 	_fit_pending = true
 	await get_tree().process_frame
 	_fit_pending = false
-	if not is_inside_tree() or _view_choice == &"compact":
+	# _check_view_fits() may already have switched to compact meanwhile.
+	if not is_inside_tree() or _view_choice == &"compact" or _view_forced:
 		return
 	var room := size.y - field_root.offset_top + field_root.offset_bottom
 	_view_forced = field_root.get_combined_minimum_size().y > room + 0.5
 	if _view_forced:
 		_set_cards_compact(true)
 	_show_view_state()
+
+
+## Detailed cards that grew too tall after they were measured (their flags
+## wrap a frame or more after a change) switch to compact at once. The
+## minimum size is cached, so this costs a comparison a frame.
+func _check_view_fits() -> void:
+	if field_root == null or size.y <= 0.0:
+		return
+	if compact or _view_forced or _view_choice == &"compact":
+		return
+	var room := size.y - field_root.offset_top + field_root.offset_bottom
+	if field_root.get_combined_minimum_size().y > room + 0.5:
+		_view_forced = true
+		_set_cards_compact(true)
+		_show_view_state()
 
 
 func _show_view_state() -> void:
@@ -1046,6 +1071,18 @@ func _show_view_state() -> void:
 		detailed.disabled = _view_forced
 		UiTooltip.attach(detailed, "Detailed", "Cards show every flag with its name." if not _view_forced
 			else "Needs a taller window: the cards are compact until there is room.")
+
+
+## The squad and enemy columns spread no wider than battle.max_field_width
+## (data/ui/ui_kit.json), centred, so a wide view keeps the arrows short and
+## the extra room goes to the sides.
+func _fit_field() -> void:
+	if _field == null or size.x <= 0.0:
+		return
+	var room := size.x - field_root.offset_left + field_root.offset_right
+	var width := minf(room, float(UiIcons.kit("battle.max_field_width", 1440)))
+	if not is_equal_approx(_field.custom_minimum_size.x, width):
+		_field.custom_minimum_size.x = width
 
 
 func _set_cards_compact(on: bool) -> void:

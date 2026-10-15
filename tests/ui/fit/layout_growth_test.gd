@@ -76,3 +76,29 @@ func test_a_boss_fight_falls_back_to_compact_cards_on_a_short_view() -> void:
 	assert_bool(battle.compact).is_false()
 	assert_bool(battle.control_strip.button(&"view", &"detailed").disabled).is_false()
 	flow.queue_free()
+
+
+func test_the_side_panel_is_capped_on_a_wide_view() -> void:
+	ScreenFit.emulate(get_tree().root, Vector2(3440, 1440))
+	var map: Control = await ScreenFit.open("act1_map_early", self)
+	var overworld: Control = map.overworld
+	var widest := float(UiIcons.kit("map.side_panel_max", 560))
+	assert_float(overworld._side.size.x).is_equal_approx(widest, 1.0)
+	# The map takes the rest.
+	assert_float(overworld.map_view.size.x).is_greater(3440.0 - widest - 1.0 - 32.0)
+	map.queue_free()
+
+
+func test_a_battle_keeps_its_formation_centred_on_a_wide_view() -> void:
+	ScreenFit.emulate(get_tree().root, Vector2(3440, 1440))
+	var flow: DemoRunFlow = await ScreenFit.open("act1_fight_detailed", self)
+	var field: Control = flow.battle_screen.find_child("Field", true, false)
+	var widest := float(UiIcons.kit("battle.max_field_width", 1440))
+	assert_float(field.size.x).is_equal_approx(widest, 1.0)
+	assert_float(field.get_global_rect().get_center().x).is_equal_approx(1720.0, 2.0)
+	# On the smallest view it takes the whole width.
+	ScreenFit.emulate(get_tree().root, Vector2(1280, 820))
+	for i in 4:
+		await get_tree().process_frame
+	assert_float(field.size.x).is_equal_approx(1280.0 - 32.0, 1.0)
+	flow.queue_free()

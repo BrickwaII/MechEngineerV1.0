@@ -46,14 +46,15 @@ static func screen_ids() -> Array[String]:
 
 
 ## The distinct views (interface pixels) the supported windows give at every
-## interface size, smallest first.
+## interface size in every scale mode, smallest first.
 static func view_sizes() -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for window in WINDOWS:
-		for size: float in FeelData.settings().get("ui_scale_options", [0.0]):
-			var view := WindowFit.view_size(window, size).round()
-			if not view in out:
-				out.append(view)
+		for mode: String in FeelData.settings().get("scale_mode_options", [WindowFit.FIT]):
+			for size: float in FeelData.settings().get("ui_scale_options", [0.0]):
+				var view := WindowFit.view_size(window, size, mode).round()
+				if not view in out:
+					out.append(view)
 	out.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x * a.y < b.x * b.y)
 	return out
 
@@ -186,7 +187,7 @@ static func emulate(root: Window, view: Vector2) -> void:
 ## Back to fitting the window.
 static func restore(root: Window) -> void:
 	WindowFit.held = false
-	WindowFit.apply(root, GameSettings.shared().ui_scale)
+	WindowFit.apply(root, GameSettings.shared().ui_scale, GameSettings.shared().scale_mode)
 
 
 ## Opens each screen in `ids` once and checks it at each of `views` (none:

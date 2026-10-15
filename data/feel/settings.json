@@ -11,10 +11,13 @@
 		"animation_speed": "1x",
 		"ui_scale": 0.0,
 		"fullscreen": false,
+		"scale_mode": "fit",
 		"whats_new_seen": ""
 	},
 	"_ui_scale_comment": "Interface size: 0 is Auto (the largest scale step that fits the window). A fixed size is capped so the view never gets smaller than display.min_size.",
 	"ui_scale_options": [0.0, 1.0, 1.5, 2.0, 2.5, 3.0],
+	"_scale_mode_comment": "Scaling: fit scales the 1280x820 design up to fill the window (sharp text, art pixels a little uneven at in-between sizes); crisp uses whole scale_step steps only. TODO(decision: ui-scale-mode): fit is the default.",
+	"scale_mode_options": ["fit", "crisp"],
 	"display": {
 		"_comment": "How the game fills the window (ui/common/window_fit.gd). min_size is the smallest view the layouts are built for, in interface pixels, and the smallest window. Above it the scale grows in scale_step steps, which keeps the pixel art (drawn at 2x) crisp; below it the view shrinks to fit.",
 		"min_size": [1280, 820],

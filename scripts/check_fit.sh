@@ -4,6 +4,7 @@
 # of each screen. The headless half of the same check runs with the tests
 # (tests/ui/fit/); this one sees what only a display shows: the real stretch,
 # fonts as drawn, the window's own size.
+# Each size runs in both scale modes (Fit window and Crisp pixels).
 # Usage: scripts/check_fit.sh [out_dir] [WIDTHxHEIGHT ...]
 # Needs Godot 4.6 as `godot` on PATH or in $GODOT_BIN, and xvfb-run.
 set -uo pipefail
@@ -35,14 +36,16 @@ if [ ! -f .godot/global_script_class_cache.cfg ]; then
 fi
 
 failed=0
-for size in "${sizes[@]}"; do
-	echo "== $size"
-	xvfb-run -a -s "-screen 0 ${size}x24" "$godot_bin" --path . --rendering-driver opengl3 \
-		--resolution "$size" --remote-debug tcp://127.0.0.1:0 \
-		-s res://ui/demo/check_fit.gd -- "$out_dir/$size" 2>&1 \
-		| grep -E "^[a-z0-9_]+: [0-9]+x[0-9]+ |screens fit|SCRIPT ERROR"
-	if [ "${PIPESTATUS[0]}" -ne 0 ]; then
-		failed=1
-	fi
+for mode in fit crisp; do
+	for size in "${sizes[@]}"; do
+		echo "== $size $mode"
+		xvfb-run -a -s "-screen 0 ${size}x24" "$godot_bin" --path . --rendering-driver opengl3 \
+			--resolution "$size" --remote-debug tcp://127.0.0.1:0 \
+			-s res://ui/demo/check_fit.gd -- "$out_dir/$mode/$size" "mode=$mode" 2>&1 \
+			| grep -E "^[a-z0-9_]+: [0-9]+x[0-9]+ |screens fit|SCRIPT ERROR"
+		if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+			failed=1
+		fi
+	done
 done
 exit $failed

@@ -14,6 +14,7 @@ signal closed
 const SCENE_PATH := "res://ui/common/settings/settings_screen.tscn"
 const OVERLAY_LAYER := 100
 const SPEED_LABELS := {"1x": "1x", "1.5x": "1.5x", "2x": "2x", "skip": "Skip"}
+const SCALE_MODE_LABELS := {"fit": "Fit window", "crisp": "Crisp pixels"}
 
 ## Set before the screen enters the tree; defaults to GameSettings.shared().
 var settings: GameSettings
@@ -25,6 +26,7 @@ var reduced_toggle: CheckBox
 var fullscreen_toggle: CheckBox
 var speed_option: OptionButton
 var scale_option: OptionButton
+var scale_mode_option: OptionButton
 var close_button: Button
 var reset_button: Button
 
@@ -124,6 +126,19 @@ func _build() -> void:
 	grid = _grid(box)
 	fullscreen_toggle = _toggle_row(grid, "fullscreen", "Fullscreen")
 	fullscreen_toggle.name = "FullscreenToggle"
+	grid.add_child(_label("Scaling"))
+	scale_mode_option = OptionButton.new()
+	scale_mode_option.name = "ScaleModeOption"
+	var modes: Array = FeelData.settings().get("scale_mode_options", [WindowFit.FIT])
+	for i in modes.size():
+		scale_mode_option.add_item(SCALE_MODE_LABELS.get(modes[i], str(modes[i])), i)
+		scale_mode_option.set_item_metadata(i, str(modes[i]))
+	scale_mode_option.item_selected.connect(func(index: int) -> void:
+		_change("scale_mode", scale_mode_option.get_item_metadata(index)))
+	UiTooltip.attach(scale_mode_option, "Scaling", "Fit window: the interface grows to fill the window. "
+		+ "Crisp pixels: it grows in whole steps only, so every pixel of the art is the same size.")
+	grid.add_child(scale_mode_option)
+	grid.add_child(Control.new())
 	grid.add_child(_label("Interface size"))
 	scale_option = OptionButton.new()
 	scale_option.name = "UiScaleOption"
@@ -234,13 +249,16 @@ func _refresh() -> void:
 	for i in speed_option.item_count:
 		if speed_option.get_item_metadata(i) == settings.animation_speed:
 			speed_option.select(i)
+	for i in scale_mode_option.item_count:
+		if scale_mode_option.get_item_metadata(i) == settings.scale_mode:
+			scale_mode_option.select(i)
 	# Sizes too big for this window are greyed out; Auto names the size it picked.
 	var window := _window_size()
 	for i in scale_option.item_count:
 		var size := float(scale_option.get_item_metadata(i))
-		scale_option.set_item_disabled(i, not WindowFit.fits(window, size))
+		scale_option.set_item_disabled(i, not WindowFit.fits(window, size, settings.scale_mode))
 		if size <= 0.0:
-			scale_option.set_item_text(i, "Auto (%s)" % _scale_text(WindowFit.scale_for(window)))
+			scale_option.set_item_text(i, "Auto (%s)" % _scale_text(WindowFit.scale_for(window, 0.0, settings.scale_mode)))
 		if is_equal_approx(size, settings.ui_scale):
 			scale_option.select(i)
 	_refreshing = false
