@@ -96,7 +96,7 @@ func test_reset_clears_every_choice() -> void:
 ## The real board with one unbuilt option added (every listed option is built
 ## now), so the unbuilt-option handling stays covered.
 func _board_with_unbuilt() -> Switchboard:
-	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Switchboard.DATA_PATH))
+	var data: Dictionary = JsonFile.read(Switchboard.DATA_PATH)
 	for d: Dictionary in data.decisions:
 		if d.id == "tier-rule":
 			d.options.append({"id": "not_yet", "name": "Not built yet", "built": false})

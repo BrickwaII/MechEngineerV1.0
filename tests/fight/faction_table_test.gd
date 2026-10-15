@@ -16,7 +16,7 @@ func before_test() -> void:
 
 
 static func _read(path: String) -> Dictionary:
-	return JSON.parse_string(FileAccess.get_file_as_string(path))
+	return JsonFile.read(path)
 
 
 ## Act id -> every region id of every map variant of the act.

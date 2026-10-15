@@ -2,7 +2,7 @@ extends GdUnitTestSuite
 
 
 func _json(path: String) -> Dictionary:
-	return JSON.parse_string(FileAccess.get_file_as_string(path))
+	return JsonFile.read(path)
 
 
 func _valid_dicts() -> Array[Dictionary]:

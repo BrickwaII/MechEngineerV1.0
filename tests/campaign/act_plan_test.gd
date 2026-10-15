@@ -32,7 +32,7 @@ func _campaign(plan: ActPlan, act: int, state: RunState = null) -> Campaign:
 
 
 func _plan_dict() -> Dictionary:
-	return JSON.parse_string(FileAccess.get_file_as_string(ACTS))
+	return JsonFile.read(ACTS)
 
 
 func test_shipped_acts_are_seattle_then_north_america_then_the_world() -> void:

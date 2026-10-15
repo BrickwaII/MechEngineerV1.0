@@ -23,7 +23,7 @@ func test_the_shipped_file_lists_every_known_option_with_no_errors() -> void:
 
 
 func test_every_campaign_option_is_built() -> void:
-	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(CampaignVariants.DEFAULT_PATH))
+	var data: Dictionary = JsonFile.read(CampaignVariants.DEFAULT_PATH)
 	for entry: Dictionary in data.decisions:
 		if CampaignVariants.KNOWN.has(entry.id):
 			for o: Dictionary in entry.options:

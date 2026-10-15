@@ -184,7 +184,7 @@ func test_f8_writes_a_demo_report_away_from_the_runs() -> void:
 	assert_bool(get_tree().paused).is_false()
 	var dir := _flow.last_report_dir
 	assert_str(dir.get_base_dir()).is_equal(REPORTS.path_join("test"))
-	var note: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(dir.path_join("note.json")))
+	var note: Dictionary = JsonFile.read(dir.path_join("note.json"))
 	assert_bool(bool(note.demo)).is_true()
 	assert_str(str(note.scenario)).is_equal("test")
 	for name in JOURNAL_NAMES:
