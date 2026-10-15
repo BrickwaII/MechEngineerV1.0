@@ -1,6 +1,8 @@
 {
 	"_comment": "Defaults for the settings screen. Player choices are saved to user://settings.cfg.",
 	"save_path": "user://settings.cfg",
+	"_version_comment": "The settings file version this build writes. Raise it when a saved value must be read differently, and add the step to GameSettings._migrate(). 2: ui_scale 1.0 saved by older builds (the old default) loads as Auto.",
+	"version": 2,
 	"defaults": {
 		"music_volume": 0.7,
 		"effects_volume": 0.8,
