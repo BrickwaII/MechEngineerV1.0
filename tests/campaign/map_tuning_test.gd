@@ -28,7 +28,7 @@ func test_shipped_tuning_loads_with_the_stated_numbers() -> void:
 
 
 func test_a_missing_key_is_an_error() -> void:
-	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(TUNING))
+	var data: Dictionary = JsonFile.read(TUNING)
 	(data["grid"] as Dictionary).erase("defeat_multiplier")
 	var t := MapTuning.from_dict(data)
 	assert_array(t.errors).contains(["tuning is missing 'grid.defeat_multiplier'"])
@@ -73,6 +73,6 @@ func test_a_bad_base_is_an_error() -> void:
 
 
 func test_a_bad_node_style_is_an_error() -> void:
-	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(TUNING))
+	var data: Dictionary = JsonFile.read(TUNING)
 	data["view"]["node_style"] = "huge"
 	assert_bool(MapTuning.from_dict(data).is_valid()).is_false()

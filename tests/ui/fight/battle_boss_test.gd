@@ -70,7 +70,7 @@ func test_showcase_bosses_never_appear_in_a_run() -> void:
 	for level: int in table.levels:
 		for id: String in bosses:
 			assert_array(table.levels[level].pool).not_contains([id])
-	var factions: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/combat/factions.json")).factions
+	var factions: Dictionary = JsonFile.read("res://data/combat/factions.json").factions
 	for f: String in factions:
 		for unit: Dictionary in factions[f].units:
 			for id: String in bosses:

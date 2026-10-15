@@ -26,7 +26,7 @@ func test_every_skill_in_the_catalog_has_its_own_look_and_sound() -> void:
 
 
 func test_bot_skills_from_skills_json_all_have_a_look() -> void:
-	var catalog: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/bot_data/skills.json"))
+	var catalog: Dictionary = JsonFile.read("res://data/bot_data/skills.json")
 	for entry: Dictionary in catalog.skills:
 		assert_dict(SkillFx.spec(SkillFx.slug(entry.name))).override_failure_message(entry.name).is_not_empty()
 

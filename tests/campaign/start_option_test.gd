@@ -107,7 +107,7 @@ func test_the_start_pressure_factor_survives_a_save() -> void:
 
 
 func test_a_start_naming_an_unknown_region_is_rejected() -> void:
-	var d: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(SEATTLE))
+	var d: Dictionary = JsonFile.read(SEATTLE)
 	d["starts"][0]["regions"] = ["shoreline", "atlantis"]
 	assert_array(RegionMap.from_dict(d).errors).contains(["start 'north_end' lists unknown region 'atlantis'"])
 

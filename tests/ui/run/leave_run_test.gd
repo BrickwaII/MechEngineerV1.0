@@ -43,34 +43,6 @@ func _frames(n: int) -> void:
 		await get_tree().process_frame
 
 
-func _draft() -> void:
-	var screen := _flow.draft_screen
-	for i in screen.picker.squad_size():
-		screen.cards[screen.picker.bots()[i].id].pressed.emit()
-	screen.start_button.pressed.emit()
-	await _frames(1)
-
-
-func _adjacent_target() -> String:
-	var campaign: Campaign = _flow.overworld.campaign
-	var best: MapRegion = null
-	for region in campaign.map.regions:
-		if campaign.standing(region.id) == Campaign.Standing.IN_RANGE and (best == null or region.defense < best.defense):
-			best = region
-	return best.id
-
-
-func _await_stage(stage: RunFlow.Stage) -> void:
-	var guard := 0
-	while _flow.stage != stage and guard < 60:
-		await _frames(1)
-		guard += 1
-
-
-func _journal() -> Array[Dictionary]:
-	return RunJournal.read_file(RunFolder.journal_path(_flow.run_dir))
-
-
 func _escape() -> void:
 	var key := InputEventKey.new()
 	key.keycode = KEY_ESCAPE
@@ -86,7 +58,7 @@ func _saved_state() -> Dictionary:
 
 func test_esc_pauses_the_map_under_the_menu_and_esc_resumes() -> void:
 	await _open()
-	await _draft()
+	await RunData.draft(_flow)
 	await _escape()
 	assert_object(_flow.pause_menu).is_not_null()
 	assert_bool(get_tree().paused).is_true()
@@ -103,7 +75,7 @@ func test_esc_pauses_the_map_under_the_menu_and_esc_resumes() -> void:
 
 func test_the_menu_stays_shut_under_another_overlay() -> void:
 	await _open()
-	await _draft()
+	await RunData.draft(_flow)
 	_flow.open_feedback()
 	assert_object(_flow.open_pause_menu()).is_null()
 	_flow.close_feedback()
@@ -115,7 +87,7 @@ func test_the_menu_stays_shut_under_another_overlay() -> void:
 
 func test_main_menu_from_the_map_saves_first_and_journals_the_exit() -> void:
 	await _open()
-	await _draft()
+	await RunData.draft(_flow)
 	var overworld: Control = _flow.overworld
 	assert_object(overworld.home_button).is_not_null()
 	assert_str(overworld.home_button.action_icon_id).is_equal("action_home")
@@ -128,7 +100,7 @@ func test_main_menu_from_the_map_saves_first_and_journals_the_exit() -> void:
 	assert_int(_exits).is_equal(1)
 	assert_bool(get_tree().paused).is_false()
 	assert_dict(_saved_state()).is_equal(state)
-	var exit: Dictionary = _journal().filter(func(l: Dictionary) -> bool: return l.get("action") == "exit")[0]
+	var exit: Dictionary = RunData.journal(_flow).filter(func(l: Dictionary) -> bool: return l.get("action") == "exit")[0]
 	assert_str(str(exit.screen)).is_equal("map")
 	assert_bool(bool(exit.mid_battle)).is_false()
 	assert_str(RunFolder.latest_continuable(RUNS_ROOT)).is_equal(_flow.run_dir)
@@ -136,7 +108,7 @@ func test_main_menu_from_the_map_saves_first_and_journals_the_exit() -> void:
 
 func test_home_on_the_map_leaves_at_once() -> void:
 	await _open()
-	await _draft()
+	await RunData.draft(_flow)
 	_flow.overworld.home_button.pressed.emit()
 	assert_int(_exits).is_equal(1)
 	assert_object(_flow.pause_menu).is_null()
@@ -144,9 +116,9 @@ func test_home_on_the_map_leaves_at_once() -> void:
 
 func test_leaving_mid_battle_asks_then_comes_back_to_the_map_before_the_fight() -> void:
 	await _open()
-	await _draft()
+	await RunData.draft(_flow)
 	var overworld: Control = _flow.overworld
-	var target := _adjacent_target()
+	var target := RunData.adjacent_target(_flow)
 	var before: Dictionary = overworld.campaign.state.to_dict()
 	overworld._on_attack(target)
 	await _frames(1)
@@ -179,7 +151,7 @@ func test_leaving_mid_battle_asks_then_comes_back_to_the_map_before_the_fight() 
 	assert_int(_exits).is_equal(1)
 	assert_bool(get_tree().paused).is_false()
 	assert_dict(_saved_state()).is_equal(before)
-	var lines := _journal()
+	var lines := RunData.journal(_flow)
 	var ends := lines.filter(func(l: Dictionary) -> bool: return l.kind == RunJournal.KIND_FIGHT_END)
 	assert_str(str(ends[-1].outcome)).is_equal(RunJournal.OUTCOME_ABANDONED)
 	var exit: Dictionary = lines.filter(func(l: Dictionary) -> bool: return l.get("action") == "exit")[0]
@@ -198,19 +170,19 @@ func test_leaving_mid_battle_asks_then_comes_back_to_the_map_before_the_fight() 
 	assert_dict(campaign.state.to_dict()).is_equal(before)
 	assert_bool(campaign.can_attack(target)).is_true()
 	_flow.overworld._on_wait()
-	var replay := RunReplay.new(_journal())
+	var replay := RunReplay.new(RunData.journal(_flow))
 	await replay.run()
 	assert_array(replay.mismatches).is_empty()
-	var timeline := "\n".join(RunTimeline.lines(_journal()))
+	var timeline := "\n".join(RunTimeline.lines(RunData.journal(_flow)))
 	assert_str(timeline).contains("ABANDONED")
 	assert_str(timeline).contains("left for the main menu (from the fight, mid-battle)")
 
 
 func test_home_on_the_readout_leaves_with_the_fight_saved() -> void:
 	await _open()
-	await _draft()
+	await RunData.draft(_flow)
 	var overworld: Control = _flow.overworld
-	var target := _adjacent_target()
+	var target := RunData.adjacent_target(_flow)
 	overworld._on_attack(target)
 	await _frames(1)
 	var screen := _flow.battle_screen
@@ -221,12 +193,12 @@ func test_home_on_the_readout_leaves_with_the_fight_saved() -> void:
 		else:
 			await _frames(1)
 		guard += 1
-	await _await_stage(RunFlow.Stage.POST_FIGHT)
+	await RunData.await_stage(_flow, RunFlow.Stage.POST_FIGHT)
 	assert_object(_flow.readout_home_button).is_not_null()
 	_flow.readout_home_button.pressed.emit()
 	assert_int(_exits).is_equal(1)
 	assert_dict(_saved_state()).is_equal(overworld.campaign.state.to_dict())
-	var exit: Dictionary = _journal().filter(func(l: Dictionary) -> bool: return l.get("action") == "exit")[0]
+	var exit: Dictionary = RunData.journal(_flow).filter(func(l: Dictionary) -> bool: return l.get("action") == "exit")[0]
 	assert_str(str(exit.screen)).is_equal("post_fight")
 
 

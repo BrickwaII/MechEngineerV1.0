@@ -39,26 +39,6 @@ func _frames(n: int) -> void:
 		await get_tree().process_frame
 
 
-## Picks the first squad_size bots of the draft, as clicking their cards does,
-## and deploys them.
-func _draft() -> void:
-	var screen := _flow.draft_screen
-	for i in screen.picker.squad_size():
-		screen.cards[screen.picker.bots()[i].id].pressed.emit()
-	screen.start_button.pressed.emit()
-	await _frames(1)
-
-
-## The weakest hostile region next to the network.
-func _adjacent_target() -> String:
-	var campaign: Campaign = _flow.overworld.campaign
-	var best: MapRegion = null
-	for region in campaign.map.regions:
-		if campaign.standing(region.id) == Campaign.Standing.IN_RANGE and (best == null or region.defense < best.defense):
-			best = region
-	return best.id
-
-
 ## Plays the battle screen to its end, each bot turn by mouse.
 func _play_battle(screen: BattleScreen) -> void:
 	var fight := screen.fight
@@ -68,13 +48,6 @@ func _play_battle(screen: BattleScreen) -> void:
 			Helpers.play_support_turn_by_mouse(screen)
 		else:
 			await _frames(1)
-		guard += 1
-
-
-func _await_stage(stage: RunFlow.Stage) -> void:
-	var guard := 0
-	while _flow.stage != stage and guard < 30:
-		await _frames(1)
 		guard += 1
 
 
@@ -95,7 +68,7 @@ func test_a_new_run_opens_the_seeded_draft() -> void:
 
 func test_the_drafted_bots_reach_the_map_through_real_contracts() -> void:
 	await _open()
-	await _draft()
+	await RunData.draft(_flow)
 	assert_int(_flow.stage).is_equal(RunFlow.Stage.MAP)
 	assert_object(_flow.draft_screen).is_null()
 	var overworld: Control = _flow.overworld
@@ -127,7 +100,7 @@ func test_the_seeded_start_follows_the_seed() -> void:
 
 func test_the_start_choice_is_a_dev_option() -> void:
 	await _open(false, true)
-	await _draft()
+	await RunData.draft(_flow)
 	var overworld: Control = _flow.overworld
 	assert_bool(overworld._modal.visible).is_true()
 	var options: Array = overworld.campaign.map.start_options()
@@ -137,10 +110,10 @@ func test_the_start_choice_is_a_dev_option() -> void:
 
 func test_one_whole_run_map_fight_post_fight_map() -> void:
 	await _open()
-	await _draft()
+	await RunData.draft(_flow)
 	var overworld: Control = _flow.overworld
 	var campaign: Campaign = overworld.campaign
-	var target := _adjacent_target()
+	var target := RunData.adjacent_target(_flow)
 	var grid_before := campaign.state.grid
 	var time_before := campaign.state.time_points
 	var before := _personalities()
@@ -161,7 +134,7 @@ func test_one_whole_run_map_fight_post_fight_map() -> void:
 
 	var fight := screen.fight
 	await _play_battle(screen)
-	await _await_stage(RunFlow.Stage.POST_FIGHT)
+	await RunData.await_stage(_flow, RunFlow.Stage.POST_FIGHT, 30)
 	assert_int(_flow.stage).is_equal(RunFlow.Stage.POST_FIGHT)
 	var won := fight.outcome == FightResult.Outcome.VICTORY
 	assert_bool(won).is_true()
@@ -213,10 +186,10 @@ func test_one_whole_run_map_fight_post_fight_map() -> void:
 
 func test_a_lost_fight_leaves_the_region_hostile_and_still_trains_the_bots() -> void:
 	await _open()
-	await _draft()
+	await RunData.draft(_flow)
 	var overworld: Control = _flow.overworld
 	var campaign: Campaign = overworld.campaign
-	var target := _adjacent_target()
+	var target := RunData.adjacent_target(_flow)
 	overworld._on_attack(target)
 	await _frames(1)
 	var screen := _flow.battle_screen
@@ -229,7 +202,7 @@ func test_a_lost_fight_leaves_the_region_hostile_and_still_trains_the_bots() -> 
 		else:
 			await _frames(1)
 		guard += 1
-	await _await_stage(RunFlow.Stage.POST_FIGHT)
+	await RunData.await_stage(_flow, RunFlow.Stage.POST_FIGHT, 30)
 	assert_bool(fight.outcome == FightResult.Outcome.DEFEAT).is_true()
 	assert_bool(campaign.is_owned(target)).is_false()
 	assert_bool(_flow.fight_service.last_report.is_victory()).is_false()
@@ -242,9 +215,9 @@ func test_a_lost_fight_leaves_the_region_hostile_and_still_trains_the_bots() -> 
 
 func test_auto_fights_run_the_same_flow_headless() -> void:
 	await _open(true)
-	await _draft()
+	await RunData.draft(_flow)
 	var overworld: Control = _flow.overworld
-	var target := _adjacent_target()
+	var target := RunData.adjacent_target(_flow)
 	await overworld._on_attack(target)
 	assert_int(_flow.stage).is_equal(RunFlow.Stage.POST_FIGHT)
 	var report := _flow.fight_service.last_report
@@ -255,8 +228,8 @@ func test_auto_fights_run_the_same_flow_headless() -> void:
 
 func test_f3_shows_the_debug_overlay_on_the_battle_screen() -> void:
 	await _open()
-	await _draft()
-	_flow.overworld._on_attack(_adjacent_target())
+	await RunData.draft(_flow)
+	_flow.overworld._on_attack(RunData.adjacent_target(_flow))
 	await _frames(1)
 	var overlay := _flow.debug_overlay
 	var key := InputEventKey.new()
@@ -269,12 +242,12 @@ func test_f3_shows_the_debug_overlay_on_the_battle_screen() -> void:
 	assert_bool(overlay.visible).is_false()
 	# Finish the fight, so the map's attack is not left waiting on it.
 	await _play_battle(_flow.battle_screen)
-	await _await_stage(RunFlow.Stage.POST_FIGHT)
+	await RunData.await_stage(_flow, RunFlow.Stage.POST_FIGHT, 30)
 
 
 func test_new_run_on_the_map_goes_back_to_the_draft() -> void:
 	await _open()
-	await _draft()
+	await RunData.draft(_flow)
 	_flow.overworld._on_new_run()
 	await _frames(1)
 	assert_int(_flow.stage).is_equal(RunFlow.Stage.DRAFT)
@@ -284,9 +257,9 @@ func test_new_run_on_the_map_goes_back_to_the_draft() -> void:
 
 func test_save_and_load_round_trip_with_bots() -> void:
 	await _open(true)
-	await _draft()
+	await RunData.draft(_flow)
 	var overworld: Control = _flow.overworld
-	await overworld._on_attack(_adjacent_target())
+	await overworld._on_attack(RunData.adjacent_target(_flow))
 	_flow.continue_to_map()
 	# Into act 2, so the act is part of what comes back.
 	assert_str(overworld.advance_act()).is_empty()
@@ -326,10 +299,10 @@ func test_save_and_load_round_trip_with_bots() -> void:
 
 func test_loading_over_a_run_in_progress_replaces_it() -> void:
 	await _open(true)
-	await _draft()
+	await RunData.draft(_flow)
 	assert_int(_flow.save_run(SAVE_PATH)).is_equal(OK)
 	var saved_owned := Array(_flow.overworld.campaign.state.owned)
-	await _flow.overworld._on_attack(_adjacent_target())
+	await _flow.overworld._on_attack(RunData.adjacent_target(_flow))
 	_flow.continue_to_map()
 	var service_before := _flow.fight_service
 	assert_bool(_flow.load_run(SAVE_PATH)).is_true()
@@ -340,7 +313,7 @@ func test_loading_over_a_run_in_progress_replaces_it() -> void:
 
 func test_a_missing_save_keeps_the_run() -> void:
 	await _open(true)
-	await _draft()
+	await RunData.draft(_flow)
 	var campaign: Campaign = _flow.overworld.campaign
 	assert_bool(_flow.load_run("user://no_such_run.tres")).is_false()
 	assert_object(_flow.overworld.campaign).is_same(campaign)
@@ -349,7 +322,7 @@ func test_a_missing_save_keeps_the_run() -> void:
 
 func test_a_fight_in_the_run_levels_up_the_bot_skills_it_used() -> void:
 	await _open()
-	await _draft()
+	await RunData.draft(_flow)
 	var tuning := PostFightTuning.load_default()
 	# Bank one use short of a level on every skill of every fielded bot.
 	var levels := {}
@@ -357,11 +330,11 @@ func test_a_fight_in_the_run_levels_up_the_bot_skills_it_used() -> void:
 		for skill in bot.skills:
 			_flow.ledger.set_banked(bot.id, skill.display_name, tuning.uses_to_next(skill.level) - 1)
 			levels["%s/%s" % [bot.id, skill.display_name]] = skill.level
-	_flow.overworld._on_attack(_adjacent_target())
+	_flow.overworld._on_attack(RunData.adjacent_target(_flow))
 	await _frames(1)
 	var fight := _flow.battle_screen.fight
 	await _play_battle(_flow.battle_screen)
-	await _await_stage(RunFlow.Stage.POST_FIGHT)
+	await RunData.await_stage(_flow, RunFlow.Stage.POST_FIGHT, 30)
 	var report := _flow.fight_service.last_report
 	var level_ups := 0
 	for bot in _flow.squad.get_fielded():

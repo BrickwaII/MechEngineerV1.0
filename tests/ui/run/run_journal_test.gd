@@ -39,34 +39,6 @@ func _frames(n: int) -> void:
 		await get_tree().process_frame
 
 
-func _draft() -> void:
-	var screen := _flow.draft_screen
-	for i in screen.picker.squad_size():
-		screen.cards[screen.picker.bots()[i].id].pressed.emit()
-	screen.start_button.pressed.emit()
-	await _frames(1)
-
-
-func _adjacent_target() -> String:
-	var campaign: Campaign = _flow.overworld.campaign
-	var best: MapRegion = null
-	for region in campaign.map.regions:
-		if campaign.standing(region.id) == Campaign.Standing.IN_RANGE and (best == null or region.defense < best.defense):
-			best = region
-	return best.id
-
-
-func _await_stage(stage: RunFlow.Stage) -> void:
-	var guard := 0
-	while _flow.stage != stage and guard < 60:
-		await _frames(1)
-		guard += 1
-
-
-func _journal() -> Array[Dictionary]:
-	return RunJournal.read_file(RunFolder.journal_path(_flow.run_dir))
-
-
 func _kinds(lines: Array[Dictionary]) -> Array:
 	return lines.map(func(l: Dictionary) -> String: return str(l.kind))
 
@@ -98,7 +70,7 @@ func _play_battle_by_mouse() -> void:
 					screen.send(FightCommand.cancel())
 					break
 		Helpers.play_support_turn_by_mouse(screen)
-	await _await_stage(RunFlow.Stage.POST_FIGHT)
+	await RunData.await_stage(_flow, RunFlow.Stage.POST_FIGHT)
 	_flow.continue_to_map()
 	await _frames(1)
 
@@ -115,7 +87,7 @@ func test_a_new_run_gets_its_own_folder_with_journal_and_summary() -> void:
 	assert_str(_flow.run_dir.get_base_dir()).is_equal(RUNS_ROOT)
 	assert_bool(FileAccess.file_exists(RunFolder.journal_path(_flow.run_dir))).is_true()
 	assert_bool(DirAccess.dir_exists_absolute(RunFolder.reports_path(_flow.run_dir))).is_true()
-	assert_array(_kinds(_journal())).is_equal(["run_start", "session", "draft_open"])
+	assert_array(_kinds(RunData.journal(_flow))).is_equal(["run_start", "session", "draft_open"])
 	var first := _flow.run_dir
 	_flow.new_run()
 	# A second run with the same seed in the same minute never reuses the folder.
@@ -126,7 +98,7 @@ func test_a_new_run_gets_its_own_folder_with_journal_and_summary() -> void:
 
 func test_a_run_keeps_only_the_drafted_bots() -> void:
 	await _open(true)
-	await _draft()
+	await RunData.draft(_flow)
 	assert_int(_flow.squad.bots.size()).is_equal(_flow.squad.squad_size)
 	assert_array(_flow.squad.bots.map(func(b: Bot) -> String: return b.id)).is_equal(Array(_flow.squad.fielded_ids))
 	# The autosave at the map start holds the squad only.
@@ -141,21 +113,21 @@ func test_the_squad_size_variant_keeps_four_of_six() -> void:
 	board.save()
 	await _open(true)
 	assert_int(_flow.draft_screen.picker.bots().size()).is_equal(6)
-	await _draft()
+	await RunData.draft(_flow)
 	assert_int(_flow.squad.bots.size()).is_equal(4)
-	var start: Dictionary = _journal()[0]
+	var start: Dictionary = RunData.journal(_flow)[0]
 	assert_int(int(start.squad_size)).is_equal(4)
 	assert_int(int(start.draft_size)).is_equal(6)
 
 
 func test_a_played_run_replays_exactly_from_its_journal() -> void:
 	await _open()
-	await _draft()
+	await RunData.draft(_flow)
 	var overworld: Control = _flow.overworld
 	overworld._on_wait()
 	var held: String = overworld.campaign.state.owned[0]
 	overworld._on_reinforce(held)
-	var target := _adjacent_target()
+	var target := RunData.adjacent_target(_flow)
 	_flow._on_region_selected(target)
 	overworld._on_attack(target)
 	await _frames(1)
@@ -168,7 +140,7 @@ func test_a_played_run_replays_exactly_from_its_journal() -> void:
 	assert_bool(_flow.load_run()).is_true()
 	_flow.overworld._on_wait()
 
-	var lines := _journal()
+	var lines := RunData.journal(_flow)
 	var kinds := _kinds(lines)
 	for kind in ["run_start", "session", "draft_open", "draft_done", "map_start", "snapshot", "action",
 			"fight_start", "command", "resolved", "fight_end", "post_fight"]:
@@ -196,10 +168,10 @@ func test_a_played_run_replays_exactly_from_its_journal() -> void:
 
 func test_a_changed_journal_is_reported_as_a_mismatch() -> void:
 	await _open(true)
-	await _draft()
-	_flow.overworld._on_attack(_adjacent_target())
+	await RunData.draft(_flow)
+	_flow.overworld._on_attack(RunData.adjacent_target(_flow))
 	await _frames(3)
-	var lines := _journal()
+	var lines := RunData.journal(_flow)
 	for line in lines:
 		if line.kind == "snapshot" and line.reason == "fight":
 			line.state.grid = float(line.state.grid) + 5.0
@@ -210,7 +182,7 @@ func test_a_changed_journal_is_reported_as_a_mismatch() -> void:
 
 func test_an_act_zoom_is_journaled_and_replays() -> void:
 	await _open(true)
-	await _draft()
+	await RunData.draft(_flow)
 	var overworld: Control = _flow.overworld
 	var guard := 0
 	while not overworld.campaign.is_payload_due() and not overworld.campaign.is_lost() and guard < 600:
@@ -226,7 +198,7 @@ func test_an_act_zoom_is_journaled_and_replays() -> void:
 	await _frames(1)
 	assert_int(overworld.campaign.state.act).is_equal(1)
 	overworld._on_wait()
-	var lines := _journal()
+	var lines := RunData.journal(_flow)
 	var zoom := lines.filter(func(l: Dictionary) -> bool: return l.kind == "action" and l.action == "act_zoom")
 	assert_int(zoom.size()).is_equal(1)
 	assert_bool(lines.any(func(l: Dictionary) -> bool: return l.kind == "snapshot" and l.reason == "act")).is_true()
@@ -241,7 +213,7 @@ func test_an_act_zoom_is_journaled_and_replays() -> void:
 
 func test_continue_resumes_the_same_folder_and_journal() -> void:
 	await _open(true)
-	await _draft()
+	await RunData.draft(_flow)
 	_flow.overworld._on_wait()
 	assert_int(_flow.save_run()).is_equal(OK)
 	var dir := _flow.run_dir
@@ -254,18 +226,18 @@ func test_continue_resumes_the_same_folder_and_journal() -> void:
 	assert_str(_flow.run_dir).is_equal(dir)
 	assert_int(_flow.stage).is_equal(RunFlow.Stage.MAP)
 	assert_dict(_flow.overworld.campaign.state.to_dict()).is_equal(state)
-	var kinds := _kinds(_journal())
+	var kinds := _kinds(RunData.journal(_flow))
 	assert_int(kinds.count("run_start")).is_equal(1)
-	var sessions := _journal().filter(func(l: Dictionary) -> bool: return l.kind == "session").map(
+	var sessions := RunData.journal(_flow).filter(func(l: Dictionary) -> bool: return l.kind == "session").map(
 		func(l: Dictionary) -> String: return str(l.event))
 	assert_array(sessions).is_equal(["start", "end", "resume"])
 	_flow.overworld._on_wait()
-	assert_array((await _replay(_journal())).mismatches).is_empty()
+	assert_array((await _replay(RunData.journal(_flow))).mismatches).is_empty()
 
 
 func test_f8_pauses_and_writes_a_report_with_the_save_and_journal() -> void:
 	await _open(true)
-	await _draft()
+	await RunData.draft(_flow)
 	_flow.open_feedback()
 	assert_object(_flow.feedback_form).is_not_null()
 	assert_bool(get_tree().paused).is_true()
@@ -278,7 +250,7 @@ func test_f8_pauses_and_writes_a_report_with_the_save_and_journal() -> void:
 	assert_object(_flow.feedback_form).is_null()
 	var report := _flow.last_report_dir
 	assert_str(report.get_base_dir()).is_equal(RunFolder.reports_path(_flow.run_dir))
-	var note: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(report.path_join("note.json")))
+	var note: Dictionary = JsonFile.read(report.path_join("note.json"))
 	assert_str(str(note.note)).is_equal("The odds felt wrong.")
 	assert_str(str(note.category)).is_equal("bug")
 	assert_int(int(note.rating)).is_equal(4)
@@ -289,13 +261,13 @@ func test_f8_pauses_and_writes_a_report_with_the_save_and_journal() -> void:
 	assert_bool(note.has("variants")).is_true()
 	assert_bool(FileAccess.file_exists(report.path_join("run.res"))).is_true()
 	assert_bool(FileAccess.file_exists(report.path_join("journal.jsonl"))).is_true()
-	assert_str(str(_journal()[-1].kind)).is_equal("feedback")
+	assert_str(str(RunData.journal(_flow)[-1].kind)).is_equal("feedback")
 
 
 func test_the_form_and_the_map_open_the_run_folder() -> void:
 	await _open(true)
 	assert_object(_flow.folder_button).is_null()
-	await _draft()
+	await RunData.draft(_flow)
 	assert_object(_flow.folder_button.get_parent()).is_same(_flow.overworld.get("_wait_button").get_parent())
 	assert_str(_flow.folder_button.text).is_equal("RUN FOLDER")
 	_flow.folder_button.pressed.emit()
@@ -309,7 +281,7 @@ func test_the_form_and_the_map_open_the_run_folder() -> void:
 
 func test_a_lost_run_is_finished_in_its_summary() -> void:
 	await _open(true)
-	await _draft()
+	await RunData.draft(_flow)
 	var c: Campaign = _flow.overworld.campaign
 	# Lose every region: give the recorder the end it would see.
 	c.state.owned = PackedStringArray()
@@ -317,7 +289,7 @@ func test_a_lost_run_is_finished_in_its_summary() -> void:
 	var summary := RunFolder.read_summary(_flow.run_dir)
 	assert_bool(bool(summary.finished)).is_true()
 	assert_bool(bool(summary.won)).is_false()
-	var end := _journal().filter(func(l: Dictionary) -> bool: return l.kind == "run_end")
+	var end := RunData.journal(_flow).filter(func(l: Dictionary) -> bool: return l.kind == "run_end")
 	assert_int(end.size()).is_equal(1)
 	assert_bool(bool(end[0].won)).is_false()
 	summary["dir"] = _flow.run_dir
@@ -355,7 +327,7 @@ func test_stakes_actions_are_journaled_and_replay() -> void:
 	_flow.region_file = PAIR_MAP
 	var runner := scene_runner(auto_free(_flow))
 	await runner.simulate_frames(2)
-	await _draft()
+	await RunData.draft(_flow)
 	var overworld: Control = _flow.overworld
 	var c: Campaign = overworld.campaign
 	overworld._on_retreat("b")
@@ -372,7 +344,7 @@ func test_stakes_actions_are_journaled_and_replay() -> void:
 	overworld._on_fast_forward()
 	assert_bool(c.is_payload_due() or not c.pending_defense().is_empty()).is_true()
 
-	var lines := _journal()
+	var lines := RunData.journal(_flow)
 	var actions := lines.filter(func(l: Dictionary) -> bool: return l.kind == "action").map(
 		func(l: Dictionary) -> String: return str(l.action))
 	assert_array(actions).contains(["retreat", "attack", "repair", "fast_forward"])
@@ -388,7 +360,7 @@ func test_stakes_actions_are_journaled_and_replay() -> void:
 
 func test_reaching_the_loss_limit_ends_the_run_on_the_run_over_screen() -> void:
 	await _open(true)
-	await _draft()
+	await RunData.draft(_flow)
 	var overworld: Control = _flow.overworld
 	var c: Campaign = overworld.campaign
 	c.state.losses = c.stakes.loss_limit
@@ -408,13 +380,13 @@ func test_reaching_the_loss_limit_ends_the_run_on_the_run_over_screen() -> void:
 	_flow.run_over_screen.leave_button.pressed.emit()
 	assert_bool(left[0]).is_true()
 	# A run journal's replay still matches up to the end.
-	var ended := _journal().filter(func(l: Dictionary) -> bool: return l.kind == "run_end")
+	var ended := RunData.journal(_flow).filter(func(l: Dictionary) -> bool: return l.kind == "run_end")
 	assert_int(ended.size()).is_equal(1)
 
 
 func test_won_and_lost_fights_count_in_the_summary() -> void:
 	await _open(true)
-	await _draft()
+	await RunData.draft(_flow)
 	var c: Campaign = _flow.overworld.campaign
 	var request := FightRequest.new(FightRequest.Kind.ATTACK, "x", 1, c.squad_provider.get_squad())
 	c.fight_finished.emit(request, FightResult.new(FightResult.Outcome.DEFEAT))

@@ -22,7 +22,7 @@ const OLD := {
 
 
 static func pin() -> void:
-	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(FightVariants.DEFAULT_PATH))
+	var data: Dictionary = JsonFile.read(FightVariants.DEFAULT_PATH)
 	for entry: Dictionary in data.decisions:
 		if OLD.has(entry.get("id", "")):
 			entry["default"] = OLD[entry.id]
