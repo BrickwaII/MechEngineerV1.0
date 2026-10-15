@@ -1,4 +1,4 @@
-extends SceneTree
+extends CaptureScript
 ## Renders the battle presentation to PNGs for pull requests. Needs a display:
 ##     xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1280x820 \
 ##         -s res://ui/fight/demo/capture_battle.gd -- <out_dir>
@@ -15,15 +15,9 @@ const UnitView := preload("res://ui/fight/unit_view.gd")
 const UnitPanel := preload("res://ui/fight/unit_panel.gd")
 const STRIP_TIMES_MS := [0, 90, 160, 230, 280, 330, 400, 500]
 
-var out_dir := "res://ui/fight/screenshots"
-
 
 func _init() -> void:
-	var args := OS.get_cmdline_user_args()
-	if not args.is_empty():
-		out_dir = args[0]
-	DirAccess.make_dir_recursive_absolute(out_dir)
-	_run.call_deferred()
+	start("res://ui/fight/screenshots")
 
 
 func _squad(level := 1) -> Array[SquadMemberSummary]:
@@ -70,17 +64,10 @@ func _run() -> void:
 	quit()
 
 
-func _until_player_turn(screen: BattleScreen) -> void:
-	var guard := 0
-	while (not screen.handler.is_player_turn() or screen.presenter.is_busy()) and guard < 2000 and not screen.fight.is_over():
-		await process_frame
-		guard += 1
-
-
 func _capture_battle() -> void:
 	var screen := _screen()
-	await _settle(20)
-	await _until_player_turn(screen)
+	await frames(20)
+	await until_player_turn(screen)
 	var actor := screen.handler.actor()
 	var skill := "heavy_strike" if actor.has_skill("heavy_strike") else "arc_sweep" if actor.has_skill("arc_sweep") else "strike"
 	if not screen.handler.skill_problem(skill).is_empty():
@@ -88,17 +75,17 @@ func _capture_battle() -> void:
 	screen.on_skill_pressed(skill)
 	var target := screen.fight.living(Combatant.Side.ENEMY)[0]
 	screen.preview_target(target.id)
-	await _settle(12)
-	await _save("battle_preview")
+	await frames(12)
+	await save("battle_preview")
 	screen.on_unit_clicked(target.id, MOUSE_BUTTON_LEFT)
 	var beat := screen.presenter.queue[0] if not screen.presenter.queue.is_empty() else screen.presenter.current
-	var start := Time.get_ticks_msec()
+	var began := Time.get_ticks_msec()
 	var land_ms := int(beat.impact_at() * 1000.0) + 60
-	while Time.get_ticks_msec() - start < land_ms:
+	while Time.get_ticks_msec() - began < land_ms:
 		await process_frame
-	await _save("battle_mid_fight")
+	await save("battle_mid_fight")
 	screen.queue_free()
-	await _settle(4)
+	await frames(4)
 
 
 ## One Overcharge Shot at level 1, then at max level, frame by frame.
@@ -106,8 +93,8 @@ func _capture_strip() -> void:
 	var rows: Array[Image] = []
 	for level in [1, SkillFx.max_level()]:
 		var screen := _screen(level, 1, 3)
-		await _settle(20)
-		await _until_player_turn(screen)
+		await frames(20)
+		await until_player_turn(screen)
 		screen.enemy_turn_delay = 1000.0
 		var bolt := screen.fight.combatant("bolt")
 		var target := screen.fight.living(Combatant.Side.ENEMY)[0]
@@ -124,11 +111,11 @@ func _capture_strip() -> void:
 		var events: Array[FightEvent] = [used, hit]
 		var actor_rect := Rect2i(screen.unit_panels["bolt"].get_global_rect().grow(6))
 		var target_rect := Rect2i(screen.unit_panels[target.id].get_global_rect().grow(30))
-		var frames: Array[Image] = []
-		var start := Time.get_ticks_msec()
+		var shots: Array[Image] = []
+		var began := Time.get_ticks_msec()
 		screen.presenter.present(events)
 		for ms: int in STRIP_TIMES_MS:
-			while Time.get_ticks_msec() - start < ms:
+			while Time.get_ticks_msec() - began < ms:
 				await process_frame
 			await RenderingServer.frame_post_draw
 			var shot := root.get_texture().get_image()
@@ -139,10 +126,10 @@ func _capture_strip() -> void:
 			pair.fill(FeelData.color("background"))
 			pair.blit_rect(a, Rect2i(Vector2i.ZERO, a.get_size()), Vector2i(0, (pair.get_height() - a.get_height()) / 2))
 			pair.blit_rect(b, Rect2i(Vector2i.ZERO, b.get_size()), Vector2i(a.get_width() + 4, 0))
-			frames.append(pair)
-		rows.append(_strip(frames, "Lv %d" % level))
+			shots.append(pair)
+		rows.append(_strip(shots, "Lv %d" % level))
 		screen.queue_free()
-		await _settle(4)
+		await frames(4)
 	var out := Image.create(rows[0].get_width(), rows[0].get_height() * 2 + 16, false, Image.FORMAT_RGBA8)
 	out.fill(FeelData.color("background"))
 	out.blit_rect(rows[0], Rect2i(Vector2i.ZERO, rows[0].get_size()), Vector2i.ZERO)
@@ -152,15 +139,15 @@ func _capture_strip() -> void:
 
 
 ## Frames in a grid, four to a row, at full size.
-func _strip(frames: Array[Image], label: String) -> Image:
-	var w := frames[0].get_width()
-	var h := frames[0].get_height()
+func _strip(shots: Array[Image], label: String) -> Image:
+	var w := shots[0].get_width()
+	var h := shots[0].get_height()
 	var cols := 4
-	var rows := ceili(frames.size() / float(cols))
+	var rows := ceili(shots.size() / float(cols))
 	var out := Image.create(cols * w + (cols - 1) * 4, rows * h + (rows - 1) * 4, false, Image.FORMAT_RGBA8)
 	out.fill(FeelData.color("panel_border"))
-	for i in frames.size():
-		out.blit_rect(frames[i], Rect2i(0, 0, w, h), Vector2i((i % cols) * (w + 4), (i / cols) * (h + 4)))
+	for i in shots.size():
+		out.blit_rect(shots[i], Rect2i(0, 0, w, h), Vector2i((i % cols) * (w + 4), (i / cols) * (h + 4)))
 	print("strip ", label)
 	return out
 
@@ -193,16 +180,16 @@ func _capture_tiers() -> void:
 			view.size = UnitView.STAGE_SIZE + Vector2(40, 40)
 			page.add_child(view)
 			view.setup(look, false)
-	await _settle(10)
-	await _save("ally_tiers")
+	await frames(10)
+	await save("ally_tiers")
 	page.queue_free()
-	await _settle(4)
+	await frames(4)
 
 
 func _capture_statuses() -> void:
 	var screen := _screen(1, 4, 5)
-	await _settle(20)
-	await _until_player_turn(screen)
+	await frames(20)
+	await until_player_turn(screen)
 	screen.enemy_turn_delay = 1000.0
 	var f := screen.fight
 	var bolt := f.combatant("bolt")
@@ -216,15 +203,15 @@ func _capture_statuses() -> void:
 	screen.refresh()
 	if enemies.size() > 1:
 		screen.unit_panels[enemies[1].id].show_intent("aggressive", "charging Overload, then -> Bolt (?)", "changed: Bolt guarded", "wait")
-	await _settle(30)
-	await _save("status_icons")
+	await frames(30)
+	await save("status_icons")
 	screen.queue_free()
-	await _settle(4)
+	await frames(4)
 
 
 func _capture_victory() -> void:
 	var screen := _screen(4, 0, 2)
-	await _settle(10)
+	await frames(10)
 	var guard := 0
 	while not screen.fight.is_over() and guard < 400:
 		guard += 1
@@ -237,8 +224,8 @@ func _capture_victory() -> void:
 			screen.handler.resolve_enemy_turn()
 	while screen.presenter.is_busy():
 		await process_frame
-	await _settle(30)
-	await _save("victory")
+	await frames(30)
+	await save("victory")
 	screen.queue_free()
 
 
@@ -249,14 +236,3 @@ func _label(parent: Node, text: String, at: Vector2, variation: String) -> void:
 	if not variation.is_empty():
 		l.theme_type_variation = StringName(variation)
 	parent.add_child(l)
-
-
-func _settle(frames: int) -> void:
-	for i in frames:
-		await process_frame
-
-
-func _save(name: String) -> void:
-	await RenderingServer.frame_post_draw
-	root.get_texture().get_image().save_png(out_dir.path_join(name + ".png"))
-	print("saved ", name)

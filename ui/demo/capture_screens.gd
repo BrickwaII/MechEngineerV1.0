@@ -1,4 +1,4 @@
-extends SceneTree
+extends CaptureScript
 ## Before/after shots of the demo screens for UI pull requests: each scenario
 ## as it opens, then with a tooltip open on its first skill card (fights) or
 ## stat (maps, or a fight waiting on the enemy). Needs a display:
@@ -12,19 +12,9 @@ const DEFAULT_IDS: Array[String] = [
 	"act3_map_early", "act3_fight", "act3_boss",
 ]
 
-var out_dir := "user://capture_out"
-var only: PackedStringArray = []
-
 
 func _init() -> void:
-	var args := OS.get_cmdline_user_args()
-	if args.size() > 0:
-		out_dir = args[0]
-		only = args.slice(1)
-	if only.is_empty():
-		only = PackedStringArray(DEFAULT_IDS)
-	DirAccess.make_dir_recursive_absolute(out_dir)
-	_run.call_deferred()
+	start("user://capture_out", true, DEFAULT_IDS)
 
 
 func _run() -> void:
@@ -35,8 +25,8 @@ func _run() -> void:
 		flow.scenario = s
 		flow.folder_opener = func(_path: String) -> void: pass
 		root.add_child(flow)
-		await _frames(30 if s.kind == DemoScenario.KIND_FIGHT else 80)
-		await _save(s.id)
+		await frames(30 if s.kind == DemoScenario.KIND_FIGHT else 80)
+		await save(s.id)
 		var target := _tip_target(flow, s.kind == DemoScenario.KIND_FIGHT)
 		if target == null:
 			target = _tip_target(flow, false)
@@ -44,11 +34,11 @@ func _run() -> void:
 			# The tooltip closes once the pointer is away from its control.
 			root.warp_mouse(target.get_global_rect().get_center())
 			UiTooltip.show_at(target, target.global_position + Vector2(target.size.x * 0.5, target.size.y + 4))
-			await _frames(3)
-			await _save("%s_tooltip" % s.id)
+			await frames(3)
+			await save("%s_tooltip" % s.id)
 			UiTooltip.hide_tooltip()
 		flow.queue_free()
-		await _frames(3)
+		await frames(3)
 	quit()
 
 
@@ -62,14 +52,3 @@ func _tip_target(n: Node, fight: bool) -> Control:
 		if found != null:
 			return found
 	return null
-
-
-func _frames(n: int) -> void:
-	for i in n:
-		await process_frame
-
-
-func _save(file: String) -> void:
-	await RenderingServer.frame_post_draw
-	root.get_texture().get_image().save_png(out_dir.path_join(file + ".png"))
-	print("saved ", file)

@@ -659,13 +659,21 @@ func _build_layout() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 	field_root = root
+	_build_header(root)
+	_build_field(root)
+	_build_command_bar(root)
+	_build_overlays(root)
 
+
+## The header (fight kind, territory, defense) and the turn order row with
+## the control strip.
+func _build_header(root: VBoxContainer) -> void:
 	var request := fight.request
 	var header := HBoxContainer.new()
 	header.name = "Header"
 	header.add_theme_constant_override("separation", 12)
 	root.add_child(header)
-	header_label = _label(header, "%s  -  %s" % [
+	header_label = UiStyle.add_label(header, "%s  -  %s" % [
 		FightRequest.Kind.keys()[request.kind], request.territory_id.capitalize().to_upper()], "DimLabel")
 	defense_stat = IconStat.make("defense_level", request.defense_level)
 	defense_stat.name = "DefenseLevel"
@@ -687,6 +695,9 @@ func _build_layout() -> void:
 	turn_row.add_child(timeline_bar)
 	turn_row.add_child(_build_control_strip())
 
+
+## The squad and enemy columns with a unit panel per combatant.
+func _build_field(root: VBoxContainer) -> void:
 	var field := HBoxContainer.new()
 	field.name = "Field"
 	field.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -734,9 +745,11 @@ func _build_layout() -> void:
 		unit_panels[c.id] = panel
 		_energy_after_turn[c.id] = c.energy()
 
-	# The action dock (bottom left): the bot whose turn it is, its portrait and
-	# name, and its skills as compact action tiles; the step header in the
-	# middle; Wait (end the turn) and Cancel on the right.
+
+## The action dock (bottom left): the bot whose turn it is, its portrait and
+## name, and its skills as compact action tiles; the step header in the
+## middle; Wait (end the turn) and Cancel on the right.
+func _build_command_bar(root: VBoxContainer) -> void:
 	var bar := PanelContainer.new()
 	bar.name = "CommandBar"
 	bar.add_theme_stylebox_override("panel", UiStyle.panel("plain"))
@@ -766,7 +779,6 @@ func _build_layout() -> void:
 	var buttons := UiStyle.row("s")
 	buttons.name = "Tiles"
 	dock.add_child(buttons)
-	var hotkey := 0
 	for skill_id in _all_player_skills():
 		var skill := fight.tuning.skill(skill_id)
 		var button := ActionTile.make_tile(skill.display_name, skill.energy_cost, "", "", _skill_icon(skill))
@@ -779,11 +791,11 @@ func _build_layout() -> void:
 	commands.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	commands.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bar_row.add_child(commands)
-	prompt_label = _label(commands, "", "")
+	prompt_label = UiStyle.add_label(commands, "", "")
 	prompt_label.name = "StepHeader"
 	prompt_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	prompt_label.add_theme_color_override("font_color", FeelData.color("text_bright"))
-	message_label = _label(commands, "", "")
+	message_label = UiStyle.add_label(commands, "", "")
 	message_label.name = "Message"
 	message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	message_label.add_theme_color_override("font_color", UiStyle.role("bad"))
@@ -820,7 +832,9 @@ func _build_layout() -> void:
 	cancel_button.name = "CancelButton"
 	cancel_button.pressed.connect(on_cancel_pressed)
 
-	# Overlays: intent arrows, then the action presenter, then the outcome.
+
+## Overlays: intent arrows, then the action presenter, then the outcome.
+func _build_overlays(root: VBoxContainer) -> void:
 	var views := {}
 	for id: String in unit_panels:
 		views[id] = unit_panels[id].view
@@ -1069,7 +1083,7 @@ func _build_drawer() -> void:
 	var pcap := UiStyle.caption(Label.new())
 	pcap.text = "PREVIEW"
 	pcol.add_child(pcap)
-	preview_label = _label(pcol, "", "")
+	preview_label = UiStyle.add_label(pcol, "", "")
 	preview_label.name = "PreviewLabel"
 	preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_log_box = UiStyle.column("xs")
@@ -1078,7 +1092,7 @@ func _build_drawer() -> void:
 	var lcap := UiStyle.caption(Label.new())
 	lcap.text = "LOG"
 	_log_box.add_child(lcap)
-	log_label = _label(_log_box, "", "")
+	log_label = UiStyle.add_label(_log_box, "", "")
 	log_label.name = "LogLabel"
 	log_label.visible = false
 	log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1250,18 +1264,8 @@ func _column(parent: Node, title: String) -> VBoxContainer:
 	col.add_theme_constant_override("separation", 8)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(col)
-	_label(col, title, "SmallLabel")
+	UiStyle.add_label(col, title, "SmallLabel")
 	return col
-
-
-static func _label(parent: Node, text: String, variation: String) -> Label:
-	var label := Label.new()
-	label.text = text
-	if not variation.is_empty():
-		label.theme_type_variation = StringName(variation)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	parent.add_child(label)
-	return label
 
 
 static func _button(parent: Node, text: String) -> Button:

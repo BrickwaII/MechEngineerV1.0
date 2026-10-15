@@ -15,8 +15,8 @@ static var _colors := {}
 
 static func table(path: String) -> Dictionary:
 	if not _tables.has(path):
-		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-		if parsed is Dictionary:
+		var parsed: Variant = JsonFile.read_object(path)
+		if parsed != null:
 			_tables[path] = parsed
 		else:
 			push_error("FeelData: could not read %s" % path)

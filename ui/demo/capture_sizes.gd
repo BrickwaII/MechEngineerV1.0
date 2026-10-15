@@ -1,4 +1,4 @@
-extends SceneTree
+extends CaptureScript
 ## Shots of the menu and demo scenarios at one window size, for screen-fit
 ## pull requests. It grabs the whole X screen (ImageMagick's `import`) when it
 ## can, so anything outside the view (black bars) shows; else the view. Make
@@ -10,23 +10,13 @@ extends SceneTree
 
 const DEFAULT_IDS: Array[String] = ["menu", "act1_map_early", "act1_fight"]
 
-var out_dir := "user://capture_out"
-var only: PackedStringArray = []
-
 
 func _init() -> void:
-	var args := OS.get_cmdline_user_args()
-	if args.size() > 0:
-		out_dir = args[0]
-		only = args.slice(1)
-	if only.is_empty():
-		only = PackedStringArray(DEFAULT_IDS)
-	DirAccess.make_dir_recursive_absolute(out_dir)
-	_run.call_deferred()
+	start("user://capture_out", true, DEFAULT_IDS)
 
 
 func _run() -> void:
-	await _frames(5)
+	await frames(5)
 	var tag := "%dx%d" % [root.size.x, root.size.y]
 	for id in only:
 		var node: Node
@@ -50,22 +40,17 @@ func _run() -> void:
 			flow.folder_opener = func(_path: String) -> void: pass
 			node = flow
 			root.add_child(node)
-		await _frames(80)
-		await _save("%s_%s" % [id, tag])
+		await frames(80)
+		await save("%s_%s" % [id, tag])
 		var overlay := root.get_node_or_null("SettingsOverlay")
 		if overlay != null:
 			overlay.free()
 		node.queue_free()
-		await _frames(3)
+		await frames(3)
 	quit()
 
 
-func _frames(n: int) -> void:
-	for i in n:
-		await process_frame
-
-
-func _save(file: String) -> void:
+func save(file: String, _crop := Rect2i()) -> void:
 	await RenderingServer.frame_post_draw
 	var path := ProjectSettings.globalize_path(out_dir.path_join(file + ".png"))
 	if OS.execute("import", ["-window", "root", path]) != 0:

@@ -1,4 +1,4 @@
-extends SceneTree
+extends CaptureScript
 ## Renders the run data screens for pull requests and writes a sample
 ## journal. Needs a display:
 ##     xvfb-run -a -s "-screen 0 1600x1000x24" godot --path . --rendering-driver opengl3 \
@@ -11,19 +11,13 @@ extends SceneTree
 const ROOT := "user://capture_runs"
 const LEGACY := "user://capture_runs_legacy.res"
 
-var out_dir := "user://capture_out"
-
 
 func _init() -> void:
-	var args := OS.get_cmdline_user_args()
-	if args.size() > 0:
-		out_dir = args[0]
-	DirAccess.make_dir_recursive_absolute(out_dir)
-	_run.call_deferred()
+	start("user://capture_out")
 
 
 func _run() -> void:
-	_remove_tree(ROOT)
+	remove_tree(ROOT)
 	await _auto_run()
 	await _battle_run()
 	await _menu()
@@ -38,12 +32,12 @@ func _flow(seed_value: int, auto: bool) -> RunFlow:
 	flow.variants_path = "user://capture_runs_variants.json"
 	flow.folder_opener = func(path: String) -> void: print("would open ", path)
 	root.add_child(flow)
-	await _settle(10)
+	await frames(10)
 	var screen := flow.draft_screen
 	for i in screen.picker.squad_size():
 		screen.cards[screen.picker.bots()[i].id].pressed.emit()
 	screen.start_button.pressed.emit()
-	await _settle(20)
+	await frames(20)
 	return flow
 
 
@@ -56,24 +50,24 @@ func _auto_run() -> void:
 		guard += 1
 		if not ow.campaign.pending_defense().is_empty():
 			ow._on_defend()
-			await _settle(3)
+			await frames(3)
 			_close_modal(ow)
 		elif guard % 9 == 0 and ow.campaign.state.grid > 40.0:
-			var target := _weakest(ow.campaign)
+			var target := weakest(ow.campaign)
 			if not target.is_empty():
 				ow._on_attack(target)
-				await _settle(3)
+				await frames(3)
 				_close_modal(ow)
 		else:
 			ow._on_wait()
 		await process_frame
 	if ow.campaign.is_payload_due():
 		ow.zoom_out()
-		await _wait_until(func() -> bool: return not ow.zooming)
+		await wait_until(func() -> bool: return not ow.zooming)
 		for i in 6:
 			ow._on_wait()
 	flow.queue_free()
-	await _settle(2)
+	await frames(2)
 
 
 ## Two attacks fought on the battle screen, some waits, a reinforce, a save,
@@ -85,45 +79,45 @@ func _battle_run() -> void:
 	var ow: Control = flow.overworld
 	ow._on_wait()
 	for fight in 2:
-		var target := _weakest(ow.campaign)
+		var target := weakest(ow.campaign)
 		flow._on_region_selected(target)
 		ow._on_attack(target)
-		await _settle(2)
+		await frames(2)
 		await _play(flow.battle_screen)
-		await _wait_until(func() -> bool: return flow.stage == RunFlow.Stage.POST_FIGHT)
-		await _settle(10)
+		await wait_until(func() -> bool: return flow.stage == RunFlow.Stage.POST_FIGHT)
+		await frames(10)
 		flow.continue_to_map()
-		await _settle(10)
+		await frames(10)
 		_close_modal(ow)
 		ow._on_wait()
 		ow._on_reinforce(ow.campaign.state.owned[0])
 	flow.save_run()
 	GameSettings.shared().animation_speed = "1x"
-	await _settle(40)
-	await _save("map_open_run_folder")
+	await frames(40)
+	await save("map_open_run_folder")
 	flow.open_feedback()
-	await _settle(4)
+	await frames(4)
 	flow.feedback_form.note_edit.text = "Act 1 feels slow after the second capture: I waited through days 9 to 20 with nothing to do."
 	flow.feedback_form.category_picker.select(1)
 	flow.feedback_form.mood_buttons[1].button_pressed = true
-	await _settle(10)
-	await _save("f8_form")
+	await frames(10)
+	await save("f8_form")
 	flow.feedback_form.save_button.pressed.emit()
-	await _settle(4)
+	await frames(4)
 	DirAccess.copy_absolute(RunFolder.journal_path(flow.run_dir), out_dir.path_join("sample_journal.jsonl"))
 	print("report: ", flow.last_report_dir)
 	flow.queue_free()
-	await _settle(2)
+	await frames(2)
 
 
 ## Each bot turn: the last affordable damage skill (a bot's own before Strike)
 ## on the first living enemy.
 func _play(screen: BattleScreen) -> void:
 	var fight := screen.fight
-	var frames := 0
+	var frame_count := 0
 	while not fight.is_over():
-		frames += 1
-		if frames % 600 == 0:
+		frame_count += 1
+		if frame_count % 600 == 0:
 			print("fight at action %d, actor %s, player turn %s" % [fight.action_count, screen.handler.actor(), screen.handler.is_player_turn()])
 		if not screen.handler.is_player_turn():
 			await process_frame
@@ -145,7 +139,7 @@ func _play(screen: BattleScreen) -> void:
 			break
 		if not acted:
 			screen.send(FightCommand.wait())
-		await _settle(2)
+		await frames(2)
 
 
 func _menu() -> void:
@@ -159,51 +153,15 @@ func _menu() -> void:
 	menu.runs_root = ROOT
 	menu.legacy_save = LEGACY
 	root.add_child(menu)
-	await _settle(20)
-	await _save("main_menu")
+	await frames(20)
+	await save("main_menu")
 	menu.import_legacy()
 	menu.show_load_list()
-	await _settle(20)
-	await _save("load_list")
+	await frames(20)
+	await save("load_list")
 	menu.queue_free()
-
-
-func _weakest(c: Campaign) -> String:
-	var best: MapRegion = null
-	for region in c.map.regions:
-		if c.standing(region.id) == Campaign.Standing.IN_RANGE and (best == null or region.defense < best.defense):
-			best = region
-	return best.id if best != null else ""
 
 
 func _close_modal(ow: Control) -> void:
 	if ow._modal.visible and ow._modal_buttons.get_child_count() > 0:
 		(ow._modal_buttons.get_child(0) as Button).pressed.emit()
-
-
-func _wait_until(done: Callable) -> void:
-	var guard := 0
-	while not done.call() and guard < 3000:
-		guard += 1
-		await process_frame
-
-
-func _settle(frames: int) -> void:
-	for i in frames:
-		await process_frame
-
-
-func _save(name: String) -> void:
-	await RenderingServer.frame_post_draw
-	root.get_texture().get_image().save_png(out_dir.path_join(name + ".png"))
-	print("saved ", name)
-
-
-func _remove_tree(path: String) -> void:
-	if not DirAccess.dir_exists_absolute(path):
-		return
-	for name in DirAccess.get_files_at(path):
-		DirAccess.remove_absolute(path.path_join(name))
-	for name in DirAccess.get_directories_at(path):
-		_remove_tree(path.path_join(name))
-	DirAccess.remove_absolute(path)

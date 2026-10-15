@@ -132,5 +132,4 @@ static func info_for_combatant(unit: Combatant) -> Dictionary:
 static func _read_json(path: String) -> Dictionary:
 	if path.is_empty() or not FileAccess.file_exists(path):
 		return {}
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	return parsed if parsed is Dictionary else {}
+	return JsonFile.read_dict(path)

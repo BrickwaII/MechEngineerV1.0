@@ -950,9 +950,9 @@ func _refresh() -> void:
 	_grid_bar.fill_color = Palette.ENERGY if shared else Color("#f2b84b")
 	if shared:
 		var divisor := campaign.variants.param_float(CampaignVariants.ENERGY_GRID, "pool_regen_divisor", 1.0)
-		_grid_rate.text = "+%s%%/DAY" % _number((income[MapRegion.POWER] + income[MapRegion.ENERGY]) * t.points_per_day / maxf(divisor, 0.001))
+		_grid_rate.text = "+%s%%/DAY" % TextFormat.short_number((income[MapRegion.POWER] + income[MapRegion.ENERGY]) * t.points_per_day / maxf(divisor, 0.001))
 	else:
-		_grid_rate.text = "+%s%%/DAY" % _number(income[MapRegion.POWER] * t.points_per_day / t.grid_regen_divisor)
+		_grid_rate.text = "+%s%%/DAY" % TextFormat.short_number(income[MapRegion.POWER] * t.points_per_day / t.grid_regen_divisor)
 	UiTooltip.attach(_grid_meter, "Power pool" if shared else "Grid capacity", POOL_TIP if shared else GRID_TIP,
 		"%s now, %s a day" % [_grid_text.text, _grid_rate.text.to_lower().replace("/day", "")], "grid_power")
 
@@ -1395,10 +1395,10 @@ func _on_attack(region_id: String, breach := false) -> void:
 	var charge := campaign.fight_grid_charge(FightRequest.Kind.ATTACK, result)
 	if result.is_victory():
 		_show_message("ASSAULT · VICTORY", "Captured %s" % region.name,
-			"Grid drained by %s%%.%s" % [_number(charge), _rewards_text(result)], _check_forced)
+			"Grid drained by %s%%.%s" % [TextFormat.short_number(charge), _rewards_text(result)], _check_forced)
 	else:
 		_show_message("ASSAULT · DEFEAT", "The assault on %s failed" % region.name,
-			"The defenders held. Grid drained by %s%%. %s" % [_number(charge), _loss_text()], _check_forced)
+			"The defenders held. Grid drained by %s%%. %s" % [TextFormat.short_number(charge), _loss_text()], _check_forced)
 
 
 func _before_fight() -> void:
@@ -1489,7 +1489,7 @@ func _on_defend() -> void:
 func _loss_text() -> String:
 	var stakes := campaign.stakes
 	var text := "The defeat cost up to %s energy and %s material." % [
-		Stakes._n(stakes.loss_cost[Stakes.ENERGY]), Stakes._n(stakes.loss_cost[Stakes.MATERIAL])]
+		TextFormat.short_number(stakes.loss_cost[Stakes.ENERGY]), TextFormat.short_number(stakes.loss_cost[Stakes.MATERIAL])]
 	if stakes.loss_limit > 0:
 		text += " Losses this act: %d of %d." % [campaign.state.losses, stakes.loss_limit]
 	return text
@@ -1530,7 +1530,7 @@ func _show_payload_zoom() -> void:
 		held, campaign.map.regions.size(), plan.act_name(act)]
 	body += "The network zooms out to %s: you carry %d energy and %d material (up to the storage cap), the grid recovers %s%%, and you hold %s%s." % [
 		plan.act_name(act + 1), floori(campaign.state.energy * plan.energy_kept),
-		floori(campaign.state.material * plan.material_kept), _number(plan.grid_restore), plan.act_name(act),
+		floori(campaign.state.material * plan.material_kept), TextFormat.short_number(plan.grid_restore), plan.act_name(act),
 		"" if bonus == 0 else " plus %d neighboring territor%s" % [bonus, "y" if bonus == 1 else "ies"]]
 	if payload_action.is_valid():
 		_show_modal("ACT %d · PAYLOAD" % (act + 1), "The payload arrives", body, [["CONTINUE", _close_modal_then.bind(payload_action)]])
@@ -1720,9 +1720,9 @@ func _start_traits(start: StartOption) -> PackedStringArray:
 	elif start.pressure_rate_factor > 1.0:
 		lines.append("Pressure builds %d%% faster on its territories" % roundi((start.pressure_rate_factor - 1.0) * 100.0))
 	if start.energy > 0.0:
-		lines.append("+%s energy at the start" % _number(start.energy))
+		lines.append("+%s energy at the start" % TextFormat.short_number(start.energy))
 	if start.material > 0.0:
-		lines.append("+%s material at the start" % _number(start.material))
+		lines.append("+%s material at the start" % TextFormat.short_number(start.material))
 	return lines
 
 
@@ -1738,7 +1738,7 @@ func _refresh_stakes() -> void:
 	_losses.set_value(_losses_value())
 	_losses.set_tip_text(_losses_tip())
 	_repair_button.visible = stakes.is_offered(Stakes.USE_REPAIR) and stakes.repair_grid > 0.0
-	_repair_button.label.text = "Repair +%s%%" % _number(stakes.repair_grid)
+	_repair_button.label.text = "Repair +%s%%" % TextFormat.short_number(stakes.repair_grid)
 	var c := _use_cost(Stakes.USE_REPAIR)
 	_repair_button.set_cost(c[0], c[1])
 	_repair_button.disabled = not campaign.can_repair() or zooming
@@ -1747,7 +1747,7 @@ func _refresh_stakes() -> void:
 func _losses_tip() -> String:
 	var stakes := campaign.stakes
 	var text := "Battles lost this act. Each loss takes %s Energy and %s Material." % [
-		Stakes._n(stakes.loss_cost[Stakes.ENERGY]), Stakes._n(stakes.loss_cost[Stakes.MATERIAL])]
+		TextFormat.short_number(stakes.loss_cost[Stakes.ENERGY]), TextFormat.short_number(stakes.loss_cost[Stakes.MATERIAL])]
 	if stakes.loss_limit <= 0:
 		return text + " No limit this run."
 	return text + " Loss %d ends the run; the next act starts again at 0. Losing the boss ends the run." % stakes.loss_limit
@@ -1829,10 +1829,10 @@ func resource_tooltip(key: String) -> String:
 	for use in Stakes.USES:
 		var amount: float = stakes.cost(use)[key]
 		if amount > 0.0:
-			uses.append("%s %s" % [names[use], _number(amount)])
+			uses.append("%s %s" % [names[use], TextFormat.short_number(amount)])
 	var text := "From held regions and won fights. "
 	text += ("Pays for %s." % ", ".join(uses)) if not uses.is_empty() else "Nothing spends it this run."
-	text += " A lost battle takes %s." % _number(stakes.loss_cost[key])
+	text += " A lost battle takes %s." % TextFormat.short_number(stakes.loss_cost[key])
 	var cap := campaign.resource_cap(key)
 	if cap < INF:
 		var stock := campaign.state.energy if key == Stakes.ENERGY else campaign.state.material
@@ -1899,11 +1899,11 @@ func show_pre_fight(region_id: String) -> void:
 	var loss := stakes.loss_cost
 	_show_stat_rows([
 		[odds_label, defense, IconStat.make("time", _points_text(campaign.tuning.attack_time), "Time the attack takes."),
-			IconStat.make("grid_power", "-%s%%" % _number(campaign.attack_grid_cost(region_id)),
-				"Grid the attack takes if it wins; a defeat takes %s times that." % _number(campaign.tuning.defeat_grid_multiplier)),
+			IconStat.make("grid_power", "-%s%%" % TextFormat.short_number(campaign.attack_grid_cost(region_id)),
+				"Grid the attack takes if it wins; a defeat takes %s times that." % TextFormat.short_number(campaign.tuning.defeat_grid_multiplier)),
 			_losses_stat()],
-		["DEFEAT COSTS", IconStat.make(ENERGY_ICON, "-%s" % _number(loss[Stakes.ENERGY]), "Energy a lost battle takes."),
-			IconStat.make("material", "-%s" % _number(loss[Stakes.MATERIAL]), "Material a lost battle takes.")],
+		["DEFEAT COSTS", IconStat.make(ENERGY_ICON, "-%s" % TextFormat.short_number(loss[Stakes.ENERGY]), "Energy a lost battle takes."),
+			IconStat.make("material", "-%s" % TextFormat.short_number(loss[Stakes.MATERIAL]), "Material a lost battle takes.")],
 	])
 
 
@@ -1929,11 +1929,11 @@ func _on_fast_forward() -> void:
 			body = "Stopped: a region is in range again."
 	_show_message("FAST-FORWARD", "Day %d" % campaign.day(), body, _check_forced)
 	_show_stat_row([
-		IconStat.make("time", "+%s" % _number(summary.days), "Days that passed."),
+		IconStat.make("time", "+%s" % TextFormat.short_number(summary.days), "Days that passed."),
 		IconStat.make(ENERGY_ICON, "%+d" % roundi(summary.energy), "Energy gained, after auto-reinforcing."),
 		IconStat.make("material", "%+d" % roundi(summary.material), "Material gained."),
 		IconStat.make("grid_power", "%+d%%" % roundi(summary.grid), "Grid capacity change."),
-		IconStat.make("action_reinforce", int(summary.reinforced), "Regions auto-reinforced at %s Pressure or more." % _number(campaign.stakes.ff_reinforce_at)),
+		IconStat.make("action_reinforce", int(summary.reinforced), "Regions auto-reinforced at %s Pressure or more." % TextFormat.short_number(campaign.stakes.ff_reinforce_at)),
 	])
 
 
@@ -1993,17 +1993,6 @@ func _swatch(color: Color, swatch_size: Vector2) -> Control:
 	return rect
 
 
-func _pip(filled: bool) -> Control:
-	var pip := Panel.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Palette.DEFENSE if filled else Color(0, 0, 0, 0)
-	style.set_border_width_all(2)
-	style.border_color = Palette.DEFENSE
-	pip.add_theme_stylebox_override("panel", style)
-	pip.custom_minimum_size = Vector2(18, 18)
-	return pip
-
-
 func _button(text: String, bg: Color, fg: Color, on_press: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
@@ -2061,10 +2050,6 @@ func _rewards_text(result: FightResult) -> String:
 	for key: String in result.rewards:
 		parts.append("%d %s" % [result.rewards[key], key])
 	return " Recovered %s." % ", ".join(parts)
-
-
-static func _number(value: float) -> String:
-	return str(roundi(value)) if is_equal_approx(value, roundf(value)) else "%.1f" % value
 
 
 static func _clear(node: Node) -> void:

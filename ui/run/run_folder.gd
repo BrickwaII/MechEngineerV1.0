@@ -67,17 +67,11 @@ static func reports_path(dir: String) -> String:
 
 ## The folder's summary, or {} when it has none.
 static func read_summary(dir: String) -> Dictionary:
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(summary_path(dir)))
-	return parsed if parsed is Dictionary else {}
+	return JsonFile.read_dict(summary_path(dir))
 
 
 static func write_summary(dir: String, summary: Dictionary) -> Error:
-	var file := FileAccess.open(summary_path(dir), FileAccess.WRITE)
-	if file == null:
-		return FileAccess.get_open_error()
-	file.store_string(JSON.stringify(summary, "\t", false, true))
-	file.close()
-	return OK
+	return JsonFile.write(summary_path(dir), summary, "\t", false, true)
 
 
 ## A fresh summary for a new run.
@@ -175,10 +169,7 @@ static func legacy_pending(root: String, legacy_path: String) -> bool:
 ## Remembers that the old save was offered, so it is offered only once.
 static func mark_legacy_offered(root: String, imported_dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(root)
-	var file := FileAccess.open(root.path_join(LEGACY_MARKER), FileAccess.WRITE)
-	if file != null:
-		file.store_string(JSON.stringify({"imported": imported_dir}))
-		file.close()
+	JsonFile.write(root.path_join(LEGACY_MARKER), {"imported": imported_dir})
 
 
 ## Copies the old save into a run folder of its own, with a summary, and

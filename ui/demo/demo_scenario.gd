@@ -100,10 +100,10 @@ static func load_all(dir := DEFAULT_DIR) -> Array[DemoScenario]:
 
 
 static func load_file(p_path: String) -> DemoScenario:
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(p_path))
-	var s := from_dict(parsed if parsed is Dictionary else {}, p_path.get_file().get_basename())
+	var parsed: Variant = JsonFile.read_object(p_path)
+	var s := from_dict(parsed if parsed != null else {}, p_path.get_file().get_basename())
 	s.path = p_path
-	if not parsed is Dictionary:
+	if parsed == null:
 		s.errors.append("%s is not a JSON object" % p_path)
 	return s
 

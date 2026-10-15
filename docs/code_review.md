@@ -5,6 +5,39 @@ behaviour-preserving cleanup pull requests. Findings are ranked by value
 (lines saved, bugs avoided, time saved) within each section. File:line refs
 are to `main` at 8f7101a.
 
+## Status (October 2026)
+
+Done, one PR each, every one test-green and golden-identical:
+
+| PR | What |
+|---|---|
+| #52 | lib/ (JsonFile, DataReader, VariantSet, TextFormat), the layer rule, the golden check, this report |
+| #54 | fight/: FightVariants on VariantSet, JsonFile, read-once defaults, one policy turn, planner weights once per decision, shared estimator policies, preview clones share skills, dead code |
+| #55 | campaign/: CampaignVariants on VariantSet, DataReader, JsonFile, escalation headline period to data |
+| #56 | tools/ and bot_data/: CliOptions, SimulatedFight on the shared policy turn, JsonFile, squad summaries |
+| #57 | tests/: shared RunFlow steps, JsonFile in fixtures |
+| ui | CaptureScript base for the 21 capture scripts, JsonFile, TextFormat (Stakes._n gone), UiStyle.add_label, battle_screen layout split, two dead private helpers |
+
+Kept on purpose:
+- ui/common/sound_player.gd's music API (play_music, stop_music, music_id):
+  unused today but backed by data/feel/audio.json; removing it loses a
+  feature, not dead weight. Small unused public accessors and setters
+  (info_card, entry_tile, run_recorder, battle_beat, battle_unit_sprite,
+  draft_card, palette, run_fight_service) stay as component API.
+- tools/odds_calibration_cli.gd's loose option parsing: the strict
+  CliOptions would refuse options it accepts today.
+- fight/post_fight/skill_numbers.gd's number text truncates (`int()`) where
+  TextFormat rounds; switching could change a shown number.
+- The menu screens' `_label` builders (main_menu, run_over_screen,
+  feedback_form) differ in wrapping, centering and sizing; one builder with
+  three flags would read worse than three short functions.
+- campaign.gd, overworld.gd (~2,000 lines) and variant_comparison's
+  `_play_option` are long but cohesive; splitting them is churn without a
+  clear seam. battle_screen's 205-line `_build_layout` did have seams (its
+  own section comments) and was split along them.
+- region_map.gd keeps its own JSON parse: it reports the line of a JSON
+  error, which the shared reader does not.
+
 ## How "no behaviour change" is proven
 
 - `scripts/run_tests.sh`: every suite, green on every PR. No test is deleted

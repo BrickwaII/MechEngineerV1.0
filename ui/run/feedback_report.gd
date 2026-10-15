@@ -33,10 +33,7 @@ static func write(reports_dir: String, note: Dictionary, image: Image, save_src:
 		return ""
 	if image != null and not image.is_empty():
 		image.save_png(dir.path_join(SCREENSHOT_FILE))
-	var file := FileAccess.open(dir.path_join(NOTE_FILE), FileAccess.WRITE)
-	if file != null:
-		file.store_string(JSON.stringify(note, "\t", false))
-		file.close()
+	JsonFile.write(dir.path_join(NOTE_FILE), note, "\t", false)
 	if FileAccess.file_exists(save_src):
 		DirAccess.copy_absolute(save_src, dir.path_join(save_src.get_file()))
 	if FileAccess.file_exists(journal_src):

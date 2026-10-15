@@ -147,6 +147,18 @@ static func label(text: String, color_role := "text", size := "body") -> Label:
 	return l
 
 
+## A label with the theme type `variation` ("" for the plain label), added
+## to `parent`. Lets clicks through.
+static func add_label(parent: Node, text: String, variation := "") -> Label:
+	var label := Label.new()
+	label.text = text
+	if not variation.is_empty():
+		label.theme_type_variation = StringName(variation)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(label)
+	return label
+
+
 ## The tint of act `act` (0 for act 1): its color from data/ui/ui_kit.json
 ## "acts" (the demo picker's act colors).
 static func act_tint(act: int) -> Color:
