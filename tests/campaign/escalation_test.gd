@@ -273,3 +273,19 @@ func test_each_act_starts_unnoticed() -> void:
 	var e := Escalation.new(_map, next, CampaignVariants.for_run(next.variants))
 	assert_int(e.tier()).is_equal(0)
 	assert_str(e.tier_name()).is_equal("Off the Radar")
+
+
+func test_the_headline_turns_over_every_points_per_headline_time_points() -> void:
+	var data := Escalation.load_data().duplicate(true)
+	var lines := ["a", "b", "c"]
+	var state := RunState.new()
+	var e := Escalation.new(_map, state, null, data)
+	assert_int(int((data.news as Dictionary).get("points_per_headline", 0))).is_equal(4)
+	var picked: Array[String] = []
+	for points in [0, 3, 4, 8]:
+		state.time_points = points
+		picked.append(e._pick(lines))
+	assert_array(picked).is_equal(["a", "a", "b", "c"])
+	data.news.points_per_headline = 2
+	state.time_points = 3
+	assert_str(Escalation.new(_map, state, null, data)._pick(lines)).is_equal("b")

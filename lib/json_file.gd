@@ -24,6 +24,20 @@ static func read_object(path: String) -> Variant:
 	return parsed if parsed is Dictionary else null
 
 
+## read_object(), with what went wrong added to `errors`: the file cannot be
+## read (with the open error), or it holds no JSON object.
+static func read_object_reporting(path: String, errors: Array[String]) -> Variant:
+	var text := FileAccess.get_file_as_string(path)
+	if text.is_empty():
+		errors.append("cannot read %s (%s)" % [path, error_string(FileAccess.get_open_error())])
+		return null
+	var data: Variant = JSON.parse_string(text)
+	if not data is Dictionary:
+		errors.append("%s is not a JSON object" % path)
+		return null
+	return data
+
+
 ## The JSON object in `path`, or {} when there is none.
 static func read_dict(path: String) -> Dictionary:
 	var parsed: Variant = read(path)

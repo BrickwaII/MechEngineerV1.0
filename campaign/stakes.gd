@@ -188,11 +188,13 @@ func cost_text(use: String) -> String:
 	var c := cost(use)
 	var parts := PackedStringArray()
 	if c[ENERGY] > 0.0:
-		parts.append("%s energy" % _n(c[ENERGY]))
+		parts.append("%s energy" % TextFormat.short_number(c[ENERGY]))
 	if c[MATERIAL] > 0.0:
-		parts.append("%s material" % _n(c[MATERIAL]))
+		parts.append("%s material" % TextFormat.short_number(c[MATERIAL]))
 	return " + ".join(parts) if not parts.is_empty() else "free"
 
 
+## TextFormat.short_number(). TODO: callers in ui/ move to TextFormat with
+## the ui/ cleanup; then this goes.
 static func _n(value: float) -> String:
-	return str(roundi(value)) if is_equal_approx(value, roundf(value)) else "%.1f" % value
+	return TextFormat.short_number(value)

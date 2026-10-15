@@ -44,10 +44,10 @@ static func from_dict(data: Variant, errors: Array[String]) -> StartOption:
 	var d: Dictionary = data
 	var before := errors.size()
 	var start := StartOption.new()
-	start.id = _string(d, "id", "a start", errors)
+	start.id = DataReader.non_empty_string(d, "id", "a start", errors)
 	var where := "start '%s'" % start.id
-	start.name = _string(d, "name", where, errors)
-	start.description = _string(d, "description", where, errors)
+	start.name = DataReader.non_empty_string(d, "name", where, errors)
+	start.description = DataReader.non_empty_string(d, "description", where, errors)
 	var list: Variant = d.get("regions")
 	if not list is Array or (list as Array).is_empty():
 		errors.append("%s needs a non-empty 'regions' list" % where)
@@ -67,27 +67,11 @@ static func from_dict(data: Variant, errors: Array[String]) -> StartOption:
 				errors.append("%s income_bonus.%s must be a whole number 0 or more" % [where, key])
 			else:
 				start.income_bonus[key] = int(v)
-	start.pressure_rate_factor = _number(d, "pressure_rate_factor", 1.0, where, errors)
+	start.pressure_rate_factor = DataReader.number_or(d, "pressure_rate_factor", 1.0, where, errors)
 	if start.pressure_rate_factor < MIN_RATE_FACTOR or start.pressure_rate_factor > MAX_RATE_FACTOR:
 		errors.append("%s pressure_rate_factor must be %s to %s" % [where, MIN_RATE_FACTOR, MAX_RATE_FACTOR])
-	start.energy = _number(d, "energy", 0.0, where, errors)
-	start.material = _number(d, "material", 0.0, where, errors)
+	start.energy = DataReader.number_or(d, "energy", 0.0, where, errors)
+	start.material = DataReader.number_or(d, "material", 0.0, where, errors)
 	if start.energy < 0.0 or start.material < 0.0:
 		errors.append("%s energy and material must be 0 or more" % where)
 	return start if errors.size() == before else null
-
-
-static func _string(d: Dictionary, key: String, where: String, errors: Array[String]) -> String:
-	var v: Variant = d.get(key)
-	if not v is String or (v as String).is_empty():
-		errors.append("%s needs a non-empty '%s'" % [where, key])
-		return ""
-	return v
-
-
-static func _number(d: Dictionary, key: String, fallback: float, where: String, errors: Array[String]) -> float:
-	var v: Variant = d.get(key, fallback)
-	if not (v is float or v is int):
-		errors.append("%s %s must be a number" % [where, key])
-		return fallback
-	return float(v)

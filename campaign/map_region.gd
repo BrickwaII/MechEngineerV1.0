@@ -45,11 +45,11 @@ static func from_dict(data: Variant, errors: Array[String], globe := false) -> M
 	var d: Dictionary = data
 	var region := MapRegion.new()
 	var before := errors.size()
-	region.id = _string(d, "id", "?", errors)
+	region.id = DataReader.non_empty_string(d, "id", "?", errors)
 	var where := "region '%s'" % region.id
-	region.name = _string(d, "name", where, errors)
-	region.short_name = _string(d, "short_name", where, errors) if d.has("short_name") else region.name
-	region.kind = _string(d, "kind", where, errors)
+	region.name = DataReader.non_empty_string(d, "name", where, errors)
+	region.short_name = DataReader.non_empty_string(d, "short_name", where, errors) if d.has("short_name") else region.name
+	region.kind = DataReader.non_empty_string(d, "kind", where, errors)
 	region.polygon = _points(d.get("polygon"), where + " polygon", errors, globe)
 	if region.polygon.size() < 3:
 		errors.append("%s polygon needs at least 3 points" % where)
@@ -108,14 +108,6 @@ func contains(point: Vector2) -> bool:
 		if Geometry2D.is_point_in_polygon(point, shape):
 			return true
 	return false
-
-
-static func _string(d: Dictionary, key: String, where: String, errors: Array[String]) -> String:
-	var v: Variant = d.get(key)
-	if not v is String or (v as String).is_empty():
-		errors.append("%s needs a non-empty '%s'" % [where, key])
-		return ""
-	return v
 
 
 static func _int(v: Variant, lo: int, hi: int, what: String, errors: Array[String]) -> int:

@@ -114,13 +114,8 @@ static func _read_file(path: String, errors: Array[String], seen: Array) -> Dict
 		errors.append("tuning base loop at %s" % path)
 		return {}
 	seen.append(path)
-	var text := FileAccess.get_file_as_string(path)
-	if text.is_empty():
-		errors.append("cannot read %s (%s)" % [path, error_string(FileAccess.get_open_error())])
-		return {}
-	var data: Variant = JSON.parse_string(text)
-	if not data is Dictionary:
-		errors.append("%s is not a JSON object" % path)
+	var data: Variant = JsonFile.read_object_reporting(path, errors)
+	if data == null:
 		return {}
 	var d: Dictionary = data
 	if not d.has("base"):
@@ -180,52 +175,53 @@ func opposition(level: int) -> String:
 
 
 func _read(d: Dictionary) -> void:
-	points_per_day = int(_num(d, "time.points_per_day"))
-	total_points = int(_num(d, "time.total_points"))
-	attack_time = int(_num(d, "time.action_cost.attack"))
-	reinforce_time = int(_num(d, "time.action_cost.reinforce"))
-	wait_time = int(_num(d, "time.action_cost.wait"))
-	bar_window_points = int(_num(d, "time.bar_window_points"))
-	bar_history_points = int(_num(d, "time.bar_history_points"))
+	var r := DataReader.new(errors, "tuning")
+	points_per_day = int(r.num(d, "time.points_per_day"))
+	total_points = int(r.num(d, "time.total_points"))
+	attack_time = int(r.num(d, "time.action_cost.attack"))
+	reinforce_time = int(r.num(d, "time.action_cost.reinforce"))
+	wait_time = int(r.num(d, "time.action_cost.wait"))
+	bar_window_points = int(r.num(d, "time.bar_window_points"))
+	bar_history_points = int(r.num(d, "time.bar_history_points"))
 
-	pressure_rate_base = _num(d, "pressure.rate_base")
-	pressure_rate_per_base = _num(d, "pressure.rate_per_pressure_base")
-	border_multiplier = _num(d, "pressure.border_multiplier")
-	start_pressure = _num(d, "pressure.start")
-	forces_defense_at = _num(d, "pressure.forces_defense_at")
-	reinforce_relief = _num(d, "pressure.reinforce_relief")
-	pressure_after_capture = _num(d, "pressure.after_capture")
-	pressure_after_defense_victory = _num(d, "pressure.after_defense_victory")
-	pressure_scale = _num(d, "pressure.scale")
-	pressure_reference_regions = int(_num(d, "pressure.reference_regions"))
-	uprising_defense_level = int(_num(d, "pressure.uprising_defense_level"))
-	cause_warning_at = _num(d, "pressure.cause_warning_at")
-	imminent_at = _num(d, "pressure.imminent_at")
-	ring_warning_at = _num(d, "pressure.ring_warning_at")
-	for entry: Variant in _list(d, "pressure.rate_words"):
+	pressure_rate_base = r.num(d, "pressure.rate_base")
+	pressure_rate_per_base = r.num(d, "pressure.rate_per_pressure_base")
+	border_multiplier = r.num(d, "pressure.border_multiplier")
+	start_pressure = r.num(d, "pressure.start")
+	forces_defense_at = r.num(d, "pressure.forces_defense_at")
+	reinforce_relief = r.num(d, "pressure.reinforce_relief")
+	pressure_after_capture = r.num(d, "pressure.after_capture")
+	pressure_after_defense_victory = r.num(d, "pressure.after_defense_victory")
+	pressure_scale = r.num(d, "pressure.scale")
+	pressure_reference_regions = int(r.num(d, "pressure.reference_regions"))
+	uprising_defense_level = int(r.num(d, "pressure.uprising_defense_level"))
+	cause_warning_at = r.num(d, "pressure.cause_warning_at")
+	imminent_at = r.num(d, "pressure.imminent_at")
+	ring_warning_at = r.num(d, "pressure.ring_warning_at")
+	for entry: Variant in r.list(d, "pressure.rate_words"):
 		if entry is Dictionary and entry.get("below") is float and entry.get("word") is String:
 			rate_words.append({"below": entry["below"], "word": entry["word"]})
 		else:
 			errors.append("pressure.rate_words entries need below and word")
 
-	start_grid = _num(d, "grid.start")
-	max_grid = _num(d, "grid.max")
-	grid_regen_divisor = _num(d, "grid.regen_divisor")
-	attack_grid_base = _num(d, "grid.attack_base_cost")
-	attack_grid_per_defense = _num(d, "grid.attack_cost_per_defense")
-	defeat_grid_multiplier = _num(d, "grid.defeat_multiplier")
-	reinforce_grid_cost = _num(d, "grid.reinforce_cost")
+	start_grid = r.num(d, "grid.start")
+	max_grid = r.num(d, "grid.max")
+	grid_regen_divisor = r.num(d, "grid.regen_divisor")
+	attack_grid_base = r.num(d, "grid.attack_base_cost")
+	attack_grid_per_defense = r.num(d, "grid.attack_cost_per_defense")
+	defeat_grid_multiplier = r.num(d, "grid.defeat_multiplier")
+	reinforce_grid_cost = r.num(d, "grid.reinforce_cost")
 
-	start_energy = _num(d, "resources.start_energy")
-	start_material = _num(d, "resources.start_material")
+	start_energy = r.num(d, "resources.start_energy")
+	start_material = r.num(d, "resources.start_material")
 
-	squad_stat_points_per_level = int(_num(d, "odds.squad_stat_points_per_level"))
-	for band: Variant in _list(d, "odds.bands"):
+	squad_stat_points_per_level = int(r.num(d, "odds.squad_stat_points_per_level"))
+	for band: Variant in r.list(d, "odds.bands"):
 		if band is Dictionary and band.get("min_margin") is float and band.get("label") is String:
 			odds_bands.append({"min_margin": int(band["min_margin"]), "label": band["label"]})
 		else:
 			errors.append("odds.bands entries need min_margin and label")
-	for level: Variant in _list(d, "defense_levels"):
+	for level: Variant in r.list(d, "defense_levels"):
 		if level is Dictionary and level.get("label") is String and level.get("opposition") is String:
 			defense_levels.append({"label": level["label"], "opposition": level["opposition"]})
 		else:
@@ -233,53 +229,23 @@ func _read(d: Dictionary) -> void:
 	if defense_levels.size() != MapRegion.MAX_DEFENSE + 1:
 		errors.append("defense_levels needs one entry per level 0 to %d" % MapRegion.MAX_DEFENSE)
 
-	event_log_length = int(_num(d, "event_log_length"))
-	boss_defense_level = int(_num(d, "boss.defense_level"))
+	event_log_length = int(r.num(d, "event_log_length"))
+	boss_defense_level = int(r.num(d, "boss.defense_level"))
 	if boss_defense_level < MapRegion.MIN_DEFENSE or boss_defense_level > MapRegion.MAX_DEFENSE:
 		errors.append("boss.defense_level must be %d to %d" % [MapRegion.MIN_DEFENSE, MapRegion.MAX_DEFENSE])
 
-	var style: Variant = _lookup(d, "view.node_style")
+	var style: Variant = r.lookup(d, "view.node_style")
 	if style != null and style != NODE_FULL and style != NODE_COMPACT:
 		errors.append("view.node_style must be '%s' or '%s'" % [NODE_FULL, NODE_COMPACT])
 	node_style = str(style)
-	globe_size = _num(d, "view.globe.size")
-	globe_degrees_per_pixel = _num(d, "view.globe.degrees_per_pixel")
-	globe_max_tilt = _num(d, "view.globe.max_tilt")
-	globe_drag_threshold = _num(d, "view.globe.drag_threshold_px")
-	globe_edge_degrees = _num(d, "view.globe.edge_degrees")
-	globe_node_min_facing = _num(d, "view.globe.node_min_facing")
+	globe_size = r.num(d, "view.globe.size")
+	globe_degrees_per_pixel = r.num(d, "view.globe.degrees_per_pixel")
+	globe_max_tilt = r.num(d, "view.globe.max_tilt")
+	globe_drag_threshold = r.num(d, "view.globe.drag_threshold_px")
+	globe_edge_degrees = r.num(d, "view.globe.edge_degrees")
+	globe_node_min_facing = r.num(d, "view.globe.node_min_facing")
 	if globe_size <= 0.0 or globe_edge_degrees <= 0.0:
 		errors.append("view.globe.size and view.globe.edge_degrees must be above 0")
 
 	if points_per_day <= 0 or grid_regen_divisor <= 0.0 or squad_stat_points_per_level <= 0:
 		errors.append("points_per_day, grid.regen_divisor and odds.squad_stat_points_per_level must be above 0")
-
-
-func _lookup(d: Dictionary, path: String) -> Variant:
-	var v: Variant = d
-	for key in path.split("."):
-		if not v is Dictionary or not (v as Dictionary).has(key):
-			errors.append("tuning is missing '%s'" % path)
-			return null
-		v = v[key]
-	return v
-
-
-func _num(d: Dictionary, path: String) -> float:
-	var v: Variant = _lookup(d, path)
-	if v == null:
-		return 0.0
-	if not (v is float or v is int):
-		errors.append("tuning '%s' must be a number" % path)
-		return 0.0
-	return float(v)
-
-
-func _list(d: Dictionary, path: String) -> Array:
-	var v: Variant = _lookup(d, path)
-	if v == null:
-		return []
-	if not v is Array:
-		errors.append("tuning '%s' must be a list" % path)
-		return []
-	return v
