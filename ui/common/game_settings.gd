@@ -1,11 +1,16 @@
 class_name GameSettings
 extends RefCounted
 ## The player's presentation settings: volumes, screen shake, reduced motion,
-## animation speed, interface size and fullscreen. Defaults come from data/feel/settings.json; choices are
-## saved to user://settings.cfg and survive between runs.
+## animation speed, interface size, scaling and fullscreen. Defaults come from
+## data/feel/settings.json; choices are saved to user://settings.cfg and
+## survive between runs. The file carries a version, and an older file is
+## migrated when it loads (_migrate()).
 ##
-## Screens use GameSettings.shared(). Tests make their own instance with a
-## temporary path so they never touch the player's file.
+## Screens use GameSettings.shared(). Tests and dev tools (anything run with
+## -s, so the main loop is a script) get a shared instance that lives in memory
+## only, so they never read or write the player's file; the
+## MECH_ENGINEER_SETTINGS environment variable points them at a file instead.
+## Tests that need a file make their own instance with a temporary path.
 
 signal changed
 
@@ -16,6 +21,9 @@ const VOLUME_BUSES := {
 	"interface_volume": "Interface",
 }
 const SPEED_MULTIPLIERS := {"1x": 1.0, "1.5x": 1.5, "2x": 2.0, "skip": 0.0}
+const VERSION_KEY := "version"
+## Points tests and tools at a settings file of their own (shared_path()).
+const PATH_ENV := "MECH_ENGINEER_SETTINGS"
 
 static var _shared: GameSettings
 
@@ -27,9 +35,9 @@ var shake_strength := 1.0
 var reduced_motion := false
 ## One of "1x", "1.5x", "2x", "skip".
 var animation_speed := "1x"
-## How big the whole interface draws: 0 is Auto (the largest crisp size that
-## fits the window), 1.0 is the design size, larger suits big screens; capped
-## to what fits (WindowFit). One of ui_scale_options in data/feel/settings.json.
+## How big the whole interface draws: 0 is Auto (as big as the scale mode
+## allows in the window), 1.0 is the design size, larger suits big screens;
+## capped to what fits (WindowFit). One of ui_scale_options in data/feel/settings.json.
 var ui_scale := 0.0
 ## Fullscreen (F11, Alt+Enter, or the settings screen).
 var fullscreen := false
@@ -44,8 +52,31 @@ var path := ""
 static func shared() -> GameSettings:
 	if _shared == null:
 		_shared = GameSettings.new()
-		_shared.load_from(FeelData.settings().get("save_path", "user://settings.cfg"))
+		_shared.load_from(shared_path())
 	return _shared
+
+
+## Where shared() keeps the settings: the player's file when the game runs,
+## nowhere ("", in memory only) for tests and tools, or the file named by the
+## MECH_ENGINEER_SETTINGS environment variable.
+static func shared_path() -> String:
+	var override := OS.get_environment(PATH_ENV)
+	if not override.is_empty():
+		return override
+	var loop := Engine.get_main_loop()
+	if loop != null and loop.get_script() != null:
+		return ""
+	return player_path()
+
+
+## The player's settings file (data/feel/settings.json "save_path").
+static func player_path() -> String:
+	return str(FeelData.settings().get("save_path", "user://settings.cfg"))
+
+
+## The settings file version this build writes.
+static func current_version() -> int:
+	return int(FeelData.settings().get("version", 1))
 
 
 func _init() -> void:
@@ -66,21 +97,39 @@ func reset_to_defaults(notify := true) -> void:
 		changed.emit()
 
 
-## Reads `p_path`; keys it lacks keep their defaults. Remembers the path for save().
+## Reads `p_path`; keys it lacks keep their defaults. Remembers the path for
+## save(). A file from an older version is migrated and saved back.
 func load_from(p_path: String) -> void:
 	path = p_path
+	if path.is_empty():
+		return
 	var config := ConfigFile.new()
 	if config.load(path) != OK:
 		return
 	for key in keys():
 		if config.has_section_key(SECTION, key):
 			_assign(key, config.get_value(SECTION, key))
+	var version := int(config.get_value(SECTION, VERSION_KEY, 0))
+	if version < current_version():
+		_migrate(version, config)
+		save()
+
+
+## Brings settings read from a version `from` file up to date.
+##   - Before version 2, every save wrote ui_scale, and its default was 1.0
+##     (100%). 1.0 then meant "never chose": it becomes Auto, so the window
+##     fit (Fit window scaling) applies. Any other saved size was a choice
+##     and stays.
+func _migrate(from: int, config: ConfigFile) -> void:
+	if from < 2 and is_equal_approx(float(config.get_value(SECTION, "ui_scale", 0.0)), 1.0):
+		ui_scale = 0.0
 
 
 func save() -> Error:
 	if path.is_empty():
 		return ERR_FILE_BAD_PATH
 	var config := ConfigFile.new()
+	config.set_value(SECTION, VERSION_KEY, current_version())
 	for key in keys():
 		config.set_value(SECTION, key, get(key))
 	return config.save(path)

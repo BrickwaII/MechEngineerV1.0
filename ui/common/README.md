@@ -10,7 +10,7 @@ holds a tunable number.
 |---|---|
 | `feel_data.gd` | `FeelData`: reads `data/feel/*.json`; `FeelData.color("hp")` |
 | `pixel_theme.gd`, `pixel_theme.tres` | `PixelTheme.theme()`: font, boxes, colors. Rebuild the .tres with `build_theme.gd` |
-| `game_settings.gd` | `GameSettings.shared()`: volumes, shake, reduced motion, animation speed, interface size, fullscreen; saved to `user://settings.cfg` |
+| `game_settings.gd` | `GameSettings.shared()`: volumes, shake, reduced motion, animation speed, interface size, scaling, fullscreen; saved to `user://settings.cfg` with a version (an older file migrates on load). Tests and `-s` tools keep the shared settings in memory only, never the player's file (`MECH_ENGINEER_SETTINGS` points them at a file) |
 | `window_fit.gd` | `WindowFit`: the view fills the window at a crisp scale (Auto or the interface size, capped to keep at least 1280 x 820); fullscreen; the minimum window |
 | `settings/settings_screen.tscn` | The settings screen. F10 (`open_settings`) opens it anywhere, or `SettingsScreen.open_overlay(get_tree().root)` |
 | `presentation.gd` | Autoload `Presentation`: applies settings to buses and the window (fit on every resize, fullscreen), owns the sound player and the music director, handles F10, F11 and Alt+Enter |
