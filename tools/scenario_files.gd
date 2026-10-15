@@ -8,22 +8,15 @@ extends RefCounted
 static func load_scenario(path: String) -> FightScenario:
 	if not FileAccess.file_exists(path):
 		return null
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not parsed is Dictionary:
-		return null
-	return FightScenario.from_dict(parsed)
+	var parsed: Variant = JsonFile.read_object(path)
+	return FightScenario.from_dict(parsed) if parsed != null else null
 
 
 static func save_scenario(scenario: FightScenario, path: String) -> Error:
 	var made := DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	if made != OK:
 		return made
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		return FileAccess.get_open_error()
-	file.store_string(JSON.stringify(scenario.to_dict(), "\t", false) + "\n")
-	file.close()
-	return OK
+	return JsonFile.write_text(path, JSON.stringify(scenario.to_dict(), "\t", false) + "\n")
 
 
 ## Where a scenario called `scenario_name` is saved in `dir`.

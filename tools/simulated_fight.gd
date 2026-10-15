@@ -16,7 +16,7 @@ var enemy_policy: FightPolicy
 var damage_dealt: Dictionary[String, int] = {}
 
 var _fallback := SimpleFightPolicy.new()
-var _rng := RandomNumberGenerator.new()
+var _rng: RandomNumberGenerator
 
 
 func _init(
@@ -30,8 +30,7 @@ func _init(
 	fight = Fight.new(request, seed_value, tuning, enemy_table)
 	player_policy = p_player_policy
 	enemy_policy = p_enemy_policy if p_enemy_policy != null else _fallback
-	# The same policy seed HeadlessFightRunner uses.
-	_rng.seed = hash("policy:%d" % seed_value)
+	_rng = HeadlessFightRunner.policy_rng(seed_value)
 	for c in fight.combatants:
 		damage_dealt[c.id] = 0
 
@@ -43,11 +42,7 @@ func step() -> bool:
 		return false
 	var policy := player_policy if actor.side == Combatant.Side.PLAYER else enemy_policy
 	var before := _opponent_hp(actor.side)
-	var problem := fight.submit(policy.choose(fight, actor, _rng))
-	if not problem.is_empty():
-		fight.log_lines.append("  policy refused (%s), %s acts by default" % [problem, actor.display_name])
-		problem = fight.submit(_fallback.choose(fight, actor, _rng))
-		assert(problem.is_empty(), problem)
+	HeadlessFightRunner.play_turn(fight, actor, policy, _fallback, _rng)
 	damage_dealt[actor.id] += before - _opponent_hp(actor.side)
 	return not fight.is_over()
 

@@ -34,8 +34,8 @@ static func load_default() -> RunDataSettings:
 
 static func load_file(path: String) -> RunDataSettings:
 	var s := RunDataSettings.new()
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not parsed is Dictionary:
+	var parsed: Variant = JsonFile.read_object(path)
+	if parsed == null:
 		s.errors.append("%s: not a JSON object" % path)
 		return s
 	var d: Dictionary = parsed
