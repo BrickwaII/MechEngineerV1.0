@@ -15,6 +15,10 @@ fight and turn the mouse into `FightCommand`s.
   and the detail card give the full name. A unit alone of its kind has no
   number ("Precinct Overseer", but "Rust Hound 1" and "Rust Hound 2"). A host may add a Home
   button to the header (`show_home_button()`).
+  The field grows with the window. Detailed cards show only while they fit
+  its height; otherwise the cards are compact and Detailed is greyed out with
+  the reason, and the player's choice comes back when the window has room
+  (`_fit_view()`). A boss's hp bar sits in the header's free middle.
 - `FightSceneService`: a contracts `FightService` that plays the fight as a
   `BattleScreen` under a host node and emits `finished` with the
   `FightResult`. Swap it in for the overworld's fight service.

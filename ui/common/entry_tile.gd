@@ -75,6 +75,11 @@ func _build(p_title: String, p_line: String, p_art: Control) -> void:
 	extra = UiStyle.column("xs")
 	extra.name = "Extra"
 	col.add_child(extra)
+	# The tile grows to hold its face (a line that wraps to a third row, extra
+	# icons), so it never clips its own text.
+	var least := custom_minimum_size
+	col.minimum_size_changed.connect(func() -> void:
+		custom_minimum_size = least.max(col.get_combined_minimum_size() + Vector2(pad, pad) * 2.0))
 
 
 func set_line(text: String) -> void:

@@ -16,7 +16,8 @@ extends RunFlow
 ## REPLAY and BACK TO DEMOS in place of the run's next step.
 
 const DEMO_REPORTS := "user://demo_reports"
-const BANNER_MARGIN := 6.0
+## Above and below the banner in its strip.
+const BANNER_STRIP_PAD := 2.0
 
 ## Set before the flow enters the tree.
 var scenario: DemoScenario
@@ -25,6 +26,8 @@ var reports_root := DEMO_REPORTS
 ## The end panel while it shows, or null.
 var end_panel: DemoEndPanel
 var banner: PanelContainer
+## The bottom strip the banner sits in; the demo's screens end above it.
+var banner_strip: PanelContainer
 ## Problems building the scenario; the end panel says them.
 var problems: Array[String] = []
 
@@ -239,7 +242,7 @@ func _show_end(title: String, body: String, color: String) -> void:
 	end_panel.replay_requested.connect(start_scenario)
 	end_panel.back_requested.connect(leave_to_menu)
 	_variant_layer.add_child(end_panel)
-	_variant_layer.move_child(banner, -1)
+	_variant_layer.move_child(banner_strip, -1)
 
 
 func _close_end_panel() -> void:
@@ -268,6 +271,18 @@ func leave_to_menu() -> void:
 # --- Banner ---------------------------------------------------------------------------
 
 func _build_banner() -> void:
+	# A strip of its own along the bottom, and the screens end above it, so
+	# the banner never covers a screen's controls on any window size.
+	banner_strip = PanelContainer.new()
+	banner_strip.name = "DemoBannerStrip"
+	banner_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var back := StyleBoxFlat.new()
+	back.bg_color = FeelData.color("background")
+	back.set_content_margin_all(BANNER_STRIP_PAD)
+	banner_strip.add_theme_stylebox_override("panel", back)
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	banner_strip.add_child(center)
 	banner = PanelContainer.new()
 	banner.name = "DemoBanner"
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -284,10 +299,12 @@ func _build_banner() -> void:
 	label.add_theme_font_size_override("font_size", ScreenTheme.size(10))
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	banner.add_child(label)
-	_variant_layer.add_child(banner)
-	banner.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, int(BANNER_MARGIN))
-	banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	banner.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	center.add_child(banner)
+	_variant_layer.add_child(banner_strip)
+	var height := banner_strip.get_combined_minimum_size().y
+	banner_strip.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	banner_strip.offset_top = -height
+	offset_bottom = -height
 
 
 ## A demo fight's readout ends the demo: DONE, not BACK TO THE MAP.

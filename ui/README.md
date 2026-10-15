@@ -245,6 +245,22 @@ line in the "What's new" card, which links to F8 feedback.
   windows shrink to fit. Steps of 0.5 keep the 2x art and body text crisp.
   Numbers in `data/feel/settings.json` "display". **Fullscreen**: F11,
   Alt+Enter, or the Settings toggle; saved with the other settings.
+- **Every screen fits every view** from 1280 x 820 up. Screens anchor to the
+  full rect and grow: the map at its own shape (`MapView.frame()`, the side
+  panel takes `map.side_panel_share` of the width), the battle field to the
+  window. When a row is too narrow, it **compacts in steps, never cuts off**:
+  the map's top bar drops the day's gains (still in each stat's tooltip),
+  then the grid bar (the percent stays), then the countdown's title size,
+  then the words of Repair and Home (icons, names on hover,
+  `ActionButton.set_icon_only`); the time strip wraps onto a second line; a
+  battle whose detailed cards do not fit the height shows compact cards and
+  greys out Detailed with the reason until there is room. The check is
+  `ScreenFit` (`ui/demo/screen_fit.gd`): every visible Control inside the
+  view and its clipping parents, no cut-off text, no overlapping items in a
+  row. It runs headless in the tests (`tests/ui/fit/`, at every view the
+  supported windows and interface sizes give) and in a real window under
+  xvfb (`scripts/check_fit.sh`, CI job "fit", with a picture of each
+  screen). A new screen gets an entry in `ScreenFit.open()`.
 - Each act has its **tint** and **emblem** (`UiStyle.act_tint`,
   `act_emblem`; `data/ui/ui_kit.json` "acts"): the map's backdrop and side
   panel take a faint tint, and the emblem sits faintly behind the panel.
