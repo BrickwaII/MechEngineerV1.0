@@ -59,8 +59,7 @@ func _init(p_map: RegionMap, p_state: RunState, v: CampaignVariants = null, p_da
 ## data/tuning/escalation.json, read once.
 static func load_data() -> Dictionary:
 	if _cached.is_empty():
-		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(DEFAULT_PATH))
-		_cached = parsed if parsed is Dictionary else {}
+		_cached = JsonFile.read_dict(DEFAULT_PATH)
 	return _cached
 
 
@@ -257,11 +256,13 @@ func _fortified_card(region_ids: Array[String]) -> Dictionary:
 	}
 
 
-## A headline picked by the day, so a run is deterministic.
+## A headline picked by the time, so a run is deterministic: the next one
+## every news.points_per_headline time points.
 func _pick(lines: Array) -> String:
 	if lines.is_empty():
 		return ""
-	return str(lines[(state.time_points / 4 + tier()) % lines.size()])
+	var every := maxi(1, int((data.get("news", {}) as Dictionary).get("points_per_headline", 4)))
+	return str(lines[(state.time_points / every + tier()) % lines.size()])
 
 
 func _fill(text: String, region_id: String, count: int, t: int) -> String:

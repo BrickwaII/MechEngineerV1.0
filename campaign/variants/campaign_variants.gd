@@ -1,5 +1,5 @@
 class_name CampaignVariants
-extends RefCounted
+extends VariantSet
 ## The campaign layer's switches from the variant switchboard
 ## (data/variants/variants.json): one chosen option per campaign decision, and
 ## that option's params. Only decisions with "layer": "campaign" and options of
@@ -93,22 +93,13 @@ static var user_path := ""
 ## journal from before escalation keeps the difficulty it was played with.
 const BEFORE_DECISION := {ESCALATION: ESCALATION_OFF}
 
-## Decision id -> its default option id.
-var defaults_by_decision: Dictionary[String, String] = {}
-## Decision id -> the chosen option id.
-var choices: Dictionary[String, String] = {}
-## Decision id -> {option id -> params Dictionary}.
-var params_by_option := {}
-var errors: Array[String] = []
-
 static var _cached_defaults: Dictionary = {}
 
 
 ## The data file's defaults, with no player choices. The file is read once.
 static func defaults() -> CampaignVariants:
 	if _cached_defaults.is_empty():
-		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(DEFAULT_PATH))
-		_cached_defaults = parsed if parsed is Dictionary else {}
+		_cached_defaults = JsonFile.read_dict(DEFAULT_PATH)
 	return from_dict(_cached_defaults)
 
 
@@ -119,11 +110,7 @@ static func load_active(path := "") -> CampaignVariants:
 	var file := path if not path.is_empty() else user_path
 	if file.is_empty() or not FileAccess.file_exists(file):
 		return v
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(file))
-	var picked: Variant = (parsed as Dictionary).get("choices", {}) if parsed is Dictionary else {}
-	if picked is Dictionary:
-		for decision: Variant in picked:
-			v.choose(str(decision), str(picked[decision]))
+	v.choose_all(JsonFile.read_dict(file).get("choices", {}))
 	return v
 
 
@@ -143,65 +130,8 @@ static func for_run(run_choices: Dictionary) -> CampaignVariants:
 
 static func from_dict(data: Dictionary) -> CampaignVariants:
 	var v := CampaignVariants.new()
-	var list: Variant = data.get("decisions", [])
-	if not list is Array:
-		v.errors.append("decisions must be a list")
-		list = []
-	for entry: Variant in list:
-		if not entry is Dictionary or str(entry.get("layer", "")) != LAYER or not KNOWN.has(str(entry.get("id", ""))):
-			continue
-		var id := str(entry.get("id", ""))
-		var options := {}
-		for o: Variant in entry.get("options", []):
-			if o is Dictionary:
-				options[str(o.get("id", ""))] = (o.get("params", {}) as Dictionary).duplicate(true)
-		var def := str(entry.get("default", ""))
-		if not options.has(def):
-			v.errors.append("%s: default '%s' is not one of its options" % [id, def])
-		v.params_by_option[id] = options
-		v.defaults_by_decision[id] = def
-		v.choices[id] = def
-	for id: String in KNOWN:
-		if not v.choices.has(id):
-			v.errors.append("decision %s is missing from the switchboard" % id)
-			v.choices[id] = KNOWN[id][0]
-			v.defaults_by_decision[id] = KNOWN[id][0]
-			v.params_by_option[id] = {}
-		for option: String in KNOWN[id]:
-			if not (v.params_by_option[id] as Dictionary).has(option):
-				v.errors.append("%s: option %s is missing from the switchboard" % [id, option])
+	v.read_decisions(data, LAYER, KNOWN, true)
 	return v
-
-
-## Chooses `option` for `decision`. False, and nothing changes, if either is
-## unknown.
-func choose(decision: String, option: String) -> bool:
-	if not params_by_option.has(decision) or not (params_by_option[decision] as Dictionary).has(option):
-		return false
-	choices[decision] = option
-	return true
-
-
-## The chosen option of `decision`, or "" if the decision is unknown.
-func option(decision: String) -> String:
-	return choices.get(decision, "")
-
-
-func is_chosen(decision: String, p_option: String) -> bool:
-	return option(decision) == p_option
-
-
-## The chosen option's params for `decision`.
-func params(decision: String) -> Dictionary:
-	return (params_by_option.get(decision, {}) as Dictionary).get(option(decision), {})
-
-
-func param_float(decision: String, key: String, fallback := 0.0) -> float:
-	return float(params(decision).get(key, fallback))
-
-
-func param_int(decision: String, key: String, fallback := 0) -> int:
-	return int(params(decision).get(key, fallback))
 
 
 ## The choices a run keeps from its start, every run decision included, for
@@ -222,19 +152,5 @@ func squad_sizes() -> Dictionary:
 	return {"draft_size": int(p["draft_size"]), "squad_size": int(p["squad_size"])}
 
 
-## Decision id -> option id for every choice that is not the default.
-func non_default() -> Dictionary[String, String]:
-	var out: Dictionary[String, String] = {}
-	for id in choices:
-		if choices[id] != defaults_by_decision.get(id, ""):
-			out[id] = choices[id]
-	return out
-
-
 func duplicate_variants() -> CampaignVariants:
-	var v := CampaignVariants.new()
-	v.defaults_by_decision = defaults_by_decision.duplicate()
-	v.choices = choices.duplicate()
-	v.params_by_option = params_by_option.duplicate(true)
-	v.errors = errors.duplicate()
-	return v
+	return copy_into(CampaignVariants.new())

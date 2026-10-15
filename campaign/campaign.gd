@@ -676,7 +676,7 @@ func fast_forward() -> Dictionary:
 		"grid": state.grid - start_grid,
 		"stopped": stopped,
 	}
-	_log("Fast-forwarded %s days." % Stakes._n(summary.days))
+	_log("Fast-forwarded %s days." % TextFormat.short_number(summary.days))
 	changed.emit()
 	fast_forwarded.emit(summary)
 	return summary

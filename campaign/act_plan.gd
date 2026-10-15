@@ -54,15 +54,9 @@ var errors: Array[String] = []
 
 static func load_file(path: String) -> ActPlan:
 	var plan := ActPlan.new()
-	var text := FileAccess.get_file_as_string(path)
-	if text.is_empty():
-		plan.errors.append("cannot read %s (%s)" % [path, error_string(FileAccess.get_open_error())])
-		return plan
-	var data: Variant = JSON.parse_string(text)
-	if not data is Dictionary:
-		plan.errors.append("%s is not a JSON object" % path)
-		return plan
-	plan._read(data)
+	var data: Variant = JsonFile.read_object_reporting(path, plan.errors)
+	if data != null:
+		plan._read(data)
 	return plan
 
 
@@ -175,6 +169,7 @@ func zoom_state(from: RunState, next_map: RegionMap, next_tuning: MapTuning) -> 
 
 
 func _read(d: Dictionary) -> void:
+	var r := DataReader.new(errors, "acts")
 	var list: Variant = d.get("acts")
 	if not list is Array or (list as Array).is_empty():
 		errors.append("acts needs a non-empty 'acts' list")
@@ -197,17 +192,17 @@ func _read(d: Dictionary) -> void:
 				act["variant"] = ""
 				act["region_file"] = ""
 				act["zoom_focus"] = ""
-	energy_kept = _num(d, "zoom.energy_kept")
-	material_kept = _num(d, "zoom.material_kept")
-	grid_restore = _num(d, "zoom.grid_restore")
-	held_per_bonus_region = int(_num(d, "zoom.held_per_bonus_region"))
-	max_bonus_regions = int(_num(d, "zoom.max_bonus_regions"))
-	var keep: Variant = _lookup(d, "zoom.keep_income_bonus")
+	energy_kept = r.num(d, "zoom.energy_kept")
+	material_kept = r.num(d, "zoom.material_kept")
+	grid_restore = r.num(d, "zoom.grid_restore")
+	held_per_bonus_region = int(r.num(d, "zoom.held_per_bonus_region"))
+	max_bonus_regions = int(r.num(d, "zoom.max_bonus_regions"))
+	var keep: Variant = r.lookup(d, "zoom.keep_income_bonus")
 	if keep != null and not keep is bool:
 		errors.append("acts 'zoom.keep_income_bonus' must be true or false")
 	keep_income_bonus = keep == true
-	fade_seconds = _num(d, "zoom.fade_seconds")
-	zoom_seconds = _num(d, "zoom.zoom_seconds")
+	fade_seconds = r.num(d, "zoom.fade_seconds")
+	zoom_seconds = r.num(d, "zoom.zoom_seconds")
 	if held_per_bonus_region <= 0:
 		errors.append("acts 'zoom.held_per_bonus_region' must be above 0")
 
@@ -233,23 +228,3 @@ func _read_variants(list: Variant, i: int) -> Array:
 		variant["zoom_focus"] = str(focus)
 		out.append(variant)
 	return out
-
-
-func _lookup(d: Dictionary, path: String) -> Variant:
-	var v: Variant = d
-	for key in path.split("."):
-		if not v is Dictionary or not (v as Dictionary).has(key):
-			errors.append("acts is missing '%s'" % path)
-			return null
-		v = v[key]
-	return v
-
-
-func _num(d: Dictionary, path: String) -> float:
-	var v: Variant = _lookup(d, path)
-	if v == null:
-		return 0.0
-	if not (v is float or v is int):
-		errors.append("acts '%s' must be a number" % path)
-		return 0.0
-	return float(v)
