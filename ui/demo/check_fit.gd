@@ -5,10 +5,13 @@ extends SceneTree
 ##         --resolution 1920x1080 -s res://ui/demo/check_fit.gd -- <out_dir> [screen id ...]
 ## Headless (--headless) it lays the screens out at every view size the
 ## supported windows and interface sizes give, and saves no pictures.
+## A "mode=fit" or "mode=crisp" argument picks the scale mode for the window
+## (WindowFit; not saved). Headless checks every mode's views anyway.
 ## Prints each problem; the exit code is 1 when there are any.
 
 var out_dir := ""
 var ids: Array[String] = []
+var mode := ""
 
 
 func _init() -> void:
@@ -16,7 +19,10 @@ func _init() -> void:
 	if args.size() > 0:
 		out_dir = args[0]
 		for id in args.slice(1):
-			ids.append(id)
+			if id.begins_with("mode="):
+				mode = id.trim_prefix("mode=")
+			else:
+				ids.append(id)
 	if ids.is_empty():
 		ids = ScreenFit.screen_ids()
 	if not out_dir.is_empty():
@@ -26,6 +32,10 @@ func _init() -> void:
 
 func _run() -> void:
 	await process_frame
+	if not mode.is_empty():
+		GameSettings.shared().scale_mode = mode
+		GameSettings.shared().apply_ui_scale(self)
+		await process_frame
 	var headless := DisplayServer.get_name() == "headless"
 	var views: Array[Vector2] = []
 	if headless:

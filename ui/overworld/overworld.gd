@@ -474,13 +474,12 @@ func _build_layout() -> void:
 	body.add_theme_constant_override("separation", 0)
 	column.add_child(body)
 
-	# On a bigger view the map grows (at its own shape, MapView.frame()) and
-	# the side panel takes its share of the width (ui/README.md rule 17).
-	var share := float(UiIcons.kit("map.side_panel_share", 0.25))
+	# On a bigger view the map takes the extra room (at its own shape,
+	# MapView.frame()); the side panel gets a share of the width, capped
+	# (_fit_layout(), ui/README.md rule 17).
 	var left := VBoxContainer.new()
 	left.custom_minimum_size.x = MAP_SIZE.x
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.size_flags_stretch_ratio = 1.0 - share
 	left.add_theme_constant_override("separation", 0)
 	body.add_child(left)
 	left.add_child(_build_map_strip())
@@ -490,7 +489,7 @@ func _build_layout() -> void:
 	left.add_child(time_strip)
 
 	var side := _build_side_panel()
-	side.size_flags_stretch_ratio = share
+	side.size_flags_horizontal = Control.SIZE_FILL
 	body.add_child(side)
 	_side = side
 	_hud = [column.get_child(0), map_strip, time_strip, side]
@@ -533,6 +532,11 @@ func _build_layout() -> void:
 func _fit_layout() -> void:
 	if map_view == null or _side == null:
 		return
+	var share := float(UiIcons.kit("map.side_panel_share", 0.25))
+	var widest := float(UiIcons.kit("map.side_panel_max", 560))
+	var width := clampf(roundf(size.x * share), PANEL_WIDTH, maxf(widest, PANEL_WIDTH))
+	if not is_equal_approx(_side.custom_minimum_size.x, width):
+		_side.custom_minimum_size.x = width
 	escalation_hud.position = map_view.get_global_rect().position - get_global_rect().position
 	escalation_hud.size = map_view.size
 	_toast.position = Vector2(_side.get_global_rect().position.x - get_global_rect().position.x,

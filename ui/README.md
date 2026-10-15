@@ -237,18 +237,24 @@ line in the "What's new" card, which links to F8 feedback.
   update id and says how to send feedback (F8 in a run). Change its id with
   each visible UI change.
 - **Window and interface size** (`WindowFit`, settings F10): the view always
-  fills the window, with no black bars. A bigger window gets a bigger view:
-  layouts anchor to the full rect and grow, never sit at a fixed 1280 x 820.
-  The canvas scale is Auto by default (the largest 0.5 step that keeps the
-  view at least 1280 x 820, so 2560 x 1440 draws at 150%) or a fixed 100% to
-  300%, capped so the view never gets smaller than 1280 x 820; smaller
-  windows shrink to fit. Steps of 0.5 keep the 2x art and body text crisp.
-  Numbers in `data/feel/settings.json` "display". **Fullscreen**: F11,
-  Alt+Enter, or the Settings toggle; saved with the other settings.
+  fills the window, with no black bars. **Scaling** has two modes:
+  **Fit window** (the default) scales the 1280 x 820 design up until it fills
+  the window on one axis (1920 x 1080 draws at 132%), and the other axis gets
+  the extra room; text stays sharp, art pixels are a little uneven at
+  in-between sizes. **Crisp pixels** grows in 0.5 steps only (1920 x 1080 at
+  100%, 2560 x 1440 at 150%), so every art pixel is the same size, and a
+  bigger window gets a bigger view instead. TODO(decision: ui-scale-mode).
+  The interface size (Auto, or a fixed 100% to 300%) works in either mode,
+  capped so the view never gets smaller than 1280 x 820; smaller windows
+  shrink to fit. Layouts anchor to the full rect and grow, never sit at a
+  fixed 1280 x 820. Numbers in `data/feel/settings.json` "display".
+  **Fullscreen**: F11, Alt+Enter, or the Settings toggle; saved with the
+  other settings.
 - **Every screen fits every view** from 1280 x 820 up. Screens anchor to the
-  full rect and grow: the map at its own shape (`MapView.frame()`, the side
-  panel takes `map.side_panel_share` of the width), the battle field to the
-  window. When a row is too narrow, it **compacts in steps, never cuts off**:
+  full rect and grow: the map at its own shape (`MapView.frame()`) takes the
+  extra room, the side panel `map.side_panel_share` of the width up to
+  `map.side_panel_max`; the battle's squad and enemy columns spread no wider
+  than `battle.max_field_width`, centred, so intent arrows stay short. When a row is too narrow, it **compacts in steps, never cuts off**:
   the map's top bar drops the day's gains (still in each stat's tooltip),
   then the grid bar (the percent stays), then the countdown's title size,
   then the words of Repair and Home (icons, names on hover,
@@ -258,9 +264,9 @@ line in the "What's new" card, which links to F8 feedback.
   `ScreenFit` (`ui/demo/screen_fit.gd`): every visible Control inside the
   view and its clipping parents, no cut-off text, no overlapping items in a
   row. It runs headless in the tests (`tests/ui/fit/`, at every view the
-  supported windows and interface sizes give) and in a real window under
-  xvfb (`scripts/check_fit.sh`, CI job "fit", with a picture of each
-  screen). A new screen gets an entry in `ScreenFit.open()`.
+  supported windows, interface sizes and scale modes give) and in a real
+  window under xvfb in both modes (`scripts/check_fit.sh`, CI job "fit",
+  with a picture of each screen). A new screen gets an entry in `ScreenFit.open()`.
 - Each act has its **tint** and **emblem** (`UiStyle.act_tint`,
   `act_emblem`; `data/ui/ui_kit.json` "acts"): the map's backdrop and side
   panel take a faint tint, and the emblem sits faintly behind the panel.
