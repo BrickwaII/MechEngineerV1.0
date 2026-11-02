@@ -135,6 +135,33 @@ func test_a_delayed_unit_acts_later() -> void:
 	assert_int(foe_tick.call(delayed)).is_greater(foe_tick.call(plain))
 
 
+func test_a_hit_does_not_pay_off_a_recovery_debt() -> void:
+	# Regression: Elasticity's after-hit rule clamped every hit target's gauge
+	# to 0, erasing recovery debt whenever the unit was hit.
+	var fight := _fight()
+	var ally := fight.advance()
+	assert_str(fight.submit(FightAction.use("heavy", "foe#1"))).is_empty()
+	var debt := ally.gauge
+	assert_int(debt).is_less(0)
+	ElasticityRules.after_hit(ally, 5, fight.tuning)
+	assert_int(ally.gauge).is_equal(debt)
+
+
+func test_resist_knockback_keeps_a_debt_and_floors_others_at_zero() -> void:
+	var v := FightVariants.defaults()
+	v.choose(FightVariants.ELASTICITY, FightVariants.ELASTICITY_KNOCKBACK)
+	var fight := _fight(_tuning().with_variants(v))
+	var ally := fight.advance()
+	var kb := ElasticityRules.knockback(ally.stats, fight.tuning)
+	assert_int(kb).is_greater(10)
+	ally.gauge = -100
+	ElasticityRules.after_hit(ally, 5, fight.tuning)
+	assert_int(ally.gauge).is_equal(-100)
+	ally.gauge = 10
+	ElasticityRules.after_hit(ally, 5, fight.tuning)
+	assert_int(ally.gauge).is_equal(0)
+
+
 func test_knockback_moves_like_delay_and_reports_knockback() -> void:
 	var fight := _fight()
 	fight.advance()

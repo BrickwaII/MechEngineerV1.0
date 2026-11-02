@@ -51,5 +51,9 @@ static func energy_when_hit_milli(target: UnitStats, tuning: CombatTuning) -> in
 static func after_hit(target: Combatant, p_damage: int, tuning: CombatTuning) -> void:
 	if p_damage <= 0 or not target.is_alive():
 		return
-	target.gauge = maxi(0, target.gauge - knockback(target.stats, tuning))
+	# Floored at 0 as it always was, but a gauge already below 0 (recovery or
+	# delay debt, combat rework S2) keeps its debt: a hit never pays it off.
+	var kb := knockback(target.stats, tuning)
+	if kb > 0:
+		target.gauge = maxi(mini(0, target.gauge), target.gauge - kb)
 	target.energy_milli = mini(target.max_energy_milli, target.energy_milli + energy_when_hit_milli(target.stats, tuning))
