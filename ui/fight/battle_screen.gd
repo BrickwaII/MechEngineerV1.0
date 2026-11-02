@@ -269,7 +269,7 @@ func describe_badge(badge: ArrowBadge) -> Dictionary:
 	var actor := fight.combatant(badge.from_id)
 	var target := fight.combatant(badge.to_id)
 	var skill := actor.skill(badge.skill_id) if actor != null else null
-	var what: String = {ArrowBadge.HEAL: "Repair", ArrowBadge.GUARD: "Guard"}.get(badge.kind, "Damage")
+	var what: String = {ArrowBadge.HEAL: "Repair", ArrowBadge.GUARD: "Brace" if badge.absorb else "Guard"}.get(badge.kind, "Damage")
 	var icon: String = {ArrowBadge.HEAL: "intent_heal", ArrowBadge.GUARD: "intent_guard", ArrowBadge.WAIT: "intent_charge"}.get(badge.kind, "intent_attack")
 	var body := "%s: %s on %s." % [
 		actor.display_name if actor != null else "?", skill.display_name if skill != null else "?",
@@ -476,7 +476,7 @@ func _intent_kind(intent: UnitIntent) -> String:
 		return ""
 	var unit := fight.combatant(intent.unit_id)
 	var skill := unit.skill(intent.skill_id()) if unit != null else null
-	if skill != null and skill.is_guard():
+	if skill != null and (skill.is_guard() or skill.is_absorb()):
 		return "guard"
 	return intent.kind_name()
 
@@ -903,6 +903,8 @@ static func skill_card_face(skill: CombatSkill, attack: int) -> Dictionary:
 		parts.append("Guard %d%%%s." % [skill.power_percent, " self" if skill.target == CombatSkill.TARGET_SELF else ""])
 		if skill.reflect_percent > 0:
 			parts.append("Reflect %d%%." % skill.reflect_percent)
+	elif skill.is_absorb():
+		parts.append("Absorb %d%% DEF." % skill.power_percent)
 	return {"name": title, "rank": rank, "effect": " ".join(parts)}
 
 
@@ -1170,7 +1172,7 @@ func _place_drawer() -> void:
 static func _skill_icon(skill: CombatSkill) -> String:
 	if skill.is_heal():
 		return "intent_heal"
-	if skill.is_guard():
+	if skill.is_guard() or skill.is_absorb():
 		return "intent_guard"
 	return "intent_attack"
 
@@ -1246,6 +1248,8 @@ func _outcome_on(action: FightAction, unit_id: String) -> Dictionary:
 		var skill := handler.actor().skill(action.skill_id)
 		if skill != null and skill.is_guard():
 			return {"text": "Guard %d%%" % skill.power_percent, "ko": false, "amount": 0}
+		if skill != null and skill.is_absorb():
+			return {"text": "Brace %d" % DamageRules.brace_absorb(handler.actor().stats, skill), "ko": false, "amount": 0}
 		return {"text": "?", "ko": false, "amount": 0}
 	var after := int(effect.hp_after.value)
 	var change := after - u.hp
@@ -1257,6 +1261,8 @@ func _focus_math(actor: Combatant, skill: CombatSkill, target_id: String, outcom
 		return BattleMath.heal_lines(fight, actor.id, target_id, skill.id, int(outcome.get("amount", 0)))
 	if skill.is_guard():
 		return BattleMath.guard_lines(fight, actor.id, skill.id, skill.power_percent)
+	if skill.is_absorb():
+		return BattleMath.brace_lines(fight, actor.id, skill.id, DamageRules.brace_absorb(actor.stats, skill))
 	var lines := BattleMath.damage_lines(fight, actor.id, target_id, skill.id, int(outcome.get("amount", 0)))
 	if outcome.get("ko", false):
 		lines.append("%s goes Down." % fight.combatant(target_id).display_name)

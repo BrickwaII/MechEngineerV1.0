@@ -7,6 +7,9 @@ extends RefCounted
 ##   fight.submit(FightAction.use("strike", target.id))
 ##   ...repeat until fight.is_over()
 ##
+## A Staggered unit (StaggerRules) gets no decision: when its turn comes,
+## advance() spends it recovering and runs on to the next unit.
+##
 ## Deterministic: the same request, seed and decisions give the same fight.
 ## The seed only picks which enemies appear; nothing else is random.
 
@@ -63,18 +66,25 @@ func _init(p_request: FightRequest, p_seed: int, p_tuning: CombatTuning = null, 
 		_log("  %s %s (%s): hp %d, atk %d, def %d, spd %d, energy %d/%d" % [
 			"ally " if c.side == Combatant.Side.PLAYER else "enemy", c.display_name, c.id,
 			c.hp, c.stats.attack, c.stats.defense, c.stats.speed, c.energy(), c.stats.battery_capacity])
+		if c.max_plating > 0:
+			_log("    plating %d%s" % [
+				c.max_plating, ", weak to %s" % c.plating_weakness if not c.plating_weakness.is_empty() else ""])
 	_check_end()
 
 
 ## Runs time until a unit is ready and returns it; the fight then waits for
 ## submit(). Returns the same unit, with no time passing, while a decision is
-## pending. Returns null once the fight is over.
+## pending. Returns null once the fight is over. A Staggered unit's turn is
+## spent recovering on the way (its RECOVER event becomes last_events).
 func advance() -> Combatant:
 	if _over:
 		return null
 	if pending_actor != null:
 		return pending_actor
 	pending_actor = timeline.advance_to_next_ready()
+	while pending_actor != null and pending_actor.staggered:
+		_recover(pending_actor)
+		pending_actor = timeline.advance_to_next_ready()
 	return pending_actor
 
 
@@ -225,6 +235,16 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 				actor.display_name, skill.display_name, target.display_name, target.guard_percent])
 		_apply_status(actor, target, skill)
 		return
+	if skill.is_absorb():
+		target.brace_absorb = maxi(target.brace_absorb, DamageRules.brace_absorb(actor.stats, skill))
+		actor.finish_action(tuning.turn_threshold())
+		var braced := _event(FightEvent.Kind.BRACE, actor, target, skill)
+		braced.amount = target.brace_absorb
+		_raise(braced)
+		_log("%s uses %s on %s: absorbs %d damage until its next action, energy %d -> %d" % [
+			actor.display_name, skill.display_name, target.display_name, target.brace_absorb,
+			energy_before, actor.energy()])
+		return
 	if skill.is_guard():
 		target.guard_percent = maxi(target.guard_percent, skill.power_percent)
 		target.reflect_percent = maxi(target.reflect_percent, skill.reflect_percent)
@@ -261,6 +281,8 @@ func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before
 	var b := DamagePipeline.run(actor.stats, target.stats, skill, tuning, bonus_percent, target)
 	var dmg := b.final
 	var unguarded := b.before_guard
+	var absorbed := b.absorbed
+	target.brace_absorb -= absorbed
 	target.hp = maxi(0, target.hp - dmg)
 	target.guard_percent = 0
 	target.reflect_percent = 0
@@ -273,8 +295,12 @@ func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before
 		extras += " (+%d%% %s)" % [b.status_percent, ", ".join(names)]
 	if b.payoff_percent > 0:
 		extras += " (+%d%% payoff)" % b.payoff_percent
+	if b.stagger_bonus_percent > 0:
+		extras += " (+%d%% Staggered)" % b.stagger_bonus_percent
 	if guarded > 0:
 		extras += " (%d%% blocked)" % guarded
+	if absorbed > 0:
+		extras += " (%d absorbed, %d left)" % [absorbed, target.brace_absorb]
 	_log("%s uses %s on %s: %d damage%s, hp %d -> %d, energy %d -> %d" % [
 		actor.display_name, skill.display_name, target.display_name, dmg,
 		extras, hp_before, target.hp, energy_before, actor.energy()])
@@ -283,6 +309,7 @@ func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before
 	hit.blocked_percent = guarded
 	hit.status_bonus_percent = b.status_percent
 	hit.payoff_bonus_percent = b.payoff_percent
+	hit.absorbed = absorbed
 	hit.hp_before = hp_before
 	_raise(hit)
 	if not target.is_alive():
@@ -291,9 +318,11 @@ func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before
 	for used in statuses.consume_after_hit(target, skill):
 		_status_event(FightEvent.Kind.STATUS_CONSUMED, actor, target, skill, used)
 		_log("%s's %s is used up" % [target.display_name, statuses.name_of(used.status_id)])
+	if target.is_alive() and target.plating > 0:
+		_strip_plating(actor, target, skill)
 	# A Mega or Ultra guard sends part of what it blocked back.
 	@warning_ignore("integer_division")
-	var back := maxi(0, unguarded - dmg) * reflect / 100 if guarded > 0 else 0
+	var back := maxi(0, unguarded - b.after_guard) * reflect / 100 if guarded > 0 else 0
 	if back > 0 and actor.is_alive():
 		var actor_hp := actor.hp
 		actor.hp = maxi(0, actor.hp - back)
@@ -306,6 +335,66 @@ func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before
 		if not actor.is_alive():
 			_log("%s is down" % actor.display_name)
 			_raise(_event(FightEvent.Kind.DOWN, target, actor, skill))
+
+
+## Every hit takes plating off a plated unit; at zero it is Staggered.
+func _strip_plating(actor: Combatant, target: Combatant, skill: CombatSkill) -> void:
+	var pips := mini(target.plating, tuning.stagger.pips_stripped(skill.damage_type, target.plating_weakness))
+	if pips <= 0:
+		return
+	target.plating -= pips
+	var stripped := _event(FightEvent.Kind.PLATING, actor, target, skill)
+	stripped.amount = pips
+	stripped.plating_after = target.plating
+	_raise(stripped)
+	_log("%s's plating loses %d: %d of %d left" % [target.display_name, pips, target.plating, target.max_plating])
+	if target.plating == 0:
+		_stagger(actor, target, skill)
+
+
+## Broken plating: the unit's wind-up is cancelled, it is knocked back, and it
+## takes bonus damage until its next turn, which it spends recovering.
+## TODO(decision: stagger-intent): the lost turn stands in for "cancel the
+## intent" until S5 makes intents committed.
+func _stagger(actor: Combatant, target: Combatant, skill: CombatSkill) -> void:
+	target.staggered = true
+	var was_waiting := target.is_waiting()
+	target.cancel_wait()
+	var lost := timeline.knockback(target, tuning.stagger.knockback_gauge(target.stats, timeline.threshold, tuning))
+	var staggered := _event(FightEvent.Kind.STAGGER, actor, target, skill)
+	staggered.amount = lost
+	staggered.plating_after = target.plating
+	_raise(staggered)
+	_log("%s is Staggered%s: knocked back %d, its next turn is lost, hits on it deal +%d%%" % [
+		target.display_name, " (its wait is cancelled)" if was_waiting else "", lost,
+		tuning.stagger.damage_bonus_percent])
+
+
+## A Staggered unit's turn: no decision, the Stagger ends and its plating
+## comes back (StaggerRules.recover_percent).
+func _recover(unit: Combatant) -> void:
+	last_events = []
+	_end_brace(unit)
+	unit.staggered = false
+	var before := unit.plating
+	unit.plating = maxi(unit.plating, tuning.stagger.recovered_plating(unit.max_plating))
+	unit.finish_action(timeline.threshold)
+	var recovered := _event(FightEvent.Kind.RECOVER, unit, unit, null)
+	recovered.amount = unit.plating - before
+	recovered.plating_after = unit.plating
+	_raise(recovered)
+	_log("%s recovers from the Stagger: plating %d of %d" % [unit.display_name, unit.plating, unit.max_plating])
+
+
+## A Brace lasts until its holder's next action: called as that action begins.
+func _end_brace(unit: Combatant) -> void:
+	if unit.brace_absorb <= 0:
+		return
+	var ended := _event(FightEvent.Kind.BRACE_END, unit, unit, null)
+	ended.amount = unit.brace_absorb
+	unit.brace_absorb = 0
+	_raise(ended)
+	_log("%s's Brace ends (%d unused)" % [unit.display_name, ended.amount])
 
 
 func _resolve_wait(actor: Combatant, action: FightAction) -> void:
@@ -333,6 +422,7 @@ func _resolve_wait(actor: Combatant, action: FightAction) -> void:
 ## right after the action's SKILL or WAIT event, before it changes anything.
 ## TODO(decision: status-expiry-wait): a wait counts as the holder's action.
 func _on_unit_acts(unit: Combatant) -> void:
+	_end_brace(unit)
 	for gone in statuses.on_unit_acts(unit):
 		_status_event(FightEvent.Kind.STATUS_EXPIRED, unit, unit, null, gone)
 		_log("%s's %s wears off" % [unit.display_name, statuses.name_of(gone.status_id)])
@@ -426,8 +516,14 @@ func _build_roster(rng: RandomNumberGenerator) -> void:
 		var shown_name: String = enemy_table.name_of(enemy_id)
 		if totals[enemy_id] > 1:
 			shown_name = "%s %d" % [shown_name, counts[enemy_id]]
-		combatants.append(Combatant.new(
+		var unit := Combatant.new(
 			"%s#%d" % [enemy_id, counts[enemy_id]],
 			shown_name,
-			Combatant.Side.ENEMY, order, stats, stats.hp, enemy_table.skills_of(enemy_id), tuning))
+			Combatant.Side.ENEMY, order, stats, stats.hp, enemy_table.skills_of(enemy_id), tuning)
+		var archetype := enemy_table.archetype_for(enemy_id)
+		if archetype != null and archetype.is_plated():
+			unit.plating = archetype.plating
+			unit.max_plating = archetype.plating
+			unit.plating_weakness = archetype.plating_weakness
+		combatants.append(unit)
 		order += 1

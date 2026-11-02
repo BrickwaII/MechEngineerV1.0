@@ -14,8 +14,18 @@ Combat core (M2), pure logic with no scenes:
   ui/fight/battle_math.gd all read it. `CombatTuning`,
   `EnemyTable`: read data/combat/. A skill with `"effect": "heal"` (Repair,
   Patch Up) restores attack x power% / 100 hp to a living ally, capped at what
-  it lost; `"effect": "guard"` (Brace, Shield Ally) blocks power% of the
-  target's next hit; `"target": "all_opponents"` (Arc Sweep) hits every enemy.
+  it lost; `"effect": "guard"` (Shield Ally) blocks power% of the target's
+  next hit; `"effect": "absorb"` (Brace) absorbs up to Defense x power% / 100
+  damage, over any number of hits, until the target's next action
+  (`Combatant.brace_absorb`; BRACE and BRACE_END events); `"target":
+  "all_opponents"` (Arc Sweep) hits every enemy. An action lands `hit_count`
+  hits.
+- Plating and Stagger (S4): an enemy whose archetype has `plating` loses a
+  pip per hit (two for its `plating_weakness` damage type). At zero it is
+  Staggered: wait cancelled, knocked back (`Timeline.knockback`), hits on it
+  deal a bonus, and its next turn is spent recovering (`Fight.advance()`
+  resolves it, no decision). Numbers: `combat_tuning.json` `stagger`
+  (`StaggerRules`). Events PLATING, STAGGER, RECOVER.
 - Combat rework definitions (S1; docs/combat-rework-map.md).
   - Actions (the plan's ActionDef) are `CombatSkill`s, defined in
     `data/combat/actions.json` and read by `actions/ActionTable`;

@@ -65,7 +65,8 @@ static func play_support_turn_by_mouse(s: BattleScreen) -> void:
 		var target: Combatant = null
 		if skill.is_heal() and hurt.max_hp - hurt.hp >= DamageRules.heal(actor.stats, 0, hurt.max_hp, skill):
 			target = hurt
-		elif skill.is_guard() and hurt.guard_percent == 0 and hurt.hp * 2 < hurt.max_hp:
+		elif ((skill.is_guard() and hurt.guard_percent == 0) or (skill.is_absorb() and hurt.brace_absorb == 0)) \
+				and hurt.hp * 2 < hurt.max_hp:
 			target = actor if skill.target == CombatSkill.TARGET_SELF else hurt
 		if target != null and fight.check_action(FightAction.use(skill.id, target.id)).is_empty():
 			s.skill_buttons[skill.id].pressed.emit()

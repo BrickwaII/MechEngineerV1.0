@@ -212,7 +212,7 @@ func refresh(unit: Combatant, p_highlight: Highlight, hp := -1, energy := -1) ->
 	_unit = unit
 	highlight = p_highlight
 	set_meters(unit.hp if hp < 0 else hp, unit.energy() if energy < 0 else energy)
-	view.set_state(unit.guard_percent > 0, not unit.is_alive())
+	view.set_state(unit.guard_percent > 0 or unit.brace_absorb > 0, not unit.is_alive())
 	view.set_targeted(p_highlight == Highlight.TARGETABLE, FeelData.color("enemy" if is_enemy else "ally"))
 	status_label.text = _prompt(unit, p_highlight)
 	_update_stats(unit)
@@ -352,6 +352,9 @@ func _update_statuses() -> void:
 	else:
 		if _unit.guard_percent > 0:
 			s["guard"] = "GUARD %d%%" % _unit.guard_percent
+		if _unit.brace_absorb > 0:
+			s["guard"] = ("%s BRACE %d" % [s["guard"], _unit.brace_absorb]) if s.has("guard") \
+				else "BRACE %d" % _unit.brace_absorb
 		if _unit.is_waiting():
 			if _unit.wait_length > 0:
 				s["waiting"] = "WAIT %d" % (_unit.wait_length - _unit.wait_ticks)

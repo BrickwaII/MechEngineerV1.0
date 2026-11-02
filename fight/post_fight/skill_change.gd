@@ -29,7 +29,7 @@ var rank_before := ""
 var rank_after := ""
 ## True when the change reached a new tier (Mega, Ultra).
 var tier_shift := false
-## SkillNumbers.KIND_DAMAGE, KIND_HEAL, KIND_GUARD, or "" when unknown.
+## SkillNumbers.KIND_DAMAGE, KIND_HEAL, KIND_GUARD, KIND_ABSORB, or "" when unknown.
 var stat_kind := ""
 ## Damage (against SkillNumbers' reference defense), hp healed, or percent
 ## guarded, before and after.

@@ -51,6 +51,20 @@ var reflect_percent := 0
 ## Statuses the unit holds (Exposed, ...), in the order first applied. Changed
 ## only through StatusManager. See StatusInstance.
 var statuses: Array[StatusInstance] = []
+## Damage still to absorb from a Brace (DamageRules.brace_absorb), across
+## every hit, until this unit's next action. 0 when not bracing.
+var brace_absorb := 0
+## Plating pips left (an enemy archetype's plating; StaggerRules). 0: unplated
+## or broken.
+var plating := 0
+## Plating at fight start; what recovering from a Stagger restores toward.
+var max_plating := 0
+## The damage type that strips extra plating; "" for none.
+var plating_weakness := ""
+## True from the hit that breaks the plating until the unit's next turn, which
+## it spends recovering. Hits on it deal StaggerRules.damage_bonus_percent more.
+## Intent planners read it: a Staggered unit has no intent.
+var staggered := false
 
 var _tuning: CombatTuning
 ## Skill id -> this unit's CombatSkill, built from the tuning and the overrides.
@@ -190,6 +204,13 @@ func begin_wait(target_milli: int, length := 0) -> void:
 	wait_length = maxi(0, length)
 
 
+## Ends a wait without acting (a Stagger cancels a wind-up). The gauge stays.
+func cancel_wait() -> void:
+	wait_target_milli = NOT_WAITING
+	wait_ticks = 0
+	wait_length = 0
+
+
 ## Called after the unit acts: spend one threshold of gauge, keep the overflow.
 func finish_action(threshold: int) -> void:
 	gauge = maxi(0, gauge - threshold)
@@ -198,7 +219,7 @@ func finish_action(threshold: int) -> void:
 	wait_length = 0
 
 
-## A copy of the timing, guard and status state, for previews. Shares stats and skills.
+## A copy of the timing, guard, status and plating state, for previews. Shares stats and skills.
 func clone_for_preview() -> Combatant:
 	var no_skills: Array[String] = []
 	var c := Combatant.new(id, display_name, side, order, stats, hp, no_skills, _tuning, skill_overrides)
@@ -209,6 +230,11 @@ func clone_for_preview() -> Combatant:
 	c.reflect_percent = reflect_percent
 	for st in statuses:
 		c.statuses.append(st.copy())
+	c.brace_absorb = brace_absorb
+	c.plating = plating
+	c.max_plating = max_plating
+	c.plating_weakness = plating_weakness
+	c.staggered = staggered
 	c.gauge = gauge
 	c.energy_milli = energy_milli
 	c.wait_target_milli = wait_target_milli

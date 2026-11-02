@@ -14,6 +14,8 @@ extends RefCounted
 const KIND_DAMAGE := "dmg"
 const KIND_HEAL := "hp"
 const KIND_GUARD := "% guard"
+## Brace: damage absorbed until the bot's next action (Defense x power%).
+const KIND_ABSORB := "absorb"
 
 
 ## {kind, value (float), cost, bonuses: {key: percent}} for `combat_skill_id`
@@ -33,6 +35,9 @@ static func at_level(stats: UnitStats, combat_skill_id: String, level: int, comb
 	elif skill.is_guard():
 		out.kind = KIND_GUARD
 		out.value = float(skill.power_percent)
+	elif skill.is_absorb():
+		out.kind = KIND_ABSORB
+		out.value = maxf(0.0, stats.defense * skill.power_percent / 100.0)
 	else:
 		# DamageRules.damage() before its integer division and minimum.
 		var armor := reference_defense * combat.defense_percent * (100 - clampi(skill.pierce_percent, 0, 100)) / 10000.0

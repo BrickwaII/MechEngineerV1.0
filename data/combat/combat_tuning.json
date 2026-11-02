@@ -42,5 +42,13 @@
 	},
 	"guard": {
 		"max_percent": 80
+	},
+	"_stagger_comment": "Plating and Stagger (fight/stagger_rules.gd). A plated enemy (archetypes.json plating) loses pips_per_hit pips per hit, pips_per_matching_hit when the hit's damage_type matches its plating_weakness. At 0 it is Staggered: its wait is cancelled and its next turn is spent recovering, it is knocked back knockback_percent of a turn on the timeline, and hits on it deal damage_bonus_percent more. Recovering puts back recover_percent of its plating (0: it stays unplated).",
+	"stagger": {
+		"pips_per_hit": 1,
+		"pips_per_matching_hit": 2,
+		"knockback_percent": 50,
+		"damage_bonus_percent": 50,
+		"recover_percent": 100
 	}
 }

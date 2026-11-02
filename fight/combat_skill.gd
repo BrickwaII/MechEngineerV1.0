@@ -16,6 +16,9 @@ extends RefCounted
 ##   damage  hits an opponent (or, with target all_opponents, every living one)
 ##   heal    restores hp to a living ally (the user included)
 ##   guard   blocks power_percent of the next hit the target takes
+##   absorb  Brace: the target absorbs up to power_percent of the user's
+##           Defense in damage, across every hit, until the target's next
+##           action (DamageRules.brace_absorb)
 ## Targets:
 ##   opponent       one living opponent (the default for damage)
 ##   all_opponents  every living opponent; the action names any one of them
@@ -26,7 +29,8 @@ extends RefCounted
 const EFFECT_DAMAGE := "damage"
 const EFFECT_HEAL := "heal"
 const EFFECT_GUARD := "guard"
-const EFFECTS: Array[String] = [EFFECT_DAMAGE, EFFECT_HEAL, EFFECT_GUARD]
+const EFFECT_ABSORB := "absorb"
+const EFFECTS: Array[String] = [EFFECT_DAMAGE, EFFECT_HEAL, EFFECT_GUARD, EFFECT_ABSORB]
 
 const TARGET_OPPONENT := "opponent"
 const TARGET_ALL_OPPONENTS := "all_opponents"
@@ -39,7 +43,8 @@ var display_name: String
 ## Whole energy points spent when the skill is used.
 var energy_cost: int
 ## Damage before defense or hp restored, in percent of the user's attack; for
-## a guard, the percent of the next hit blocked.
+## a guard, the percent of the next hit blocked; for an absorb, the percent
+## of the user's Defense absorbed.
 var power_percent: int
 ## One of EFFECTS.
 var effect: String
@@ -110,6 +115,11 @@ func is_heal() -> bool:
 
 func is_guard() -> bool:
 	return effect == EFFECT_GUARD
+
+
+## Brace: absorbs damage until the target's next action.
+func is_absorb() -> bool:
+	return effect == EFFECT_ABSORB
 
 
 func is_damage() -> bool:

@@ -19,6 +19,16 @@ func _init(p_units: Array[Combatant], p_threshold: int) -> void:
 	threshold = p_threshold
 
 
+## Pushes `unit` back on the timeline by `amount` gauge (never below an empty
+## gauge) and returns the gauge it lost. The Stagger knockback calls this.
+## TODO(S2): S2 adds delay/advance/knockback here; this is the interface it
+## implements, so callers do not change when it lands.
+func knockback(unit: Combatant, amount: int) -> int:
+	var before := unit.gauge
+	unit.gauge = maxi(0, unit.gauge - maxi(0, amount))
+	return before - unit.gauge
+
+
 ## The unit ready to act right now, or null if nobody is.
 func ready_unit() -> Combatant:
 	return _first_ready(units, threshold)

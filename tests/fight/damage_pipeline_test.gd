@@ -27,7 +27,7 @@ func _unit(id: String, s: UnitStats, skills: Array[String] = []) -> Combatant:
 
 
 func test_steps_are_in_the_documented_order() -> void:
-	assert_array(DamagePipeline.STEPS).is_equal(["power", "defense", "floor", "status", "payoff", "elasticity", "guard"])
+	assert_array(DamagePipeline.STEPS).is_equal(["power", "defense", "floor", "status", "payoff", "elasticity", "guard", "brace"])
 
 
 func test_no_status_no_payoff_gives_the_old_numbers_for_every_case() -> void:
