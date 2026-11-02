@@ -63,6 +63,9 @@ func preview_choice(fight: Fight, action: FightAction) -> ChoicePreview:
 				c.id, c.display_name, c.hp, PreviewValue.of(c.hp - after.hp), PreviewValue.of(after.hp)))
 		if after.guard_percent != c.guard_percent:
 			out.guard_changes[c.id] = after.guard_percent
+		var statuses_after := status_texts(after)
+		if statuses_after != status_texts(c):
+			out.status_changes[c.id] = statuses_after
 		if after.energy_milli != c.energy_milli:
 			out.energy_after[c.id] = after.energy()
 	# Intents and order as the screen shows them next: once time has run to
@@ -107,6 +110,14 @@ func project_turns(fight: Fight, action: FightAction, count: int, policy: FightP
 			break
 		out.append(TimelineEntry.new(unit.id, unit.display_name, unit.side, copy.timeline.current_tick, unit.is_waiting()))
 		HeadlessFightRunner.play_turn(copy, unit, player, fallback, rng)
+	return out
+
+
+## `unit`'s statuses as ChoicePreview.status_changes lists them.
+static func status_texts(unit: Combatant) -> Array[String]:
+	var out: Array[String] = []
+	for s in unit.statuses:
+		out.append(str(s))
 	return out
 
 

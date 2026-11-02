@@ -6,15 +6,21 @@ extends RefCounted
 ## Fight.last_events). Read-only reporting: nothing reads events back into the
 ## fight, so they never change a result.
 ##
-## One action raises, in order: SKILL (or WAIT), then per target HIT / HEAL /
-## GUARD, and DOWN right after the HIT that downed a unit.
+## One action raises, in order: SKILL (or WAIT); STATUS_EXPIRED for each of
+## the actor's statuses that end as it acts; then per target HIT / HEAL /
+## GUARD (one HIT per hit of a multi-hit skill), DOWN right after the HIT that
+## downed a unit, STATUS_CONSUMED right after the HIT that used a status up,
+## and STATUS_APPLIED once the target's hits are done.
 ##
 ## Timeline moves (TimelineOps): RECOVERY last, once an action with recovery
 ## has landed; DELAY, ADVANCE and KNOCKBACK whenever a rule moves a
 ## unit. For these, target_id is the unit moved, actor_id the unit that moved
 ## it ("" for none) and amount the gauge moved.
 
-enum Kind { SKILL, HIT, HEAL, GUARD, WAIT, DOWN, RECOVERY, DELAY, ADVANCE, KNOCKBACK }
+enum Kind {
+	SKILL, HIT, HEAL, GUARD, WAIT, DOWN, STATUS_APPLIED, STATUS_CONSUMED, STATUS_EXPIRED,
+	RECOVERY, DELAY, ADVANCE, KNOCKBACK,
+}
 
 var kind: Kind
 ## Fight.action_count of the action that raised it (1 for the first action).
@@ -26,10 +32,18 @@ var skill_id := ""
 ## The actor's level in the skill (1 for enemies and unlevelled skills).
 var skill_level := 1
 ## HIT: damage dealt. HEAL: hp restored. GUARD: percent of the next hit blocked.
-## SKILL: energy points spent. RECOVERY, DELAY, ADVANCE, KNOCKBACK: gauge moved.
+## SKILL: energy points spent. STATUS_*: the status's stacks. RECOVERY,
+## DELAY, ADVANCE, KNOCKBACK: gauge moved.
 var amount := 0
 ## HIT only: the guard percent that softened it (0 when unguarded).
 var blocked_percent := 0
+## HIT only: extra damage from the target's statuses (Exposed), in percent.
+var status_bonus_percent := 0
+## HIT only: the skill's payoff bonus, in percent, when it applied.
+var payoff_bonus_percent := 0
+## STATUS_APPLIED, STATUS_CONSUMED, STATUS_EXPIRED: the status id. For
+## STATUS_EXPIRED the actor and target are the holder.
+var status_id := ""
 var hp_before := 0
 var hp_after := 0
 var max_hp := 0
@@ -53,6 +67,12 @@ func is_damage() -> bool:
 	return kind == Kind.HIT
 
 
+func is_status() -> bool:
+	return kind in [Kind.STATUS_APPLIED, Kind.STATUS_CONSUMED, Kind.STATUS_EXPIRED]
+
+
 func _to_string() -> String:
+	if is_status():
+		return "%s %s -> %s %s %s x%d" % [Kind.keys()[kind], actor_id, target_id, skill_id, status_id, amount]
 	return "%s %s -> %s %s %d (hp %d -> %d)" % [
 		Kind.keys()[kind], actor_id, target_id, skill_id, amount, hp_before, hp_after]

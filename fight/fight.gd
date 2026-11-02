@@ -16,6 +16,9 @@ var tuning: CombatTuning
 var enemy_table: EnemyTable
 var combatants: Array[Combatant] = []
 var timeline: Timeline
+## Applies, consumes and expires the units' statuses (Exposed). The state is
+## on each Combatant; see StatusManager.
+var statuses: StatusManager
 ## The unit waiting for a decision, or null while time runs or after the end.
 var pending_actor: Combatant
 var action_count := 0
@@ -44,6 +47,7 @@ func _init(p_request: FightRequest, p_seed: int, p_tuning: CombatTuning = null, 
 	fight_seed = p_seed
 	tuning = p_tuning if p_tuning != null else CombatTuning.load_default()
 	enemy_table = p_enemy_table if p_enemy_table != null else EnemyTable.load_default()
+	statuses = StatusManager.new(tuning.statuses)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = p_seed
 	if not request.is_valid():
@@ -201,6 +205,7 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 	used.energy_before = energy_before
 	used.energy_after = actor.energy()
 	_raise(used)
+	_on_unit_acts(actor)
 	if skill.is_heal():
 		var hp_before := target.hp
 		target.hp += DamageRules.heal(actor.stats, target.hp, target.max_hp, skill)
@@ -220,6 +225,7 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 			_raise(shielded)
 			_log("%s's %s also guards %s: next hit %d%% blocked" % [
 				actor.display_name, skill.display_name, target.display_name, target.guard_percent])
+		_apply_status(actor, target, skill)
 		return
 	if skill.is_guard():
 		target.guard_percent = maxi(target.guard_percent, skill.power_percent)
@@ -231,6 +237,7 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 		_log("%s uses %s on %s: next hit %d%% blocked, energy %d -> %d" % [
 			actor.display_name, skill.display_name, target.display_name, target.guard_percent,
 			energy_before, actor.energy()])
+		_apply_status(actor, target, skill)
 		return
 	var targets: Array[Combatant] = [target]
 	if skill.hits_all():
@@ -239,30 +246,53 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 	var weakest := DamageRules.weakest(targets) if skill.weakest_bonus_percent > 0 else null
 	actor.finish_action(tuning.turn_threshold())
 	for t in targets:
-		_hit(actor, t, skill, energy_before, bonus + (skill.weakest_bonus_percent if t == weakest else 0))
+		# Each hit of a multi-hit skill lands in turn; they stop once either
+		# side is down.
+		for i in maxi(1, skill.hit_count):
+			if not t.is_alive() or not actor.is_alive():
+				break
+			_hit(actor, t, skill, energy_before, bonus + (skill.weakest_bonus_percent if t == weakest else 0))
+		# A setup status goes on after the skill's own hits, so they do not use it up.
+		_apply_status(actor, t, skill)
 
 
 func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before: int, bonus_percent := 0) -> void:
 	var hp_before := target.hp
 	var guarded := target.guard_percent
 	var reflect := target.reflect_percent
-	var dmg := DamageRules.damage_to(actor, target, skill, tuning, bonus_percent)
-	var unguarded := DamageRules.damage(actor.stats, target.stats, skill, tuning, bonus_percent)
+	var b := DamagePipeline.run(actor.stats, target.stats, skill, tuning, bonus_percent, target)
+	var dmg := b.final
+	var unguarded := b.before_guard
 	target.hp = maxi(0, target.hp - dmg)
 	target.guard_percent = 0
 	target.reflect_percent = 0
 	ElasticityRules.after_hit(target, dmg, tuning)
+	var extras := ""
+	if b.status_percent > 0:
+		var names := PackedStringArray()
+		for id in b.status_ids:
+			names.append(statuses.name_of(id))
+		extras += " (+%d%% %s)" % [b.status_percent, ", ".join(names)]
+	if b.payoff_percent > 0:
+		extras += " (+%d%% payoff)" % b.payoff_percent
+	if guarded > 0:
+		extras += " (%d%% blocked)" % guarded
 	_log("%s uses %s on %s: %d damage%s, hp %d -> %d, energy %d -> %d" % [
 		actor.display_name, skill.display_name, target.display_name, dmg,
-		" (%d%% blocked)" % guarded if guarded > 0 else "", hp_before, target.hp, energy_before, actor.energy()])
+		extras, hp_before, target.hp, energy_before, actor.energy()])
 	var hit := _event(FightEvent.Kind.HIT, actor, target, skill)
 	hit.amount = hp_before - target.hp
 	hit.blocked_percent = guarded
+	hit.status_bonus_percent = b.status_percent
+	hit.payoff_bonus_percent = b.payoff_percent
 	hit.hp_before = hp_before
 	_raise(hit)
 	if not target.is_alive():
 		_log("%s is down" % target.display_name)
 		_raise(_event(FightEvent.Kind.DOWN, actor, target, skill))
+	for used in statuses.consume_after_hit(target, skill):
+		_status_event(FightEvent.Kind.STATUS_CONSUMED, actor, target, skill, used)
+		_log("%s's %s is used up" % [target.display_name, statuses.name_of(used.status_id)])
 	# A Mega or Ultra guard sends part of what it blocked back.
 	@warning_ignore("integer_division")
 	var back := maxi(0, unguarded - dmg) * reflect / 100 if guarded > 0 else 0
@@ -291,12 +321,43 @@ func _resolve_wait(actor: Combatant, action: FightAction) -> void:
 	waited.energy_before = energy_before
 	waited.energy_after = actor.energy()
 	_raise(waited)
+	_on_unit_acts(actor)
 	if action.wait_ticks > 0:
 		_log("%s waits %d ticks (energy %d, %s costs %d)" % [
 			actor.display_name, action.wait_ticks, actor.energy(), skill.display_name, skill.energy_cost])
 	else:
 		_log("%s waits for %s (energy %d of %d)" % [
 			actor.display_name, skill.display_name, actor.energy(), skill.energy_cost])
+
+
+## `unit` begins an action: the statuses that last until its next action end.
+## The timeline point "until the holder's next action" (StatusManager). Called
+## right after the action's SKILL or WAIT event, before it changes anything.
+## TODO(decision: status-expiry-wait): a wait counts as the holder's action.
+func _on_unit_acts(unit: Combatant) -> void:
+	for gone in statuses.on_unit_acts(unit):
+		_status_event(FightEvent.Kind.STATUS_EXPIRED, unit, unit, null, gone)
+		_log("%s's %s wears off" % [unit.display_name, statuses.name_of(gone.status_id)])
+
+
+## Puts `skill`'s applies_status on `target`, when it has one and the target
+## is still up.
+func _apply_status(actor: Combatant, target: Combatant, skill: CombatSkill) -> void:
+	if skill.applies_status.is_empty():
+		return
+	var held := statuses.apply(target, skill.applies_status, actor.id, action_count)
+	if held == null:
+		return
+	_status_event(FightEvent.Kind.STATUS_APPLIED, actor, target, skill, held)
+	_log("%s is %s%s" % [target.display_name, statuses.name_of(held.status_id),
+		" x%d" % held.stacks if held.stacks > 1 else ""])
+
+
+func _status_event(kind: FightEvent.Kind, actor: Combatant, target: Combatant, skill: CombatSkill, status: StatusInstance) -> void:
+	var e := _event(kind, actor, target, skill)
+	e.status_id = status.status_id
+	e.amount = status.stacks
+	_raise(e)
 
 
 func _check_end() -> void:

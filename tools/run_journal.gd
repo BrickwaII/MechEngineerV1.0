@@ -293,6 +293,12 @@ static func event_dict(e: FightEvent) -> Dictionary:
 		d["hp"] = [e.hp_before, e.hp_after, e.max_hp]
 	if e.kind == FightEvent.Kind.HIT and e.blocked_percent > 0:
 		d["blocked"] = e.blocked_percent
+	if e.kind == FightEvent.Kind.HIT and e.status_bonus_percent > 0:
+		d["status_bonus"] = e.status_bonus_percent
+	if e.kind == FightEvent.Kind.HIT and e.payoff_bonus_percent > 0:
+		d["payoff_bonus"] = e.payoff_bonus_percent
+	if e.is_status():
+		d["status"] = e.status_id
 	if e.kind in [FightEvent.Kind.SKILL, FightEvent.Kind.WAIT]:
 		d["energy"] = [e.energy_before, e.energy_after]
 	return d
