@@ -5,13 +5,15 @@ extends RefCounted
 ## by reading this (ui/fight/battle_math.gd) rather than redoing the math.
 ##
 ## Steps, in DamagePipeline.STEPS order:
-##   attack_term     attack x power% x (100 + bonus% + speed bonus%) / 100
+##   attack_term     attack x power% x (100 + bonus% + speed bonus% + Stagger
+##                   bonus%) / 100
 ##   defense_term    defense x defense% x (100 - pierce%) / 100
 ##   floored         max(min_damage, (attack_term - defense_term) / 100)
 ##   after_status    floored x (100 + status_percent) / 100   (Exposed)
 ##   after_payoff    after_status x (100 + payoff_percent) / 100
 ##   before_guard    after_payoff after elasticity
-##   final           before_guard after the target's guard
+##   after_guard     before_guard after the target's guard
+##   final           after_guard less what the target's Brace absorbs
 
 var attack := 0
 var power_percent := 100
@@ -19,6 +21,8 @@ var power_percent := 100
 var bonus_percent := 0
 ## A slow attacker's bonus (speed-range = compressed). See SpeedRules.
 var speed_bonus_percent := 0
+## The Stagger bonus while the target is Staggered (StaggerRules), else 0.
+var stagger_bonus_percent := 0
 var defense := 0
 var defense_percent := 0
 var pierce_percent := 0
@@ -38,6 +42,10 @@ var payoff_percent := 0
 var after_payoff := 0
 var before_guard := 0
 var guard_percent := 0
+var after_guard := 0
+## What the target's Brace had left before this hit, and what it absorbed.
+var brace_absorb := 0
+var absorbed := 0
 var final := 0
 
 

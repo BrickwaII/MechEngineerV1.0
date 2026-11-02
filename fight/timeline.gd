@@ -19,6 +19,18 @@ func _init(p_units: Array[Combatant], p_threshold: int) -> void:
 	threshold = p_threshold
 
 
+## Pushes `unit` back on the timeline by `amount` gauge (never below an empty
+## gauge) and returns the gauge it lost. The Stagger knockback calls this.
+## A gauge already below 0 (recovery or delay debt, S2) keeps its debt and
+## is not lifted. S2's general moves, which may push into debt and raise their
+## own events, are TimelineOps.delay(), advance() and knockback(); whether the
+## Stagger should use them is combat-rework question 32.
+func knockback(unit: Combatant, amount: int) -> int:
+	var before := unit.gauge
+	unit.gauge = maxi(mini(0, unit.gauge), unit.gauge - maxi(0, amount))
+	return before - unit.gauge
+
+
 ## The unit ready to act right now, or null if nobody is.
 func ready_unit() -> Combatant:
 	return _first_ready(units, threshold)

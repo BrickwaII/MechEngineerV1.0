@@ -45,7 +45,8 @@
 				{"id": "none", "name": "No effect", "description": "Elasticity is stored but does nothing."},
 				{"id": "reduce_big_hits", "name": "Reduces big hits", "description": "The part of a hit above big_hit_percent of the defender's max hp is cut by elasticity x reduce_percent_per_point percent, at most max_reduce_percent.", "params": {"big_hit_percent": 20, "reduce_percent_per_point": 10, "max_reduce_percent": 60}},
 				{"id": "resist_knockback", "name": "Resists turn-order knockback", "description": "Every damaging hit knocks the target's gauge back by knockback_gauge, less elasticity x resist_gauge_per_point (never below 0).", "params": {"knockback_gauge": 20, "resist_gauge_per_point": 4}},
-				{"id": "energy_when_hit", "name": "Regains energy when hit", "description": "A unit that takes damage regains elasticity x energy_milli_per_point thousandths of energy, capped at its pool.", "params": {"energy_milli_per_point": 250}}
+				{"id": "energy_when_hit", "name": "Regains energy when hit", "description": "A unit that takes damage regains elasticity x energy_milli_per_point thousandths of energy, capped at its pool.", "params": {"energy_milli_per_point": 250}},
+				{"id": "stagger_recovery", "name": "Recovers from Stagger faster", "description": "A Staggered unit is knocked back less on the timeline: the Stagger knockback is cut by elasticity x cut_percent_per_point percent, at most max_cut_percent. The combat rework plan's default for Elasticity (S4).", "params": {"cut_percent_per_point": 10, "max_cut_percent": 60}}
 			]
 		},
 		{

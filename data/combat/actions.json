@@ -1,6 +1,6 @@
 {
 	"_comment": "Every action (combat skill) a unit can use: fight/combat_skill.gd, read by fight/actions/action_table.gd. Bot skills name one through bot_skill_effects in combat_tuning.json; enemies list them in enemy_tables.json. Every number is a first guess, not balance.",
-	"_fields_comment": "name, energy_cost (whole points), power_percent (damage per hit or hp restored, in percent of attack; for a guard, the share of the next hit blocked). effect: damage (default), heal or guard. target: opponent (default for damage), all_opponents, ally (default for heal and guard; the user included) or self.",
+	"_fields_comment": "name, energy_cost (whole points), power_percent (damage per hit or hp restored, in percent of attack; for a guard, the share of the next hit blocked; for an absorb, the share of the user's Defense absorbed). effect: damage (default), heal, guard (blocks a share of the next hit) or absorb (Brace: absorbs damage up to power_percent of Defense, over any number of hits, until the target's next action). target: opponent (default for damage), all_opponents, ally (default for heal and guard; the user included) or self.",
 	"_rework_fields_comment": "Combat rework fields, all optional: recovery (percent of a turn the user is pushed back after acting, 100 = one whole turn, default 0; S2, read by fight/timeline_ops.gd; off under the action-recovery switch's none option), hit_count (hits per use, each of power_percent; default 1), damage_type (default untyped \"\"; S13), tags (labels for the action tagger; S6), applies_status (a statuses.json id put on each target still up after the action's hits), payoff_condition (a statuses.json id the target must hold) with payoff_bonus_percent (extra damage in percent against it; fight/damage_pipeline.gd).",
 	"_shred_comment": "TODO(decision: shred-in-drafts): shred is in the catalog only. No bot skill (bot_skill_effects, data/bot_data/skills.json), draft, enemy or demo uses it until S9's sandbox, so runs and goldens do not change.",
 	"actions": {
@@ -9,7 +9,7 @@
 		"overload": {"name": "Overload", "energy_cost": 9, "power_percent": 220, "recovery": 50},
 		"repair": {"name": "Repair", "energy_cost": 2, "power_percent": 100, "effect": "heal"},
 		"arc_sweep": {"name": "Arc Sweep", "energy_cost": 6, "power_percent": 60, "target": "all_opponents", "recovery": 20},
-		"brace": {"name": "Brace", "energy_cost": 2, "power_percent": 50, "effect": "guard", "target": "self"},
+		"brace": {"name": "Brace", "energy_cost": 2, "power_percent": 100, "effect": "absorb", "target": "self"},
 		"patch_up": {"name": "Patch Up", "energy_cost": 3, "power_percent": 100, "effect": "heal"},
 		"shield": {"name": "Shield Ally", "energy_cost": 3, "power_percent": 40, "effect": "guard"},
 		"shred": {"name": "Shred", "energy_cost": 2, "power_percent": 50, "hit_count": 2, "applies_status": "exposed", "tags": ["offense", "setup"]}

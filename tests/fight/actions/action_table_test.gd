@@ -12,7 +12,7 @@ const PRE_REWORK := {
 	"overload": ["Overload", 9, 220, "damage", "opponent"],
 	"repair": ["Repair", 2, 100, "heal", "ally"],
 	"arc_sweep": ["Arc Sweep", 6, 60, "damage", "all_opponents"],
-	"brace": ["Brace", 2, 50, "guard", "self"],
+	"brace": ["Brace", 2, 100, "absorb", "self"],
 	"patch_up": ["Patch Up", 3, 100, "heal", "ally"],
 	"shield": ["Shield Ally", 3, 40, "guard", "ally"],
 }

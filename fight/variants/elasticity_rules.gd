@@ -10,6 +10,11 @@ extends RefCounted
 ##                     knockback_gauge less elasticity x resist_gauge_per_point
 ##   energy_when_hit   a unit that takes damage regains elasticity x
 ##                     energy_milli_per_point thousandths of energy
+##   stagger_recovery  a Staggered unit's knockback (StaggerRules) is cut by
+##                     elasticity x cut_percent_per_point percent, at most
+##                     max_cut_percent: it recovers sooner
+## TODO(decision: d-elasticity): the combat rework plan's default is Stagger
+## recovery speed (stagger_recovery); "none" stays the default until decided.
 ## Every rule is deterministic and whole-number.
 
 
@@ -45,6 +50,16 @@ static func energy_when_hit_milli(target: UnitStats, tuning: CombatTuning) -> in
 	if not tuning.variants.is_chosen(FightVariants.ELASTICITY, FightVariants.ELASTICITY_ENERGY):
 		return 0
 	return maxi(0, target.elasticity) * maxi(0, tuning.variants.param_int(FightVariants.ELASTICITY, "energy_milli_per_point"))
+
+
+## Percent of a Stagger's knockback `unit` shrugs off (stagger_recovery).
+static func stagger_knockback_cut_percent(unit: UnitStats, tuning: CombatTuning) -> int:
+	if tuning == null or not tuning.variants.is_chosen(FightVariants.ELASTICITY, FightVariants.ELASTICITY_STAGGER):
+		return 0
+	var v := tuning.variants
+	return clampi(
+		maxi(0, unit.elasticity) * v.param_int(FightVariants.ELASTICITY, "cut_percent_per_point"),
+		0, clampi(v.param_int(FightVariants.ELASTICITY, "max_cut_percent"), 0, 100))
 
 
 ## Applies the after-hit rules to `target`, which just took `p_damage`.

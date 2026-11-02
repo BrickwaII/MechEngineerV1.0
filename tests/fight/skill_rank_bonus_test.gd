@@ -23,7 +23,7 @@ func _tuning() -> CombatTuning:
 			"heavy_strike": {"mega": {"pierce_percent": 50}},
 			"arc_sweep": {"mega": {"weakest_bonus_percent": 100}},
 			"patch_up": {"mega": {"heal_guard_percent": 25}},
-			"brace": {"mega": {"reflect_percent": 50}},
+			"shield": {"mega": {"reflect_percent": 50}},
 		},
 	})
 	return t
@@ -104,22 +104,23 @@ func test_a_mega_heal_also_guards() -> void:
 	assert_str(fight.log_text()).contains("also guards Tank")
 
 
-## Brace at Mega blocks 77% and reflects half of what it blocks.
+## Shield Ally at Mega blocks 62% and reflects half of what it blocks. (Brace
+## lost its reflect in the S4 rework: brace-rule.)
 func test_a_mega_guard_reflects_part_of_what_it_blocks() -> void:
-	var squad: Array[SquadMemberSummary] = [_member("anvil", H.stats(60, 5, 0, 10, 10), [["Brace", "guard_self", 7]])]
+	var squad: Array[SquadMemberSummary] = [_member("anvil", H.stats(60, 5, 0, 10, 10), [["Shield Ally", "guard_ally", 7]])]
 	var fight := _fight(squad, H.stats(200, 20, 0, 10, 0))
 	var anvil := fight.advance()
 	assert_str(anvil.id).is_equal("anvil")
-	assert_str(fight.submit(FightAction.use("brace", "anvil"))).is_empty()
-	assert_int(anvil.guard_percent).is_equal(77)
+	assert_str(fight.submit(FightAction.use("shield", "anvil"))).is_empty()
+	assert_int(anvil.guard_percent).is_equal(62)
 	assert_int(anvil.reflect_percent).is_equal(50)
 	var foe := fight.advance()
 	fight.submit(FightAction.use("strike", "anvil"))
-	# 20 x 23% = 4 taken, 16 blocked, 8 back.
-	assert_int(anvil.hp).is_equal(56)
-	assert_int(foe.hp).is_equal(192)
+	# 20 x 38% = 7 taken, 13 blocked, 6 back.
+	assert_int(anvil.hp).is_equal(53)
+	assert_int(foe.hp).is_equal(194)
 	assert_int(anvil.reflect_percent).is_equal(0)
-	assert_str(fight.log_text()).contains("reflects 8 damage")
+	assert_str(fight.log_text()).contains("reflects 6 damage")
 
 
 func test_a_ranked_fight_replays_exactly() -> void:

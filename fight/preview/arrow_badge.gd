@@ -15,11 +15,14 @@ var to_id: String
 var kind: String
 var skill_id: String
 ## Hp the target loses (ATTACK, WAIT), hp it gains (HEAL), or the percent of
-## its next hit it blocks (GUARD). Damage is what leaves the bar: never more
+## its next hit it blocks (GUARD), or for a Brace (GUARD with absorb) the
+## damage it absorbs. Damage is what leaves the bar: never more
 ## than the target's hp. Unknown when the outcome is random.
 var amount: PreviewValue
 ## True when the action would surely down the target.
 var knocks_out := false
+## True for a GUARD badge of a Brace: the amount is damage absorbed, not a percent.
+var absorb := false
 ## True when the previewed choice changed this arrow (new target, new skill or
 ## new amount). Set by BattleReadout.compare().
 var changed := false
@@ -35,7 +38,8 @@ func _init(p_from := "", p_to := "", p_kind := ATTACK, p_skill_id := "", p_amoun
 	amount = p_amount if p_amount != null else PreviewValue.of(0)
 
 
-## The badge text: "6", "+5", "50%", or "?" for an unknown amount.
+## The badge text: "6", "+5", "50%" (a guard; a Brace shows "6"), or "?" for
+## an unknown amount.
 func text() -> String:
 	if amount.is_unknown():
 		return PreviewValue.UNKNOWN_TEXT
@@ -43,7 +47,7 @@ func text() -> String:
 		HEAL:
 			return "+%d" % amount.value
 		GUARD:
-			return "%d%%" % amount.value
+			return str(amount.value) if absorb else "%d%%" % amount.value
 	return str(amount.value)
 
 

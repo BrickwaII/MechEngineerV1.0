@@ -4,9 +4,9 @@ extends RefCounted
 ## scaling. Plain data, read from data/combat/archetypes.json by
 ## EnemyArchetypeTable. The combat rework plan's EnemyArchetypeDef (S1).
 ##
-## Definitions only: no fight reads an archetype yet. An enemy in
-## data/combat/enemy_tables.json may name one ("archetype"); S4 (plating and
-## Stagger) and S5 (intent patterns, scaling) give the fields meaning.
+## An enemy in data/combat/enemy_tables.json may name one ("archetype").
+## Fights read plating and plating_weakness (S4: Fight, StaggerRules); S5
+## gives the intent pattern and scaling meaning.
 ##
 ## Intent pattern: the steps the enemy repeats, one per turn, in order:
 ##   plan      the intent planner picks as it does today
@@ -24,8 +24,13 @@ const SCALABLE_STATS: Array[String] = ["attack", "defense", "speed", "elasticity
 
 var id: String
 var display_name: String
-## Plating pips at fight start; 0 is unplated. Each hit strips one (S4).
+## Plating pips at fight start; 0 is unplated. Each hit strips one, a hit of
+## the plating_weakness damage type more (StaggerRules); at 0 the enemy is
+## Staggered.
 var plating := 0
+## The damage type (CombatSkill.damage_type) that strips extra plating; ""
+## for none.
+var plating_weakness := ""
 ## Steps from STEPS or action ids, repeated in order. Empty: always plan.
 var intent_pattern: Array[String] = []
 ## Stat name (SCALABLE_STATS) -> percent of the base stat gained each time the
@@ -40,6 +45,7 @@ static func from_dict(p_id: String, d: Dictionary) -> EnemyArchetype:
 	a.id = p_id
 	a.display_name = String(d.get("name", p_id))
 	a.plating = int(d.get("plating", 0))
+	a.plating_weakness = String(d.get("plating_weakness", ""))
 	for step: Variant in d.get("intent_pattern", []):
 		a.intent_pattern.append(String(step))
 	var scaling: Dictionary = d.get("scaling_percent_per_action", {})
@@ -66,6 +72,8 @@ func validate(action_ids: Variant = null) -> Array[String]:
 		problems.append("archetype %s has no name" % id)
 	if plating < 0:
 		problems.append("archetype %s plating may not be negative" % id)
+	if not plating_weakness.is_empty() and plating <= 0:
+		problems.append("archetype %s has a plating_weakness but no plating" % id)
 	for step in intent_pattern:
 		if step in STEPS:
 			continue

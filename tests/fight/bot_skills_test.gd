@@ -127,29 +127,29 @@ func test_patch_up_may_not_target_an_opponent() -> void:
 	assert_str(fight.check_action(FightAction.use("patch_up", "foe#1"))).contains("on an opponent")
 
 
-func test_brace_blocks_part_of_the_next_hit_only() -> void:
+func test_brace_absorbs_its_defense_until_the_bots_next_action() -> void:
 	var tuning := _tuning()
-	var squad: Array[SquadMemberSummary] = [_member("anvil", H.stats(60, 5, 0, 10, 10), [["Brace", "guard_self"]])]
-	# The foe hits for 20 unguarded (attack 20, defense 0).
+	var squad: Array[SquadMemberSummary] = [_member("anvil", H.stats(60, 5, 8, 10, 10), [["Brace", "guard_self"]])]
+	# The foe hits for 16 (attack 20 less half of defense 8).
 	var fight := _fight(squad, H.stats(200, 20, 0, 10, 0), 1, tuning)
 	var anvil := fight.advance()
 	assert_str(anvil.id).is_equal("anvil")
 	assert_str(fight.check_action(FightAction.use("brace", "foe#1"))).contains("only use brace on itself")
 	assert_str(fight.submit(FightAction.use("brace", "anvil"))).is_empty()
-	assert_int(anvil.guard_percent).is_equal(50)
+	# Defense 8 x 100%.
+	assert_int(anvil.brace_absorb).is_equal(8)
 	var foe := fight.advance()
 	assert_str(foe.id).is_equal("foe#1")
 	fight.submit(FightAction.use("strike", "anvil"))
-	# 50% of 20 blocked.
-	assert_int(anvil.hp).is_equal(50)
-	assert_int(anvil.guard_percent).is_equal(0)
-	assert_str(fight.log_text()).contains("10 damage (50% blocked)")
-	# The guard is used up: the next hit lands in full.
+	assert_int(anvil.hp).is_equal(52)
+	assert_int(anvil.brace_absorb).is_equal(0)
+	assert_str(fight.log_text()).contains("8 damage (8 absorbed, 0 left)")
+	# The Brace is used up: the next hit lands in full.
 	fight.advance()
 	fight.submit(FightAction.use("strike", "foe#1"))
 	fight.advance()
 	fight.submit(FightAction.use("strike", "anvil"))
-	assert_int(anvil.hp).is_equal(30)
+	assert_int(anvil.hp).is_equal(36)
 
 
 func test_shield_ally_blocks_part_of_an_allys_next_hit() -> void:
@@ -178,10 +178,10 @@ func test_guard_never_blocks_more_than_the_cap_and_never_drops_below_min_damage(
 	var tuning := _tuning().with_variants(flat)
 	tuning.max_guard_percent = 80
 	tuning.power_percent_per_level = 100
-	var squad: Array[SquadMemberSummary] = [_member("anvil", H.stats(60, 5, 0, 10, 10), [["Brace", "guard_self", 5]])]
+	var squad: Array[SquadMemberSummary] = [_member("anvil", H.stats(60, 5, 0, 10, 10), [["Shield Ally", "guard_ally", 5]])]
 	var fight := _fight(squad, H.stats(200, 20, 0, 10, 0), 1, tuning)
-	# 50% at +100% per level for 4 levels would be 250%; capped.
-	assert_int(fight.combatant("anvil").skill("brace").power_percent).is_equal(80)
+	# 40% at +100% per level for 4 levels would be 200%; capped.
+	assert_int(fight.combatant("anvil").skill("shield").power_percent).is_equal(80)
 	assert_int(DamageRules.guarded(1, 80, tuning)).is_equal(tuning.min_damage)
 
 
@@ -196,14 +196,14 @@ func test_arc_sweep_hits_every_living_opponent() -> void:
 	assert_int(cog.energy_spent_milli).is_equal(6 * Combatant.MILLI)
 
 
-func test_enemy_intents_count_a_bots_guard() -> void:
-	var squad: Array[SquadMemberSummary] = [_member("anvil", H.stats(60, 5, 0, 10, 10), [["Brace", "guard_self"]])]
+func test_enemy_intents_count_a_bots_brace() -> void:
+	var squad: Array[SquadMemberSummary] = [_member("anvil", H.stats(60, 5, 8, 10, 10), [["Brace", "guard_self"]])]
 	var fight := _fight(squad, H.stats(200, 20, 0, 5, 0))
 	var planner := IntentPlanner.new()
-	assert_int(planner.plan(fight, fight.combatant("foe#1")).amount).is_equal(20)
+	assert_int(planner.plan(fight, fight.combatant("foe#1")).amount).is_equal(16)
 	fight.advance()
 	fight.submit(FightAction.use("brace", "anvil"))
-	assert_int(planner.plan(fight, fight.combatant("foe#1")).amount).is_equal(10)
+	assert_int(planner.plan(fight, fight.combatant("foe#1")).amount).is_equal(8)
 
 
 func test_the_preview_shows_a_guard_and_a_heal() -> void:
