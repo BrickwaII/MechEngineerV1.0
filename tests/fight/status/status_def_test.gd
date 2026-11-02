@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## Status definitions (StatusDef) load from data/combat/statuses.json and
-## validate (combat rework S1). No fight applies one yet.
+## validate (combat rework S1).
 
 
 func test_the_shipped_statuses_load_and_validate() -> void:
@@ -23,10 +23,13 @@ func test_exposed_matches_the_design() -> void:
 	assert_bool(s.is_consumed_by(StatusDef.CONSUMED_BY_PAYOFF)).is_false()
 
 
-func test_no_shipped_action_applies_or_needs_a_status_yet() -> void:
+func test_only_shred_applies_a_status_and_only_heavy_strike_has_a_payoff() -> void:
+	# S3 lands the first setup and payoff on content no draft uses yet
+	# (TODO(decision: shred-in-drafts)), plus Heavy Strike's payoff, which
+	# changes nothing until something applies Exposed.
 	for a: CombatSkill in ActionTable.load_default().actions.values():
-		assert_str(a.applies_status).is_empty()
-		assert_str(a.payoff_condition).is_empty()
+		assert_str(a.applies_status).is_equal("exposed" if a.id == "shred" else "")
+		assert_str(a.payoff_condition).is_equal("exposed" if a.id == "heavy_strike" else "")
 
 
 func test_from_dict_fills_defaults() -> void:

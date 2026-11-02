@@ -6,23 +6,36 @@ Combat core (M2), pure logic with no scenes:
 - `Fight`: one fight in ATB wait mode. `advance()` runs time until a unit is
   ready, `submit()` resolves its action. `upcoming(n)` previews the order.
 - `Timeline`: gauge-based turn order. `Combatant`: per-unit hp, energy, gauge.
-- `DamageRules`: deterministic damage and healing. `CombatTuning`,
+- `DamageRules`: deterministic damage and healing, the entry points. Every
+  hit is worked out by `DamagePipeline.run()`, a fixed list of steps (power,
+  defense, floor, status, payoff, elasticity, guard; `STEPS`) that returns a
+  `DamageBreakdown`; `DamagePipeline.hits()` lands each hit of a multi-hit
+  skill in turn. The fight, the intent planner, the preview and
+  ui/fight/battle_math.gd all read it. `CombatTuning`,
   `EnemyTable`: read data/combat/. A skill with `"effect": "heal"` (Repair,
   Patch Up) restores attack x power% / 100 hp to a living ally, capped at what
   it lost; `"effect": "guard"` (Brace, Shield Ally) blocks power% of the
   target's next hit; `"target": "all_opponents"` (Arc Sweep) hits every enemy.
-- Combat rework definitions (S1; docs/combat-rework-map.md). Data only: no
-  fight rule reads the new fields yet.
+- Combat rework definitions (S1; docs/combat-rework-map.md).
   - Actions (the plan's ActionDef) are `CombatSkill`s, defined in
     `data/combat/actions.json` and read by `actions/ActionTable`;
     `CombatTuning.skills` holds a fresh copy of the table. Besides cost, power,
     effect and target each action has `recovery` (S2), `hit_count`,
     `applies_status`, `payoff_condition` + `payoff_bonus_percent` (S3),
-    `tags` (S6) and `damage_type` (S13), all at no-op defaults today.
+    `tags` (S6) and `damage_type` (S13), with no-op defaults. Fights read
+    `hit_count`, `applies_status` and the payoff (S3).
     `CombatSkill.copy_definition()` copies them; level and rank copies use it.
   - `status/StatusDef` + `StatusTable` (data/combat/statuses.json): effect,
-    amount, max_stacks, expiry, consumed_by. Holds `exposed`; nothing applies
-    it until S3.
+    amount, max_stacks, expiry, consumed_by. Holds `exposed`, applied by
+    `shred` (catalog only; no draft, enemy or demo uses it yet).
+  - Statuses in a fight (S3): `status/StatusManager` (`Fight.statuses`)
+    applies, consumes and expires them; the state is `Combatant.statuses`
+    (`StatusInstance`), copied by `clone_for_preview()`. "Until the holder's
+    next action" ends at `StatusManager.on_unit_acts()`, which `Fight` calls
+    as a unit's skill or wait begins. Events: `FightEvent.Kind`
+    STATUS_APPLIED, STATUS_CONSUMED, STATUS_EXPIRED; `ChoicePreview`
+    `status_changes`. Guard stays `Combatant.guard_percent`; wait state is not
+    a status.
   - `EnemyArchetype` (the plan's EnemyArchetypeDef) + `EnemyArchetypeTable`
     (data/combat/archetypes.json, empty until S5): plating, intent_pattern,
     scaling_percent_per_action. An enemy-table entry may name one with

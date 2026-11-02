@@ -1,5 +1,5 @@
 {
-	"_comment": "Statuses a unit can hold in a fight (fight/status/status_def.gd). Definitions only until S3 of the combat rework: no action applies one yet. effect: damage_taken_percent (the holder takes amount percent more damage). max_stacks: 1 means applying again only refreshes. expiry: holder_next_action (ends when the holder next acts) or never (ends only when consumed). consumed_by: hit (the next damage hit the holder takes), payoff (an action whose payoff_condition names it).",
+	"_comment": "Statuses a unit can hold in a fight (fight/status/status_def.gd), applied, used up and expired by fight/status/status_manager.gd. Exposed is applied by shred (actions.json). effect: damage_taken_percent (the holder takes amount percent more damage). max_stacks: 1 means applying again only refreshes. expiry: holder_next_action (ends when the holder next acts) or never (ends only when consumed). consumed_by: hit (the next damage hit the holder takes), payoff (an action whose payoff_condition names it).",
 	"statuses": {
 		"exposed": {"name": "Exposed", "effect": "damage_taken_percent", "amount": 50, "max_stacks": 1, "expiry": "holder_next_action", "consumed_by": ["hit"]}
 	}
