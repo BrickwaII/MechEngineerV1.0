@@ -1,0 +1,4 @@
+{
+	"_comment": "Enemy archetypes (fight/enemy_archetype.gd). An enemy in enemy_tables.json may name one with \"archetype\". Definitions only until S4 and S5 of the combat rework; S5 adds the Charger, Plated and Scaler. plating: pips at fight start (0 unplated). intent_pattern: steps repeated one per turn: plan (the intent planner picks), wind_up (wait, telegraphing the next step) or an action id; empty is plan every turn. scaling_percent_per_action: stat -> percent of the base stat gained each time the enemy acts (attack, defense, speed, elasticity, battery_capacity).",
+	"archetypes": {}
+}

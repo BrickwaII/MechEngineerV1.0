@@ -61,7 +61,9 @@ func _build_bot(rng: RandomNumberGenerator, bot_id: String, bot_name: String) ->
 	for i in _tuning.augment_slot_count:
 		slots.append(AugmentSlot.new())
 
-	return Bot.new(bot_id, bot_name, stats, personality, skills, slots)
+	var bot := Bot.new(bot_id, bot_name, stats, personality, skills, slots)
+	bot.skill_level_band = _tuning.starting_skill_level_band
+	return bot
 
 
 ## The catalog skills a bot starts with, from the catalog in `shuffled` order,

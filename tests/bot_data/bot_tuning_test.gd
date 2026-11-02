@@ -76,3 +76,42 @@ func test_an_invalid_skill_in_the_catalog_is_rejected() -> void:
 	var dicts := _valid_dicts()
 	dicts[1]["skills"][0]["energy_cost"] = -2
 	assert_bool(BotTuning.from_dictionaries(dicts[0], dicts[1]).is_valid()).is_false()
+
+
+func test_active_skill_slots_and_the_starting_band_come_from_the_data_file() -> void:
+	# TODO(decision: skill-slots): four slots; Strike and Wait do not count.
+	var tuning := BotTuning.load_default()
+	assert_int(tuning.active_skill_slots).is_equal(4)
+	assert_that(tuning.starting_skill_level_band).is_equal(Vector2i(1, Bot.NO_LEVEL_CAP))
+
+
+func test_bad_skill_slots_are_rejected() -> void:
+	var dicts := _valid_dicts()
+	dicts[0]["active_skill_slots"] = 0
+	assert_bool(BotTuning.from_dictionaries(dicts[0], dicts[1]).is_valid()).is_false()
+	dicts[0]["active_skill_slots"] = 1
+	dicts[0]["starting_skill_count"] = 2
+	assert_bool(BotTuning.from_dictionaries(dicts[0], dicts[1]).is_valid()).is_false()
+	dicts[0].erase("active_skill_slots")
+	assert_bool(BotTuning.from_dictionaries(dicts[0], dicts[1]).is_valid()).is_false()
+
+
+func test_bad_starting_bands_are_rejected() -> void:
+	for band: Array in [[0, 5], [5, 3], [2, 0]]:
+		var dicts := _valid_dicts()
+		dicts[0]["starting_skill_level_band"] = band
+		assert_bool(BotTuning.from_dictionaries(dicts[0], dicts[1]).is_valid()).is_false()
+	var dicts := _valid_dicts()
+	dicts[0]["starting_skill_level_band"] = [1, 5]
+	assert_bool(BotTuning.from_dictionaries(dicts[0], dicts[1]).is_valid()).is_true()
+
+
+func test_the_basic_attack_takes_no_skill_slot() -> void:
+	var tuning := BotTuning.load_default()
+	var strike := Skill.new("Strike", tuning.basic_attack_effect_id, 0)
+	var shot := Skill.new("Overcharge Shot", "damage_single_heavy", 4)
+	var brace := Skill.new("Brace", "guard_self", 2)
+	assert_bool(tuning.uses_skill_slot(strike)).is_false()
+	assert_bool(tuning.uses_skill_slot(shot)).is_true()
+	var bot := Bot.new("b", "B", null, null, [strike, shot, brace])
+	assert_int(tuning.slotted_skill_count(bot)).is_equal(2)

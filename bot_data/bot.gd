@@ -9,6 +9,8 @@ extends Resource
 
 ## The six stats, in UnitStats order. Efficiency is deliberately not one.
 const STAT_NAMES: Array[String] = ["hp", "attack", "defense", "speed", "elasticity", "battery_capacity"]
+## A skill_level_band top of this means the band has no ceiling.
+const NO_LEVEL_CAP := 0
 
 @export var id: String
 @export var display_name: String
@@ -19,6 +21,11 @@ const STAT_NAMES: Array[String] = ["hp", "attack", "defense", "speed", "elastici
 @export var personality: Personality
 @export var skills: Array[Skill] = []
 @export var augment_slots: Array[AugmentSlot] = []
+## The generation band: the lowest and highest level (rank) this bot's skills
+## may reach, x to y; y NO_LEVEL_CAP has no ceiling. The generation itself is
+## personality.generation. Stored only: nothing caps a level by it until S15
+## of the combat rework. Saves without it load with this default.
+@export var skill_level_band := Vector2i(Skill.MIN_LEVEL, NO_LEVEL_CAP)
 
 
 func _init(
@@ -82,6 +89,10 @@ func validation_errors() -> PackedStringArray:
 		if skill_names.has(skill.display_name):
 			errors.append("bot '%s' holds skill '%s' twice" % [id, skill.display_name])
 		skill_names[skill.display_name] = true
+	if skill_level_band.x < Skill.MIN_LEVEL:
+		errors.append("bot '%s' skill level band starts below %d" % [id, Skill.MIN_LEVEL])
+	if skill_level_band.y != NO_LEVEL_CAP and skill_level_band.y < skill_level_band.x:
+		errors.append("bot '%s' skill level band %d to %d is reversed" % [id, skill_level_band.x, skill_level_band.y])
 	for slot in augment_slots:
 		if slot == null:
 			errors.append("bot '%s' has an empty augment slot entry" % id)

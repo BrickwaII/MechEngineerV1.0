@@ -25,6 +25,13 @@ var augment_slot_count: int
 var starting_generation: int
 var starting_skill_count: int
 var starting_skill_level: int
+## Active skills a bot may hold. The basic attack (basic_attack_effect_id,
+## Strike) and Wait do not count. Stored only: nothing enforces it until S15
+## of the combat rework. TODO(decision: skill-slots): default 4.
+var active_skill_slots: int
+## The skill level band a drafted bot starts with (Bot.skill_level_band):
+## x lowest, y highest, y Bot.NO_LEVEL_CAP for no ceiling. Unused until S15.
+var starting_skill_level_band: Vector2i
 ## [low, high] for each starting personality scale value.
 var personality_start_range: Vector2
 ## Stat name to Vector2i(low, high), both inclusive, for each of Bot.STAT_NAMES.
@@ -69,6 +76,9 @@ static func from_dictionaries(tuning_dict: Dictionary, skills_dict: Dictionary) 
 	tuning.starting_generation = _read_int(tuning_dict, "starting_generation", errors)
 	tuning.starting_skill_count = _read_int(tuning_dict, "starting_skill_count", errors)
 	tuning.starting_skill_level = _read_int(tuning_dict, "starting_skill_level", errors)
+	tuning.active_skill_slots = _read_int(tuning_dict, "active_skill_slots", errors)
+	var band := _read_pair(tuning_dict, "starting_skill_level_band", errors)
+	tuning.starting_skill_level_band = Vector2i(int(band[0]), int(band[1]))
 	var range_pair := _read_pair(tuning_dict, "personality_start_range", errors)
 	tuning.personality_start_range = Vector2(range_pair[0], range_pair[1])
 	var ranges: Dictionary = tuning_dict.get("stat_ranges", {})
@@ -106,6 +116,15 @@ func validation_errors() -> PackedStringArray:
 		errors.append("starting_generation is below %d" % Personality.MIN_GENERATION)
 	if starting_skill_level < Skill.MIN_LEVEL:
 		errors.append("starting_skill_level is below %d" % Skill.MIN_LEVEL)
+	if active_skill_slots < 1:
+		errors.append("active_skill_slots must be at least 1")
+	elif starting_skill_count > active_skill_slots:
+		errors.append("starting_skill_count %d is more than %d active skill slots" % [starting_skill_count, active_skill_slots])
+	var band := starting_skill_level_band
+	if band.x < Skill.MIN_LEVEL or (band.y != Bot.NO_LEVEL_CAP and band.y < band.x):
+		errors.append("starting_skill_level_band must be low to high from %d, or low to 0 for no ceiling" % Skill.MIN_LEVEL)
+	elif starting_skill_level < band.x or (band.y != Bot.NO_LEVEL_CAP and starting_skill_level > band.y):
+		errors.append("starting_skill_level %d is outside starting_skill_level_band" % starting_skill_level)
 	if starting_skill_count < 0 or starting_skill_count > skills.size():
 		errors.append("starting_skill_count %d is outside 0 to %d skills" % [starting_skill_count, skills.size()])
 	if personality_start_range.x > personality_start_range.y \
@@ -148,6 +167,17 @@ func is_guaranteed_skill(skill: Skill) -> bool:
 		DRAFT_RULE_NON_STRIKE_DAMAGE:
 			return is_damage_skill(skill) and skill.effect_id != basic_attack_effect_id
 	return true
+
+
+## True when `skill` takes an active skill slot: every skill but the basic
+## attack (Wait is not a skill).
+func uses_skill_slot(skill: Skill) -> bool:
+	return skill.effect_id != basic_attack_effect_id
+
+
+## How many of `bot`'s skills take an active skill slot.
+func slotted_skill_count(bot: Bot) -> int:
+	return bot.skills.filter(func(s: Skill) -> bool: return s != null and uses_skill_slot(s)).size()
 
 
 func is_valid() -> bool:

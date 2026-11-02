@@ -11,6 +11,22 @@ Combat core (M2), pure logic with no scenes:
   Patch Up) restores attack x power% / 100 hp to a living ally, capped at what
   it lost; `"effect": "guard"` (Brace, Shield Ally) blocks power% of the
   target's next hit; `"target": "all_opponents"` (Arc Sweep) hits every enemy.
+- Combat rework definitions (S1; docs/combat-rework-map.md). Data only: no
+  fight rule reads the new fields yet.
+  - Actions (the plan's ActionDef) are `CombatSkill`s, defined in
+    `data/combat/actions.json` and read by `actions/ActionTable`;
+    `CombatTuning.skills` holds a fresh copy of the table. Besides cost, power,
+    effect and target each action has `recovery` (S2), `hit_count`,
+    `applies_status`, `payoff_condition` + `payoff_bonus_percent` (S3),
+    `tags` (S6) and `damage_type` (S13), all at no-op defaults today.
+    `CombatSkill.copy_definition()` copies them; level and rank copies use it.
+  - `status/StatusDef` + `StatusTable` (data/combat/statuses.json): effect,
+    amount, max_stacks, expiry, consumed_by. Holds `exposed`; nothing applies
+    it until S3.
+  - `EnemyArchetype` (the plan's EnemyArchetypeDef) + `EnemyArchetypeTable`
+    (data/combat/archetypes.json, empty until S5): plating, intent_pattern,
+    scaling_percent_per_action. An enemy-table entry may name one with
+    `"archetype"`; `EnemyTable.validate()` checks the name.
 - `SquadSkills`: a squad member fights with its own skills. Each bot skill's
   effect_id picks a combat skill (`bot_skill_effects` in combat_tuning.json);
   the bot's name and level carry over. With named ranks (skill-progression =

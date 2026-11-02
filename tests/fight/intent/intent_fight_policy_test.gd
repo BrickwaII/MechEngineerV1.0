@@ -42,14 +42,14 @@ func test_plays_a_planned_heal() -> void:
 
 func test_falls_back_to_a_legal_option_when_a_heal_role_is_not_a_heal_skill() -> void:
 	# intent_weights.json calls "repair" a heal, but this tuning does not.
-	var d: Dictionary = JsonFile.read(CombatTuning.DEFAULT_PATH)
-	d.skills["repair"] = {"name": "Repair", "energy_cost": 2, "power_percent": 100}
+	var tuning := CombatTuning.load_default()
+	tuning.skills["repair"] = CombatSkill.from_dict("repair", {"name": "Repair", "energy_cost": 2, "power_percent": 100})
 	var f := T.fight(
 		[{"id": "bolt", "stats": T.stats(60, 12, 4, 1, 10)}],
 		[
 			{"id": "medic#1", "stats": T.stats(30, 8, 2, 4, 10), "skills": ["strike", "repair"]},
 			{"id": "grunt#1", "stats": T.stats(30, 6, 2, 4, 10), "skills": ["strike"], "hp": 10},
-		], CombatTuning.from_dict(d))
+		], tuning)
 	var planner := T.healer_planner()
 	var actor := f.advance()
 	assert_str(actor.id).is_equal("medic#1")

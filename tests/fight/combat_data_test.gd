@@ -21,3 +21,13 @@ func test_validate_reports_broken_tuning() -> void:
 	tuning.recharge_floor_milli_per_tick = 0
 	tuning.player_skills.append("no_such_skill")
 	assert_array(tuning.validate()).has_size(2)
+
+
+func test_every_combat_definition_loads_and_validates() -> void:
+	# Combat rework S1: actions, statuses and enemy archetypes.
+	var statuses := StatusTable.load_default()
+	var tuning := CombatTuning.load_default()
+	assert_array(statuses.validate()).is_empty()
+	assert_array(ActionTable.load_default().validate(statuses)).is_empty()
+	assert_array(EnemyArchetypeTable.load_default().validate(tuning)).is_empty()
+	assert_array(EnemyTable.load_default().validate(tuning, EnemyArchetypeTable.load_default())).is_empty()

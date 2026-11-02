@@ -38,7 +38,8 @@ static func bot_tuning() -> BotTuning:
 		stat_ranges[stat] = [1, 40]
 	return BotTuning.from_dictionaries({
 		"draft_size": 4, "squad_size": 3, "augment_slot_count": 2, "starting_generation": 1,
-		"starting_skill_count": 2, "starting_skill_level": 1, "personality_start_range": [-0.5, 0.5],
+		"starting_skill_count": 2, "starting_skill_level": 1, "active_skill_slots": 4,
+		"starting_skill_level_band": [1, 0], "personality_start_range": [-0.5, 0.5],
 		"stat_ranges": stat_ranges, "names": ["A", "B", "C", "D"],
 	}, {"skills": [
 		{"name": "Strike", "effect_id": "damage_single", "energy_cost": 0},
