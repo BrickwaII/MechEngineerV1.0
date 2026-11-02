@@ -65,3 +65,42 @@ real fights swap in for the stubs with no map change.
   TODO(decision: <id>), and list it in the pull request.
 - Update your rows on the Build Board when you start and finish a task.
 - Commit Godot's .uid files alongside the scripts and scenes they belong to.
+
+## Combat rework ground rules
+For combat rework sessions (S0-S17 in docs/design/combat-rework-plan.md).
+Read docs/combat-rework-map.md first: it maps the plan's names onto this repo,
+and later briefs follow it.
+1. Layers. Bot state lives in bot_data/ (plus contracts/), in-fight rules in
+   fight/, between-fight growth in fight/post_fight/, the run in campaign/.
+   The import rules above still hold. fight/ code never names campaign/ or
+   lineage and payload code; it reads generation only through bot_data
+   accessors such as Personality.is_active().
+2. Tuning lives in data/ as JSON, read through lib/JsonFile by a typed loader
+   class with from_dict() and validate(). Read the plan's "Resource (.tres)"
+   as "a data file plus its loader". ActionDef, StatusDef and
+   EnemyArchetypeDef live in fight/ with their data in data/combat/. Saved
+   state (Bot, Skill, Personality, squads) stays Resources.
+   TODO(decision: tuning-format).
+3. Deterministic. No random dodge. Any randomness takes a seeded
+   RandomNumberGenerator passed in (HeadlessFightRunner.policy_rng for
+   policies). Fights replay from request, seed and the decision list.
+4. Every rule gets a gdUnit4 test that runs headless (scripts/run_tests.sh).
+   tests/fight/preview/preview_matches_resolution_test.gd stays green; a new
+   piece of fight state is copied in Combatant.clone_for_preview() and
+   FightCopy, with a test fight that uses it.
+5. Combat emits events. Every action, status applied or consumed, Stagger and
+   damage instance raises a FightEvent; add Kind values rather than side
+   channels. Change the damage formula in one place and have
+   ui/fight/battle_math.gd read it, not copy it.
+6. Preview is read-only: it works on FightCopy, never the live fight.
+7. One session, one scope, one PR. End with tests green and a PR summary.
+   Add open questions to docs/design/combat-rework-questions.md (sessions
+   cannot edit the plan doc). If the brief is wrong, stop and report.
+8. Golden check. Run scripts/golden_check.sh against origin/main and put a
+   "Golden check" section in the PR: "identical", or each changed capture
+   with one line on why. Land new rules on new content first (actions,
+   statuses and enemies nothing else uses yet) so goldens stay identical. A
+   change to existing behaviour is its own commit, explained, and goes behind a
+   FightVariants switch when S10 needs to compare old and new.
+   `scripts/golden_check.sh combat-rework-base` shows the drift since the
+   rework began.
