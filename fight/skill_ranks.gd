@@ -162,7 +162,7 @@ func uses_to_rank_up(rank: int) -> int:
 ## `max_guard_percent`. The cost does not change.
 @warning_ignore("integer_division")
 func apply(base: CombatSkill, rank: int, skill_name: String, max_guard_percent: int) -> CombatSkill:
-	var c := CombatSkill.new(base.id, base.display_name, base.energy_cost, base.power_percent, base.effect, base.target)
+	var c := base.copy_definition()
 	c.level = clampi(rank, 1, max_rank())
 	c.display_name = rank_name(skill_name if not skill_name.is_empty() else base.display_name, c.level)
 	c.names_rank = true

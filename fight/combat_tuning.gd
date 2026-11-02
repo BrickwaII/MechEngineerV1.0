@@ -1,6 +1,7 @@
 class_name CombatTuning
 extends RefCounted
-## Every tunable combat number, loaded from data/combat/combat_tuning.json.
+## Every tunable combat number, loaded from data/combat/combat_tuning.json,
+## and the actions (skills) from data/combat/actions.json (ActionTable).
 ## Tests may build one with from_dict() and change fields directly.
 
 const DEFAULT_PATH := "res://data/combat/combat_tuning.json"
@@ -40,6 +41,8 @@ var bot_skill_effects: Dictionary[String, String] = {}
 var power_percent_per_level: int
 ## The most of one hit a guard may block, in percent.
 var max_guard_percent: int
+## Action id -> definition, from data/combat/actions.json. Each tuning holds
+## its own copies, so a test may change or add one.
 var skills: Dictionary[String, CombatSkill] = {}
 ## Named ranks (data/combat/skill_ranks.json), used when the skill-progression
 ## switch is "ranks".
@@ -89,11 +92,7 @@ static func from_dict(d: Dictionary) -> CombatTuning:
 			t.bot_skill_effects[effect_id] = String(effects[effect_id])
 	t.power_percent_per_level = int(d.get("skill_levels", {}).get("power_percent_per_level", 0))
 	t.max_guard_percent = int(d.get("guard", {}).get("max_percent", 100))
-	for id: String in d.skills:
-		var s: Dictionary = d.skills[id]
-		t.skills[id] = CombatSkill.new(
-			id, s.name, int(s.energy_cost), int(s.power_percent), String(s.get("effect", CombatSkill.EFFECT_DAMAGE)),
-			String(s.get("target", "")))
+	t.skills = ActionTable.load_default().actions
 	return t
 
 
@@ -126,14 +125,9 @@ func validate() -> Array[String]:
 		problems.append("power_percent_per_level may not be negative")
 	if max_guard_percent < 0 or max_guard_percent > 100:
 		problems.append("guard max_percent must be 0 to 100")
+	var status_ids := StatusTable.load_default().ids()
 	for id in skills:
-		var s: CombatSkill = skills[id]
-		if not s.effect in CombatSkill.EFFECTS:
-			problems.append("skill %s has unknown effect %s" % [id, s.effect])
-		if not s.target in CombatSkill.TARGETS:
-			problems.append("skill %s has unknown target %s" % [id, s.target])
-		elif s.is_damage() != s.targets_opponents():
-			problems.append("skill %s: damage skills target opponents, others their own side" % id)
+		problems.append_array(skills[id].validate(status_ids))
 	return problems
 
 

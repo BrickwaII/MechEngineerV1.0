@@ -5,7 +5,9 @@ extends RefCounted
 
 const DEFAULT_PATH := "res://data/combat/enemy_tables.json"
 
-## Enemy id -> {name, hp, attack, defense, speed, elasticity, battery_capacity, skills}.
+## Enemy id -> {name, hp, attack, defense, speed, elasticity, battery_capacity,
+## skills}, plus optional sprite, tier, faction, unit, boss and archetype (an
+## id in data/combat/archetypes.json, unused by fights until S4/S5).
 var enemies: Dictionary = {}
 ## Defense level -> {count, pool, rewards}.
 var levels: Dictionary = {}
@@ -101,6 +103,11 @@ func stats_for(enemy_id: String, request: FightRequest, tuning: CombatTuning = n
 
 ## The sprite that draws `enemy_id`: {"unit": manifest unit id, "tier": tier},
 ## or {} when the enemy names none.
+## The archetype id `enemy_id` names (EnemyArchetypeTable), or "" for none.
+func archetype_of(enemy_id: String) -> String:
+	return str(enemies.get(enemy_id, {}).get("archetype", ""))
+
+
 func sprite_of(enemy_id: String) -> Dictionary:
 	var e: Dictionary = enemies.get(enemy_id, {})
 	if not e.has("sprite"):
@@ -116,8 +123,10 @@ func rewards(level: int) -> Dictionary[String, int]:
 	return out
 
 
-## Problems in the table; empty when every level and enemy is usable.
-func validate(tuning: CombatTuning) -> Array[String]:
+## Problems in the table; empty when every level and enemy is usable. Enemy
+## archetypes are checked against `archetypes` (the shipped table when null).
+func validate(tuning: CombatTuning, archetypes: EnemyArchetypeTable = null) -> Array[String]:
+	var archetype_table := archetypes if archetypes != null else EnemyArchetypeTable.load_default()
 	var problems: Array[String] = []
 	for level in range(FightRequest.MIN_DEFENSE_LEVEL, FightRequest.MAX_DEFENSE_LEVEL + 1):
 		if not levels.has(level):
@@ -132,6 +141,9 @@ func validate(tuning: CombatTuning) -> Array[String]:
 		for s: String in enemies[id].skills:
 			if tuning.skill(s) == null:
 				problems.append("enemy %s has unknown skill %s" % [id, s])
+		var archetype := archetype_of(id)
+		if not archetype.is_empty() and not archetype_table.has(archetype):
+			problems.append("enemy %s names unknown archetype %s" % [id, archetype])
 	if factions != null:
 		problems.append_array(factions.validate(self))
 	return problems

@@ -1,7 +1,16 @@
 class_name CombatSkill
 extends RefCounted
 ## One combat skill: a flat energy cost, a power multiplier, what it does and
-## whom it may target. Plain data, read from data/combat/combat_tuning.json.
+## whom it may target. Plain data, read from data/combat/actions.json by
+## ActionTable. This is the combat rework plan's ActionDef
+## (docs/combat-rework-map.md, S1): the class keeps its name so every reader
+## of skills keeps working.
+##
+## The rework fields (recovery, hit_count, damage_type, tags, applies_status,
+## payoff_condition, payoff_bonus_percent) are definitions only: no rule reads
+## them yet, and their defaults are what every action did before them. S2
+## (recovery), S3 (statuses, payoff, multi-hit), S6 (tags) and S13 (damage
+## types) give them meaning.
 ##
 ## Effects:
 ##   damage  hits an opponent (or, with target all_opponents, every living one)
@@ -55,6 +64,26 @@ var heal_guard_percent := 0
 ## A guard also deals this share of the damage it blocks back to the attacker.
 var reflect_percent := 0
 
+## Rework definition fields (S1). Unused by fights until the sessions named
+## in the class comment.
+## Gauge the user is pushed back after acting, on top of the turn threshold,
+## in the same units as action_threshold. 0: no extra cost in time. (S2)
+var recovery := 0
+## Hits a damage action lands per use; power_percent is the damage of each. (S3)
+var hit_count := 1
+## The action's damage type; "" is untyped. Only damage actions have one. (S13)
+var damage_type := ""
+## Free-form labels the action tagger and drift rules read (offense, setup,
+## payoff, ...). (S6)
+var tags: Array[String] = []
+## A status id (data/combat/statuses.json) the action puts on its target; ""
+## puts none. (S3)
+var applies_status := ""
+## A status id the target must hold for the payoff bonus; "" has no payoff. (S3)
+var payoff_condition := ""
+## Extra damage, in percent, against a target that meets payoff_condition. (S3)
+var payoff_bonus_percent := 0
+
 
 func _init(
 	p_id := "",
@@ -101,13 +130,95 @@ func energy_cost_milli() -> int:
 	return energy_cost * Combatant.MILLI
 
 
+## True when the action names a payoff: a status that adds damage.
+func has_payoff() -> bool:
+	return not payoff_condition.is_empty()
+
+
+## The action defined by one entry of data/combat/actions.json. Keys left out
+## take the defaults above.
+static func from_dict(p_id: String, d: Dictionary) -> CombatSkill:
+	var c := CombatSkill.new(
+		p_id, String(d.get("name", p_id)), int(d.get("energy_cost", 0)), int(d.get("power_percent", 100)),
+		String(d.get("effect", EFFECT_DAMAGE)), String(d.get("target", "")))
+	c.recovery = int(d.get("recovery", 0))
+	c.hit_count = int(d.get("hit_count", 1))
+	c.damage_type = String(d.get("damage_type", ""))
+	for tag: Variant in d.get("tags", []):
+		c.tags.append(String(tag))
+	c.applies_status = String(d.get("applies_status", ""))
+	c.payoff_condition = String(d.get("payoff_condition", ""))
+	c.payoff_bonus_percent = int(d.get("payoff_bonus_percent", 0))
+	return c
+
+
+## Problems with this action's definition; empty when usable. `status_ids`
+## are the statuses it may name; null skips that check.
+func validate(status_ids: Variant = null) -> Array[String]:
+	var problems: Array[String] = []
+	if id.is_empty():
+		problems.append("an action has no id")
+	if not effect in EFFECTS:
+		problems.append("action %s has unknown effect %s" % [id, effect])
+	if not target in TARGETS:
+		problems.append("action %s has unknown target %s" % [id, target])
+	elif effect in EFFECTS and is_damage() != targets_opponents():
+		problems.append("action %s: damage actions target opponents, others their own side" % id)
+	if energy_cost < 0:
+		problems.append("action %s energy_cost may not be negative" % id)
+	if power_percent < 0:
+		problems.append("action %s power_percent may not be negative" % id)
+	if recovery < 0:
+		problems.append("action %s recovery may not be negative" % id)
+	if hit_count < 1:
+		problems.append("action %s hit_count must be at least 1" % id)
+	elif hit_count > 1 and not is_damage():
+		problems.append("action %s: only damage actions hit more than once" % id)
+	if not damage_type.is_empty() and not is_damage():
+		problems.append("action %s: only damage actions have a damage type" % id)
+	var seen := {}
+	for tag in tags:
+		if tag.is_empty():
+			problems.append("action %s has an empty tag" % id)
+		elif seen.has(tag):
+			problems.append("action %s lists tag %s twice" % [id, tag])
+		seen[tag] = true
+	if has_payoff():
+		if not is_damage():
+			problems.append("action %s: only damage actions have a payoff" % id)
+		if payoff_bonus_percent <= 0:
+			problems.append("action %s payoff needs a payoff_bonus_percent above 0" % id)
+	elif payoff_bonus_percent != 0:
+		problems.append("action %s has a payoff_bonus_percent but no payoff_condition" % id)
+	if status_ids != null:
+		if not applies_status.is_empty() and not applies_status in status_ids:
+			problems.append("action %s applies unknown status %s" % [id, applies_status])
+		if has_payoff() and not payoff_condition in status_ids:
+			problems.append("action %s payoff names unknown status %s" % [id, payoff_condition])
+	return problems
+
+
+## A fresh copy of the definition named `p_name` ("" keeps the name): every
+## data field, but level 1 and none of the rank bonuses or rank naming.
+func copy_definition(p_name := "") -> CombatSkill:
+	var c := CombatSkill.new(
+		id, p_name if not p_name.is_empty() else display_name, energy_cost, power_percent, effect, target)
+	c.recovery = recovery
+	c.hit_count = hit_count
+	c.damage_type = damage_type
+	c.tags = tags.duplicate()
+	c.applies_status = applies_status
+	c.payoff_condition = payoff_condition
+	c.payoff_bonus_percent = payoff_bonus_percent
+	return c
+
+
 ## A copy as a unit with `p_level` in it holds it, named `p_name` ("" keeps the
 ## name). Every level above 1 adds `percent_per_level` percent of the power;
 ## a guard never blocks more than `max_guard_percent`. The cost does not change.
 @warning_ignore("integer_division")
 func at_level(p_level: int, p_name: String, percent_per_level: int, max_guard_percent: int) -> CombatSkill:
-	var c := CombatSkill.new(
-		id, p_name if not p_name.is_empty() else display_name, energy_cost, power_percent, effect, target)
+	var c := copy_definition(p_name)
 	c.level = maxi(1, p_level)
 	c.fx_level = c.level
 	c.power_percent = power_percent * (100 + (c.level - 1) * percent_per_level) / 100
