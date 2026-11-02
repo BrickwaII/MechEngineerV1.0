@@ -63,19 +63,38 @@ func test_projection_matches_the_fight_played_out() -> void:
 			assert_array(projected[i]).override_failure_message("seed %d, turn %d" % [fight_seed, i]).is_equal(want)
 
 
-func test_a_heavy_action_projects_the_actor_later() -> void:
-	var fight := _fight(1)
+## One ally with three attacks that differ only in recovery, against a
+## sturdy slow foe.
+func _recovery_duel() -> Fight:
+	var t := CombatTuning.load_default()
+	for entry in [["quick", 0], ["slow", 40], ["slowest", 80]]:
+		t.skills[entry[0]] = CombatSkill.from_dict(entry[0],
+			{"name": entry[0], "energy_cost": 1, "power_percent": 10, "recovery": entry[1]})
+	t.player_skills.assign(["quick", "slow", "slowest"])
+	var table := H.table({"foe": H.enemy_def("Foe", H.stats(9999, 1, 0, 1, 10), ["quick"])}, "foe")
+	var squad: Array[SquadMemberSummary] = [H.member("ally", H.stats(500, 5, 0, 7, 20))]
+	return Fight.new(H.request(squad), 1, t, table)
+
+
+func test_more_recovery_projects_the_actor_later() -> void:
+	var fight := _recovery_duel()
 	var actor := fight.advance()
-	var foe := fight.opponents_of(actor)[0].id
-	actor.energy_milli = actor.max_energy_milli
+	assert_str(actor.id).is_equal("ally")
 	var preview := FightPreview.new()
-	var next_turn := func(skill_id: String) -> int:
-		for e in preview.project_turns(fight, FightAction.use(skill_id, foe), LENGTH):
-			if e.combatant_id == actor.id:
-				return e.tick
-		return 1 << 30
-	assert_int(next_turn.call("heavy_strike")).is_greater(next_turn.call("strike"))
-	assert_int(next_turn.call("overload")).is_greater(next_turn.call("heavy_strike"))
+	var ticks := {}
+	var shown := {}
+	for skill_id in ["quick", "slow", "slowest"]:
+		var projection := preview.project_turns(fight, FightAction.use(skill_id, "foe#1"), LENGTH)
+		shown[skill_id] = _keys(projection)
+		ticks[skill_id] = -1
+		for e in projection:
+			if e.combatant_id == "ally":
+				ticks[skill_id] = e.tick
+				break
+	var why := str(shown)
+	assert_int(ticks["quick"]).override_failure_message(why).is_greater(0)
+	assert_int(ticks["slow"]).override_failure_message(why).is_greater(ticks["quick"])
+	assert_int(ticks["slowest"]).override_failure_message(why).is_greater(ticks["slow"])
 
 
 func test_a_refused_action_projects_nothing() -> void:
