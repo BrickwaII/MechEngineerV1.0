@@ -12,6 +12,10 @@ static func combat_tuning() -> CombatTuning:
 		"fight": {"max_actions": 400},
 		"grid": {"base_cost": 4.0, "cost_per_defense_level": 2.0, "cost_per_energy_spent": 0.1},
 		"player_skills": ["strike", "heavy_strike"],
+		# Strike is the basic attack, so the retired free Strike (strike-cost
+		# free, pinned by the legacy switches) makes it cost 0 as it did when
+		# actions.json held 0.
+		"basic_attack": "strike",
 		"skills": {
 			"strike": {"name": "Strike", "energy_cost": 0, "power_percent": 100},
 			"heavy_strike": {"name": "Heavy Strike", "energy_cost": 4, "power_percent": 150},
