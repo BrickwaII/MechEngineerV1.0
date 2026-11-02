@@ -2,9 +2,8 @@ extends RefCounted
 ## Pins the fight switches the combat-economy pass (R2-C) changed back to
 ## their old options, for suites that test mechanics with numbers worked out
 ## under them: speed-range wide (gauge per tick = speed), strike-cost free,
-## tag-weight per_action and difficulty-curve flat; and action-recovery none
-## (combat rework S2), so numbers worked out before recovery still hold.
-## Every other switch keeps its data default. Call pin() in a suite's before() and unpin() in after():
+## tag-weight per_action and difficulty-curve flat. Every other switch keeps
+## its data default. Call pin() in a suite's before() and unpin() in after():
 ##
 ##   const Legacy := preload("res://tests/fight/legacy_switches.gd")
 ##   func before() -> void:
@@ -19,7 +18,6 @@ const OLD := {
 	"strike-cost": "free",
 	"tag-weight": "per_action",
 	"difficulty-curve": "flat",
-	"action-recovery": "none",
 }
 
 

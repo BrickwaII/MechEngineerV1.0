@@ -25,12 +25,6 @@ const WAIT_LENGTH := "d-wait-length"
 const WAIT_LENGTH_SNAP := "snap"
 const WAIT_LENGTH_EXACT := "exact"
 
-## Whether an action's recovery pushes its user back (TimelineOps). The old
-## rule stays as an option so S10 can compare on the same seeds.
-const ACTION_RECOVERY := "action-recovery"
-const RECOVERY_BY_ACTION := "by_action"
-const RECOVERY_NONE := "none"
-
 const ELASTICITY := "d-elasticity"
 const ELASTICITY_NONE := "none"
 const ELASTICITY_BIG_HITS := "reduce_big_hits"
@@ -95,7 +89,6 @@ const ODDS_FORMULA := "formula"
 const KNOWN := {
 	WAIT_FORM: [WAIT_BANKED, WAIT_EXTRA_ENERGY, WAIT_BONUS_DAMAGE],
 	WAIT_LENGTH: [WAIT_LENGTH_SNAP, WAIT_LENGTH_EXACT],
-	ACTION_RECOVERY: [RECOVERY_BY_ACTION, RECOVERY_NONE],
 	ELASTICITY: [ELASTICITY_NONE, ELASTICITY_BIG_HITS, ELASTICITY_KNOCKBACK, ELASTICITY_ENERGY],
 	PERSONALITY_MAP: [PERSONALITY_CURRENT, PERSONALITY_BY_TARGET, PERSONALITY_OFF],
 	SKILL_PROGRESSION: [PROGRESSION_RANKS, PROGRESSION_FLAT],
