@@ -7,10 +7,10 @@ extends RefCounted
 ## of skills keeps working.
 ##
 ## The rework fields (recovery, hit_count, damage_type, tags, applies_status,
-## payoff_condition, payoff_bonus_percent) are definitions only: no rule reads
-## them yet, and their defaults are what every action did before them. S2
-## (recovery), S3 (statuses, payoff, multi-hit), S6 (tags) and S13 (damage
-## types) give them meaning.
+## payoff_condition, payoff_bonus_percent) default to what every action did
+## before them. Fights read hit_count, applies_status and the payoff (S3:
+## Fight, DamagePipeline); S2 (recovery), S6 (tags) and S13 (damage types)
+## give the others meaning.
 ##
 ## Effects:
 ##   damage  hits an opponent (or, with target all_opponents, every living one)
@@ -64,8 +64,7 @@ var heal_guard_percent := 0
 ## A guard also deals this share of the damage it blocks back to the attacker.
 var reflect_percent := 0
 
-## Rework definition fields (S1). Unused by fights until the sessions named
-## in the class comment.
+## Rework definition fields (S1). See the class comment for which fights read.
 ## How far the user is pushed back after acting, on top of the turn
 ## threshold, in percent of a turn (action_threshold units: 100 is one whole
 ## turn, scaled by TimelineOps.turn_gauge()). 0: no extra cost in time. Read

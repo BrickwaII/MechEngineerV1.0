@@ -44,6 +44,9 @@ var max_guard_percent: int
 ## Action id -> definition, from data/combat/actions.json. Each tuning holds
 ## its own copies, so a test may change or add one.
 var skills: Dictionary[String, CombatSkill] = {}
+## Every status definition, from data/combat/statuses.json (StatusTable). Read
+## by StatusManager and DamagePipeline.
+var statuses: StatusTable
 ## Named ranks (data/combat/skill_ranks.json), used when the skill-progression
 ## switch is "ranks".
 var skill_ranks: SkillRanks
@@ -93,6 +96,7 @@ static func from_dict(d: Dictionary) -> CombatTuning:
 	t.power_percent_per_level = int(d.get("skill_levels", {}).get("power_percent_per_level", 0))
 	t.max_guard_percent = int(d.get("guard", {}).get("max_percent", 100))
 	t.skills = ActionTable.load_default().actions
+	t.statuses = StatusTable.load_default()
 	return t
 
 
@@ -125,7 +129,7 @@ func validate() -> Array[String]:
 		problems.append("power_percent_per_level may not be negative")
 	if max_guard_percent < 0 or max_guard_percent > 100:
 		problems.append("guard max_percent must be 0 to 100")
-	var status_ids := StatusTable.load_default().ids()
+	var status_ids := (statuses if statuses != null else StatusTable.load_default()).ids()
 	for id in skills:
 		problems.append_array(skills[id].validate(status_ids))
 	return problems

@@ -13,6 +13,10 @@ var effects: Array[UnitEffect] = []
 ## unit whose guard the choice would change (Brace, Shield Ally, or a hit that
 ## uses a guard up).
 var guard_changes: Dictionary[String, int] = {}
+## Unit id -> the status ids it would hold afterwards (StatusInstance shown as
+## "id" or "id xN"), for every unit whose statuses the choice would change:
+## Exposed put on by Shred, used up by a hit, or worn off as the actor acts.
+var status_changes: Dictionary[String, Array] = {}
 ## False when the outcome is random, so which intents change is unknown.
 var intent_changes_known := true
 ## One revision per enemy whose intent would change. Empty when unknown.

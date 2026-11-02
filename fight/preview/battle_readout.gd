@@ -57,7 +57,7 @@ static func hit_badge(attacker: Combatant, target: Combatant, skill: CombatSkill
 		bonus_percent: int, tuning: CombatTuning, random := false) -> ArrowBadge:
 	if random:
 		return ArrowBadge.new(attacker.id, target.id, kind, skill.id, PreviewValue.unknown())
-	var dmg := mini(target.hp, DamageRules.damage_to(attacker, target, skill, tuning, bonus_percent))
+	var dmg := mini(target.hp, DamageRules.action_damage_to(attacker, target, skill, tuning, bonus_percent))
 	var badge := ArrowBadge.new(attacker.id, target.id, kind, skill.id, PreviewValue.of(dmg))
 	badge.knocks_out = dmg >= target.hp
 	return badge
