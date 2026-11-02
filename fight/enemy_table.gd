@@ -7,13 +7,16 @@ const DEFAULT_PATH := "res://data/combat/enemy_tables.json"
 
 ## Enemy id -> {name, hp, attack, defense, speed, elasticity, battery_capacity,
 ## skills}, plus optional sprite, tier, faction, unit, boss and archetype (an
-## id in data/combat/archetypes.json, unused by fights until S4/S5).
+## id in data/combat/archetypes.json; fights read its plating).
 var enemies: Dictionary = {}
 ## Defense level -> {count, pool, rewards}.
 var levels: Dictionary = {}
 ## Which faction fields enemies where (data/combat/factions.json). Null: every
 ## fight draws from the generic level pools.
 var factions: FactionTable
+## The archetypes enemies may name (data/combat/archetypes.json). Null: no
+## enemy has an archetype's plating (tests that build a table set their own).
+var archetypes: EnemyArchetypeTable
 
 
 ## The shipped table, with the shipped factions.
@@ -26,6 +29,7 @@ static func load_default() -> EnemyTable:
 	var t := from_dict(d) if d != null else load_file(DEFAULT_PATH)
 	if t != null:
 		t.factions = FactionTable.load_default()
+		t.archetypes = EnemyArchetypeTable.load_default()
 	return t
 
 
@@ -108,6 +112,14 @@ func archetype_of(enemy_id: String) -> String:
 	return str(enemies.get(enemy_id, {}).get("archetype", ""))
 
 
+## The archetype `enemy_id` names, or null for none (or no archetype table).
+func archetype_for(enemy_id: String) -> EnemyArchetype:
+	var id := archetype_of(enemy_id)
+	if id.is_empty() or archetypes == null:
+		return null
+	return archetypes.get_archetype(id)
+
+
 func sprite_of(enemy_id: String) -> Dictionary:
 	var e: Dictionary = enemies.get(enemy_id, {})
 	if not e.has("sprite"):
@@ -124,9 +136,11 @@ func rewards(level: int) -> Dictionary[String, int]:
 
 
 ## Problems in the table; empty when every level and enemy is usable. Enemy
-## archetypes are checked against `archetypes` (the shipped table when null).
-func validate(tuning: CombatTuning, archetypes: EnemyArchetypeTable = null) -> Array[String]:
-	var archetype_table := archetypes if archetypes != null else EnemyArchetypeTable.load_default()
+## archetypes are checked against `p_archetypes` (else this table's own, else
+## the shipped one).
+func validate(tuning: CombatTuning, p_archetypes: EnemyArchetypeTable = null) -> Array[String]:
+	var archetype_table := p_archetypes if p_archetypes != null else (
+		archetypes if archetypes != null else EnemyArchetypeTable.load_default())
 	var problems: Array[String] = []
 	for level in range(FightRequest.MIN_DEFENSE_LEVEL, FightRequest.MAX_DEFENSE_LEVEL + 1):
 		if not levels.has(level):

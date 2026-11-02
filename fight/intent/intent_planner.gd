@@ -15,7 +15,9 @@ extends RefCounted
 ## - wait: for each attack skill it cannot afford yet but could, on each opponent.
 ## Ties go to the earlier option, so plans are deterministic. Damage counts the
 ## target's guard (Brace, Shield Ally) the way the fight resolves it. Guard
-## skills are not planned: no enemy has one yet.
+## skills are not planned: no enemy has one yet. A Staggered unit has no
+## options, so no intent: the Stagger cancelled it and its next turn is spent
+## recovering (TODO(decision: stagger-intent); S5 makes intents committed).
 ##
 ## How each scale leans the choice, with the default weights:
 ## - aggressive raises damage and kill, defensive raises the cost of energy;
@@ -72,7 +74,7 @@ func rank(fight: Fight, unit: Combatant) -> Array[UnitIntent]:
 ## Every option for `unit`, scored, in option order.
 func options_for(fight: Fight, unit: Combatant) -> Array[UnitIntent]:
 	var out: Array[UnitIntent] = []
-	if not unit.is_alive():
+	if not unit.is_alive() or unit.staggered:
 		return out
 	var w := weights.weights_for(personality_of(unit))
 	var opponents := fight.opponents_of(unit)

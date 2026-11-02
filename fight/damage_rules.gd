@@ -24,10 +24,19 @@ static func damage(attacker: UnitStats, defender: UnitStats, skill: CombatSkill,
 	return apply_elasticity(base, defender, tuning)
 
 
-## Damage `attacker` deals `target` with `skill`, the target's guard included.
-## Reads only; the fight clears the guard when the hit lands.
+## Damage `attacker` deals `target` with `skill`, the target's guard included,
+## and the Stagger bonus when the target is Staggered (StaggerRules). Reads
+## only; the fight clears the guard when the hit lands.
 static func damage_to(attacker: Combatant, target: Combatant, skill: CombatSkill, tuning: CombatTuning, bonus_percent := 0) -> int:
+	bonus_percent += stagger_bonus_percent(target, tuning)
 	return guarded(damage(attacker.stats, target.stats, skill, tuning, bonus_percent), target.guard_percent, tuning)
+
+
+## Extra damage, in percent, every hit on `target` deals while it is Staggered.
+static func stagger_bonus_percent(target: Combatant, tuning: CombatTuning) -> int:
+	if tuning == null or tuning.stagger == null:
+		return 0
+	return tuning.stagger.bonus_against(target)
 
 
 ## `p_damage` after a guard blocking `guard_percent` of it.

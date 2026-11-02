@@ -7,9 +7,12 @@ extends RefCounted
 ## fight, so they never change a result.
 ##
 ## One action raises, in order: SKILL (or WAIT), then per target HIT / HEAL /
-## GUARD, and DOWN right after the HIT that downed a unit.
+## GUARD, and DOWN right after the HIT that downed a unit. A hit on a plated
+## unit raises PLATING after its HIT, and STAGGER when that breaks the
+## plating. A Staggered unit's lost turn raises RECOVER on its own, between
+## decisions (Fight.advance()).
 
-enum Kind { SKILL, HIT, HEAL, GUARD, WAIT, DOWN }
+enum Kind { SKILL, HIT, HEAL, GUARD, WAIT, DOWN, PLATING, STAGGER, RECOVER }
 
 var kind: Kind
 ## Fight.action_count of the action that raised it (1 for the first action).
@@ -21,8 +24,11 @@ var skill_id := ""
 ## The actor's level in the skill (1 for enemies and unlevelled skills).
 var skill_level := 1
 ## HIT: damage dealt. HEAL: hp restored. GUARD: percent of the next hit blocked.
-## SKILL: energy points spent.
+## SKILL: energy points spent. PLATING: pips stripped. STAGGER: gauge knocked
+## back. RECOVER: plating pips restored.
 var amount := 0
+## PLATING, STAGGER and RECOVER: the target's plating pips after the event.
+var plating_after := 0
 ## HIT only: the guard percent that softened it (0 when unguarded).
 var blocked_percent := 0
 var hp_before := 0
