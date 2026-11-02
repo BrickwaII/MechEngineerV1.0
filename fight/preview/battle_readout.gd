@@ -41,6 +41,12 @@ static func badges_for_intent(fight: Fight, intent: UnitIntent, rules: PreviewRu
 		out.append(ArrowBadge.new(unit.id, target.id, ArrowBadge.GUARD, skill.id,
 			PreviewValue.unknown() if random else PreviewValue.of(maxi(target.guard_percent, skill.power_percent))))
 		return out
+	if skill.is_absorb():
+		var brace := ArrowBadge.new(unit.id, target.id, ArrowBadge.GUARD, skill.id,
+			PreviewValue.unknown() if random else PreviewValue.of(DamageRules.brace_absorb(unit.stats, skill)))
+		brace.absorb = true
+		out.append(brace)
+		return out
 	var kind := ArrowBadge.WAIT if intent.kind == UnitIntent.Kind.WAIT else ArrowBadge.ATTACK
 	var bonus := WaitRules.damage_bonus_percent(unit.is_waiting() or intent.kind == UnitIntent.Kind.WAIT, fight.tuning)
 	var targets: Array[Combatant] = [target]
@@ -75,6 +81,13 @@ static func choice_badges(fight: Fight, action: FightAction, choice: ChoicePrevi
 		var target := fight.combatant(action.target_id)
 		var percent: int = choice.guard_changes.get(target.id, target.guard_percent)
 		out.append(ArrowBadge.new(actor.id, target.id, ArrowBadge.GUARD, skill.id, PreviewValue.of(percent)))
+		return out
+	if skill.is_absorb():
+		var target := fight.combatant(action.target_id)
+		var absorb: int = choice.brace_changes.get(target.id, target.brace_absorb)
+		var brace := ArrowBadge.new(actor.id, target.id, ArrowBadge.GUARD, skill.id, PreviewValue.of(absorb))
+		brace.absorb = true
+		out.append(brace)
 		return out
 	for e in choice.effects:
 		if e.damage.is_unknown():

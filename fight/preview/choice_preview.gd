@@ -13,6 +13,10 @@ var effects: Array[UnitEffect] = []
 ## unit whose guard the choice would change (Brace, Shield Ally, or a hit that
 ## uses a guard up).
 var guard_changes: Dictionary[String, int] = {}
+## Unit id -> the damage its Brace would still absorb afterwards, for every
+## unit whose Brace the choice would change (a Brace, a hit it absorbs, or the
+## actor's own Brace ending as it acts).
+var brace_changes: Dictionary[String, int] = {}
 ## False when the outcome is random, so which intents change is unknown.
 var intent_changes_known := true
 ## One revision per enemy whose intent would change. Empty when unknown.

@@ -14,8 +14,8 @@ extends RefCounted
 ## - heal: each affordable heal skill on each living, hurt ally (self included);
 ## - wait: for each attack skill it cannot afford yet but could, on each opponent.
 ## Ties go to the earlier option, so plans are deterministic. Damage counts the
-## target's guard (Brace, Shield Ally) the way the fight resolves it. Guard
-## skills are not planned: no enemy has one yet. A Staggered unit has no
+## target's guard (Shield Ally) and Brace the way the fight resolves them.
+## Guard and Brace skills are not planned: no enemy uses one yet. A Staggered unit has no
 ## options, so no intent: the Stagger cancelled it and its next turn is spent
 ## recovering (TODO(decision: stagger-intent); S5 makes intents committed).
 ##
@@ -83,7 +83,7 @@ func options_for(fight: Fight, unit: Combatant) -> Array[UnitIntent]:
 	var latest := latest_opponent_actor(fight, unit)
 	for skill in unit.skills():
 		var skill_id := skill.id
-		if skill.is_guard():
+		if skill.is_guard() or skill.is_absorb():
 			continue
 		if skill.is_heal() or weights.role_of(skill_id) == IntentWeights.ROLE_HEAL:
 			if unit.can_afford(skill):

@@ -70,13 +70,14 @@ func test_heal_guard_and_wait_raise_their_own_events() -> void:
 	assert_int(fight.last_events[1].amount).is_equal(fight.last_events[1].hp_after - fight.last_events[1].hp_before)
 	fight.advance()
 	fight.submit(FightAction.use("brace", "ace"))
-	assert_array(_kinds(fight.last_events)).is_equal(["SKILL", "GUARD"])
-	assert_int(fight.last_events[1].amount).is_equal(fight.combatant("ace").guard_percent)
+	assert_array(_kinds(fight.last_events)).is_equal(["SKILL", "BRACE"])
+	assert_int(fight.last_events[1].amount).is_equal(fight.combatant("ace").brace_absorb)
 	fight.advance()
 	var unit := fight.combatant("ace")
 	unit.energy_milli = 0
 	fight.submit(FightAction.wait_for("arc_sweep"))
-	assert_array(_kinds(fight.last_events)).is_equal(["WAIT"])
+	# The wait is ace's next action, so its Brace ends first.
+	assert_array(_kinds(fight.last_events)).is_equal(["BRACE_END", "WAIT"])
 
 
 func test_listening_changes_nothing() -> void:

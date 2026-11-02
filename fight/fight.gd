@@ -138,6 +138,7 @@ func submit(action: FightAction) -> String:
 	pending_actor = null
 	action_count += 1
 	last_events = []
+	_end_brace(actor)
 	var tag := ActionTag.begin(self, actor, action)
 	if action.kind == FightAction.Kind.WAIT:
 		_resolve_wait(actor, action)
@@ -229,6 +230,16 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 			_log("%s's %s also guards %s: next hit %d%% blocked" % [
 				actor.display_name, skill.display_name, target.display_name, target.guard_percent])
 		return
+	if skill.is_absorb():
+		target.brace_absorb = maxi(target.brace_absorb, DamageRules.brace_absorb(actor.stats, skill))
+		actor.finish_action(tuning.turn_threshold())
+		var braced := _event(FightEvent.Kind.BRACE, actor, target, skill)
+		braced.amount = target.brace_absorb
+		_raise(braced)
+		_log("%s uses %s on %s: absorbs %d damage until its next action, energy %d -> %d" % [
+			actor.display_name, skill.display_name, target.display_name, target.brace_absorb,
+			energy_before, actor.energy()])
+		return
 	if skill.is_guard():
 		target.guard_percent = maxi(target.guard_percent, skill.power_percent)
 		target.reflect_percent = maxi(target.reflect_percent, skill.reflect_percent)
@@ -257,19 +268,25 @@ func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before
 	var hp_before := target.hp
 	var guarded := target.guard_percent
 	var reflect := target.reflect_percent
-	var dmg := DamageRules.damage_to(actor, target, skill, tuning, bonus_percent)
+	var before_brace := DamageRules.damage_before_brace(actor, target, skill, tuning, bonus_percent)
+	var dmg := DamageRules.braced(before_brace, target.brace_absorb)
+	var absorbed := before_brace - dmg
+	target.brace_absorb -= absorbed
 	var unguarded := DamageRules.damage(
 		actor.stats, target.stats, skill, tuning, bonus_percent + DamageRules.stagger_bonus_percent(target, tuning))
 	target.hp = maxi(0, target.hp - dmg)
 	target.guard_percent = 0
 	target.reflect_percent = 0
 	ElasticityRules.after_hit(target, dmg, tuning)
-	_log("%s uses %s on %s: %d damage%s, hp %d -> %d, energy %d -> %d" % [
+	_log("%s uses %s on %s: %d damage%s%s, hp %d -> %d, energy %d -> %d" % [
 		actor.display_name, skill.display_name, target.display_name, dmg,
-		" (%d%% blocked)" % guarded if guarded > 0 else "", hp_before, target.hp, energy_before, actor.energy()])
+		" (%d%% blocked)" % guarded if guarded > 0 else "",
+		" (%d absorbed, %d left)" % [absorbed, target.brace_absorb] if absorbed > 0 else "",
+		hp_before, target.hp, energy_before, actor.energy()])
 	var hit := _event(FightEvent.Kind.HIT, actor, target, skill)
 	hit.amount = hp_before - target.hp
 	hit.blocked_percent = guarded
+	hit.absorbed = absorbed
 	hit.hp_before = hp_before
 	_raise(hit)
 	if not target.is_alive():
@@ -279,7 +296,7 @@ func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before
 		_strip_plating(actor, target, skill)
 	# A Mega or Ultra guard sends part of what it blocked back.
 	@warning_ignore("integer_division")
-	var back := maxi(0, unguarded - dmg) * reflect / 100 if guarded > 0 else 0
+	var back := maxi(0, unguarded - before_brace) * reflect / 100 if guarded > 0 else 0
 	if back > 0 and actor.is_alive():
 		var actor_hp := actor.hp
 		actor.hp = maxi(0, actor.hp - back)
@@ -331,6 +348,7 @@ func _stagger(actor: Combatant, target: Combatant, skill: CombatSkill) -> void:
 ## comes back (StaggerRules.recover_percent).
 func _recover(unit: Combatant) -> void:
 	last_events = []
+	_end_brace(unit)
 	unit.staggered = false
 	var before := unit.plating
 	unit.plating = maxi(unit.plating, tuning.stagger.recovered_plating(unit.max_plating))
@@ -340,6 +358,17 @@ func _recover(unit: Combatant) -> void:
 	recovered.plating_after = unit.plating
 	_raise(recovered)
 	_log("%s recovers from the Stagger: plating %d of %d" % [unit.display_name, unit.plating, unit.max_plating])
+
+
+## A Brace lasts until its holder's next action: called as that action begins.
+func _end_brace(unit: Combatant) -> void:
+	if unit.brace_absorb <= 0:
+		return
+	var ended := _event(FightEvent.Kind.BRACE_END, unit, unit, null)
+	ended.amount = unit.brace_absorb
+	unit.brace_absorb = 0
+	_raise(ended)
+	_log("%s's Brace ends (%d unused)" % [unit.display_name, ended.amount])
 
 
 func _resolve_wait(actor: Combatant, action: FightAction) -> void:

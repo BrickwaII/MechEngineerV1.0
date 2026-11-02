@@ -9,7 +9,8 @@ extends RefCounted
 ## A skill with pierce_percent ignores that share of the defense term (a rank
 ## bonus, see SkillRanks).
 ## A guarded target takes max(min_damage, damage x (100 - guard%) / 100) from
-## its next hit; see damage_to(). `bonus_percent` raises the raw damage (the
+## its next hit; a Bracing target then absorbs what is left of its Brace
+## (down to 0 damage); see damage_to(). `bonus_percent` raises the raw damage (the
 ## d-wait "bonus_damage" option), and a slow attacker hits harder under the
 ## speed-range "compressed" option (SpeedRules); elasticity applies by the
 ## d-elasticity switch, see ElasticityRules.
@@ -24,12 +25,29 @@ static func damage(attacker: UnitStats, defender: UnitStats, skill: CombatSkill,
 	return apply_elasticity(base, defender, tuning)
 
 
-## Damage `attacker` deals `target` with `skill`, the target's guard included,
-## and the Stagger bonus when the target is Staggered (StaggerRules). Reads
-## only; the fight clears the guard when the hit lands.
+## Damage `attacker` deals `target` with `skill`: the Stagger bonus when the
+## target is Staggered (StaggerRules), then its guard, then its Brace. Reads
+## only; the fight clears the guard and spends the Brace when the hit lands.
 static func damage_to(attacker: Combatant, target: Combatant, skill: CombatSkill, tuning: CombatTuning, bonus_percent := 0) -> int:
+	return braced(damage_before_brace(attacker, target, skill, tuning, bonus_percent), target.brace_absorb)
+
+
+## damage_to() without the target's Brace: what the Brace has to absorb.
+static func damage_before_brace(attacker: Combatant, target: Combatant, skill: CombatSkill, tuning: CombatTuning, bonus_percent := 0) -> int:
 	bonus_percent += stagger_bonus_percent(target, tuning)
 	return guarded(damage(attacker.stats, target.stats, skill, tuning, bonus_percent), target.guard_percent, tuning)
+
+
+## `p_damage` after a Brace with `absorb` left soaks it up; may reach 0.
+static func braced(p_damage: int, absorb: int) -> int:
+	return maxi(0, p_damage - maxi(0, absorb))
+
+
+## Damage a Brace (an absorb skill) used by a unit with `user` stats absorbs:
+## Defense x power% / 100.
+@warning_ignore("integer_division")
+static func brace_absorb(user: UnitStats, skill: CombatSkill) -> int:
+	return maxi(0, user.defense * skill.power_percent / 100)
 
 
 ## Extra damage, in percent, every hit on `target` deals while it is Staggered.

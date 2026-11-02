@@ -40,8 +40,11 @@ static func damage_lines(fight: Fight, from_id: String, to_id: String, skill_id:
 	var guarded := DamageRules.guarded(base, t.guard_percent, tuning)
 	if t.guard_percent > 0:
 		out.append(UiFormula.new().num(base).op("×").open().num(1).op("−").term("Guard", "%d%%" % t.guard_percent).close().equals(guarded))
-	if amount != guarded:
-		if amount == mini(guarded, t.hp):
+	var braced := DamageRules.braced(guarded, t.brace_absorb)
+	if t.brace_absorb > 0:
+		out.append(UiFormula.new().num(guarded).op("−").term("Brace", mini(guarded, t.brace_absorb)).equals(braced))
+	if amount != braced:
+		if amount == mini(braced, t.hp):
 			out.append("Only %d left to take: it has %d HP." % [amount, t.hp])
 		else:
 			out.append("With this turn's bonuses: %d." % amount)
@@ -70,6 +73,17 @@ static func guard_lines(fight: Fight, from_id: String, skill_id: String, percent
 	return ["Guard %d%%: its next hit does %d%% less." % [percent, percent]]
 
 
+## Lines explaining a Brace that absorbs `amount` damage.
+static func brace_lines(fight: Fight, from_id: String, skill_id: String, amount: int) -> Array:
+	var a := fight.combatant(from_id)
+	if a == null or a.skill(skill_id) == null:
+		return []
+	var skill := a.skill(skill_id)
+	return [
+		UiFormula.new().term("DEF", a.stats.defense).op("×").term("Brace", "%d%%" % skill.power_percent).equals(amount),
+		"Absorbs %d damage, over any number of hits, until its next action." % amount]
+
+
 ## Explanation lines for an arrow badge, by its kind.
 static func badge_lines(fight: Fight, badge: ArrowBadge) -> Array:
 	if badge == null or not badge.amount.known:
@@ -79,6 +93,8 @@ static func badge_lines(fight: Fight, badge: ArrowBadge) -> Array:
 		ArrowBadge.HEAL:
 			return heal_lines(fight, badge.from_id, badge.to_id, badge.skill_id, n)
 		ArrowBadge.GUARD:
+			if badge.absorb:
+				return brace_lines(fight, badge.from_id, badge.skill_id, n)
 			return guard_lines(fight, badge.from_id, badge.skill_id, n)
 	return damage_lines(fight, badge.from_id, badge.to_id, badge.skill_id, n)
 

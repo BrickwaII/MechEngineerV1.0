@@ -145,14 +145,15 @@ func _check_badges(badges: Array[ArrowBadge], context: String) -> void:
 				assert_int(heal.amount).override_failure_message(line).is_equal(b.amount.value)
 				_checked.heal += 1
 			ArrowBadge.GUARD:
-				var guard := _event(FightEvent.Kind.GUARD, b.to_id)
+				# A Brace badge reads the BRACE event: damage absorbed, not a percent.
+				var guard := _event(FightEvent.Kind.BRACE if b.absorb else FightEvent.Kind.GUARD, b.to_id)
 				assert_object(guard).override_failure_message(line).is_not_null()
 				assert_int(guard.amount).override_failure_message(line).is_equal(b.amount.value)
 				_checked.guard += 1
 	# Every hit, heal and guard the action raised had its badge.
 	for e in _events:
 		var kind: String = {FightEvent.Kind.HIT: ArrowBadge.ATTACK, FightEvent.Kind.HEAL: ArrowBadge.HEAL,
-			FightEvent.Kind.GUARD: ArrowBadge.GUARD}.get(e.kind, "")
+			FightEvent.Kind.GUARD: ArrowBadge.GUARD, FightEvent.Kind.BRACE: ArrowBadge.GUARD}.get(e.kind, "")
 		if kind.is_empty():
 			continue
 		assert_bool(badges.any(func(b: ArrowBadge) -> bool: return b.kind == kind and b.to_id == e.target_id)) \

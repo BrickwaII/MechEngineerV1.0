@@ -48,6 +48,9 @@ var guard_percent := 0
 ## Share of the damage the guard blocks that goes back to the attacker (a
 ## Mega or Ultra guard skill's reflect). Cleared with the guard.
 var reflect_percent := 0
+## Damage still to absorb from a Brace (DamageRules.brace_absorb), across
+## every hit, until this unit's next action. 0 when not bracing.
+var brace_absorb := 0
 ## Plating pips left (an enemy archetype's plating; StaggerRules). 0: unplated
 ## or broken.
 var plating := 0
@@ -202,6 +205,7 @@ func clone_for_preview() -> Combatant:
 	c.max_hp = max_hp
 	c.guard_percent = guard_percent
 	c.reflect_percent = reflect_percent
+	c.brace_absorb = brace_absorb
 	c.plating = plating
 	c.max_plating = max_plating
 	c.plating_weakness = plating_weakness
