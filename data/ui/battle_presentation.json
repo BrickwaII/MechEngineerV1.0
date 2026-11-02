@@ -90,7 +90,7 @@
 	"_skill_for_comment": "Which look a unit's skill uses: its own name first (a bot's Overcharge Shot fights as heavy_strike but looks like itself), then its combat skill id, then its effect. Names match case-insensitively with spaces as underscores.",
 	"skill_for": {
 		"by_id": {"strike": "strike", "heavy_strike": "heavy_strike", "arc_sweep": "arc_sweep", "brace": "brace", "patch_up": "patch_up", "shield": "shield_ally", "overload": "overload", "repair": "repair"},
-		"by_effect": {"damage": "strike", "heal": "repair", "guard": "brace"}
+		"by_effect": {"damage": "strike", "heal": "repair", "guard": "brace", "absorb": "brace"}
 	},
 
 	"_level_steps_comment": "How a skill's look and sound grow with its level: entry 1 is level 1, up to the max skill level (10, data/post_fight/post_fight.json); a higher level uses the last entry. scale and brightness grow the effects; particles is the burst size on each landing; extra adds projectiles (shot skills), sparks (heals) or rings (guards); impact is the hit pause on a landed hit (light or heavy; big hits are always heavy); layers are extra sounds (data/feel/audio.json) played with the skill's own. The timing never changes: a maxed skill hits harder, not longer.",

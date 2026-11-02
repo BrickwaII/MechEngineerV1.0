@@ -13,6 +13,10 @@ var effects: Array[UnitEffect] = []
 ## unit whose guard the choice would change (Brace, Shield Ally, or a hit that
 ## uses a guard up).
 var guard_changes: Dictionary[String, int] = {}
+## Unit id -> the damage its Brace would still absorb afterwards, for every
+## unit whose Brace the choice would change (a Brace, a hit it absorbs, or the
+## actor's own Brace ending as it acts).
+var brace_changes: Dictionary[String, int] = {}
 ## Unit id -> the status ids it would hold afterwards (StatusInstance shown as
 ## "id" or "id xN"), for every unit whose statuses the choice would change:
 ## Exposed put on by Shred, used up by a hit, or worn off as the actor acts.

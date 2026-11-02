@@ -42,6 +42,8 @@ var bot_skill_effects: Dictionary[String, String] = {}
 var power_percent_per_level: int
 ## The most of one hit a guard may block, in percent.
 var max_guard_percent: int
+## Plating and Stagger numbers (the "stagger" section).
+var stagger: StaggerRules
 ## Action id -> definition, from data/combat/actions.json. Each tuning holds
 ## its own copies, so a test may change or add one.
 var skills: Dictionary[String, CombatSkill] = {}
@@ -96,6 +98,7 @@ static func from_dict(d: Dictionary) -> CombatTuning:
 			t.bot_skill_effects[effect_id] = String(effects[effect_id])
 	t.power_percent_per_level = int(d.get("skill_levels", {}).get("power_percent_per_level", 0))
 	t.max_guard_percent = int(d.get("guard", {}).get("max_percent", 100))
+	t.stagger = StaggerRules.from_dict(d.get(StaggerRules.SECTION, {}))
 	t.skills = ActionTable.load_default().actions
 	t.statuses = StatusTable.load_default()
 	return t
@@ -130,6 +133,7 @@ func validate() -> Array[String]:
 		problems.append("power_percent_per_level may not be negative")
 	if max_guard_percent < 0 or max_guard_percent > 100:
 		problems.append("guard max_percent must be 0 to 100")
+	problems.append_array(stagger.validate())
 	var status_ids := (statuses if statuses != null else StatusTable.load_default()).ids()
 	for id in skills:
 		problems.append_array(skills[id].validate(status_ids))
