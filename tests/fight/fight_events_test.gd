@@ -77,7 +77,7 @@ func test_heal_guard_and_wait_raise_their_own_events() -> void:
 	unit.energy_milli = 0
 	fight.submit(FightAction.wait_for("arc_sweep"))
 	# The wait is ace's next action, so its Brace ends first.
-	assert_array(_kinds(fight.last_events)).is_equal(["BRACE_END", "WAIT"])
+	assert_array(_kinds(fight.last_events)).is_equal(["WAIT", "BRACE_END"])
 
 
 func test_listening_changes_nothing() -> void:

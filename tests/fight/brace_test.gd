@@ -105,7 +105,8 @@ func test_brace_expires_on_the_bots_next_action() -> void:
 	assert_int(ally.brace_absorb).is_equal(0)
 	var ended: Array = fight.last_events.filter(func(e: FightEvent) -> bool: return e.kind == FightEvent.Kind.BRACE_END)
 	assert_int(ended.size()).is_equal(1)
-	assert_int(fight.last_events[0].kind).is_equal(FightEvent.Kind.BRACE_END)
+	# Raised as the action begins: right after its SKILL event.
+	assert_int(fight.last_events[1].kind).is_equal(FightEvent.Kind.BRACE_END)
 	if left > 0:
 		assert_int(ended[0].amount).is_equal(left)
 	assert_bool(fight.log_text().contains("Brace ends")).is_true()
@@ -212,3 +213,40 @@ func test_the_damage_math_shows_the_brace() -> void:
 	assert_int(brace_line.size()).is_equal(1)
 	assert_str((brace_line[0] as UiFormula).text()).ends_with("= %d" % amount)
 	assert_int(BattleMath.brace_lines(fight, ally.id, "brace", ally.brace_absorb).size()).is_equal(2)
+
+
+func test_the_pipeline_brace_step_absorbs_after_the_guard() -> void:
+	var fight := _fight(6, 12)
+	var ally := _brace_up(fight)
+	var foe := _foe_turn(fight)
+	ally.guard_percent = 50
+	var b := DamagePipeline.run(foe.stats, ally.stats, foe.skill("strike"), fight.tuning, 0, ally)
+	assert_int(b.after_guard).is_equal(DamageRules.guarded(b.before_guard, 50, fight.tuning))
+	assert_int(b.brace_absorb).is_equal(ally.brace_absorb)
+	assert_int(b.absorbed).is_equal(mini(b.after_guard, ally.brace_absorb))
+	assert_int(b.final).is_equal(b.after_guard - b.absorbed)
+
+
+func test_a_multi_hit_action_spends_the_brace_hit_by_hit() -> void:
+	var t := _tuning()
+	var flurry := CombatSkill.new("test_flurry", "Flurry", 1, 100)
+	flurry.hit_count = 3
+	t.skills["test_flurry"] = flurry
+	var table := H.table({"foe": H.enemy_def("Foe", H.stats(200, 12, 0, 5, 20), ["strike", "test_flurry"])}, "foe")
+	var squad: Array[SquadMemberSummary] = [H.member("ally", H.stats(200, 5, 20, 11, 20))]
+	var fight := Fight.new(H.request(squad), 1, t, table)
+	var ally := _brace_up(fight)
+	var foe := _foe_turn(fight)
+	foe.energy_milli = foe.max_energy_milli
+	var total := DamageRules.action_damage_to(foe, ally, foe.skill("test_flurry"), t)
+	var hp := ally.hp
+	fight.submit(FightAction.use("test_flurry", ally.id))
+	assert_int(hp - ally.hp).is_equal(total)
+	var hits := fight.last_events.filter(func(e: FightEvent) -> bool: return e.kind == FightEvent.Kind.HIT)
+	assert_int(hits.size()).is_equal(3)
+	var absorbed := 0
+	for h: FightEvent in hits:
+		absorbed += h.absorbed
+	# Every hit is soaked in turn from the one Brace (Defense 20 x 100%).
+	assert_int(absorbed).is_equal(20 - ally.brace_absorb)
+	assert_bool(hits.all(func(h: FightEvent) -> bool: return h.absorbed > 0)).is_true()

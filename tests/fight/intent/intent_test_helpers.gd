@@ -60,6 +60,7 @@ static func snapshot(f: Fight) -> String:
 			c.id, c.display_name, c.side, c.order, c.hp, c.max_hp, c.gauge, c.charge_per_tick,
 			c.energy_milli, c.max_energy_milli, c.recharge_milli, c.wait_recharge_milli,
 			c.wait_target_milli, c.wait_ticks, c.energy_spent_milli, c.skill_ids,
+			c.guard_percent, c.reflect_percent, FightPreview.status_texts(c),
 			[c.stats.hp, c.stats.attack, c.stats.defense, c.stats.speed, c.stats.elasticity, c.stats.battery_capacity],
 		])
 	return var_to_str({

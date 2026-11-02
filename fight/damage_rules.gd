@@ -1,7 +1,9 @@
 class_name DamageRules
 extends RefCounted
 ## Deterministic damage and healing: the same inputs always give the same
-## number. There is no random dodge, no variance and no crits.
+## number. There is no random dodge, no variance and no crits. Damage is
+## worked out by DamagePipeline (its STEPS list the order of every modifier);
+## these are the entry points the fight and its readers call.
 ##
 ##   damage = max(min_damage, (attack x power% - defense x defense%) / 100)
 ##   heal   = min(attack x power% / 100, hp the target has lost)
@@ -13,29 +15,33 @@ extends RefCounted
 ## (down to 0 damage); see damage_to(). `bonus_percent` raises the raw damage (the
 ## d-wait "bonus_damage" option), and a slow attacker hits harder under the
 ## speed-range "compressed" option (SpeedRules); elasticity applies by the
-## d-elasticity switch, see ElasticityRules.
+## d-elasticity switch, see ElasticityRules. A target's statuses (Exposed) and
+## a skill's payoff bonus raise the hit before elasticity and guard.
 
 
-@warning_ignore("integer_division")
 static func damage(attacker: UnitStats, defender: UnitStats, skill: CombatSkill, tuning: CombatTuning, bonus_percent := 0) -> int:
-	bonus_percent += SpeedRules.power_bonus_percent(attacker.speed, tuning)
-	var raw := (attacker.attack * skill.power_percent * (100 + bonus_percent) / 100
-		- defender.defense * tuning.defense_percent * (100 - clampi(skill.pierce_percent, 0, 100)) / 100)
-	var base := maxi(tuning.min_damage, raw / 100)
-	return apply_elasticity(base, defender, tuning)
+	return DamagePipeline.run(attacker, defender, skill, tuning, bonus_percent).final
 
 
-## Damage `attacker` deals `target` with `skill`: the Stagger bonus when the
-## target is Staggered (StaggerRules), then its guard, then its Brace. Reads
-## only; the fight clears the guard and spends the Brace when the hit lands.
+## Damage `attacker` deals `target` with one hit of `skill`, the target's
+## statuses (Exposed), the skill's payoff, the Stagger bonus (StaggerRules),
+## the target's guard and then its Brace included. Reads only; the fight
+## clears the guard, spends the Brace and used-up statuses when it lands.
 static func damage_to(attacker: Combatant, target: Combatant, skill: CombatSkill, tuning: CombatTuning, bonus_percent := 0) -> int:
-	return braced(damage_before_brace(attacker, target, skill, tuning, bonus_percent), target.brace_absorb)
+	return DamagePipeline.run(attacker.stats, target.stats, skill, tuning, bonus_percent, target).final
 
 
 ## damage_to() without the target's Brace: what the Brace has to absorb.
 static func damage_before_brace(attacker: Combatant, target: Combatant, skill: CombatSkill, tuning: CombatTuning, bonus_percent := 0) -> int:
-	bonus_percent += stagger_bonus_percent(target, tuning)
-	return guarded(damage(attacker.stats, target.stats, skill, tuning, bonus_percent), target.guard_percent, tuning)
+	return DamagePipeline.run(attacker.stats, target.stats, skill, tuning, bonus_percent, target).after_guard
+
+
+## Damage of every hit of `skill` (hit_count) on `target`, summed, as the
+## fight lands them: the first hit uses up the guard and Exposed, each hit
+## spends the Brace and strips plating. Equal to damage_to() for a one-hit
+## skill. Not capped at the target's hp.
+static func action_damage_to(attacker: Combatant, target: Combatant, skill: CombatSkill, tuning: CombatTuning, bonus_percent := 0) -> int:
+	return DamagePipeline.total(attacker, target, skill, tuning, bonus_percent)
 
 
 ## `p_damage` after a Brace with `absorb` left soaks it up; may reach 0.

@@ -18,14 +18,20 @@ const PRE_REWORK := {
 }
 
 
+## Actions added after S1, on content no pre-rework skill had (S3: Shred).
+const ADDED: Array[String] = ["shred"]
+
+
 func _rework_fields_are_defaults(a: CombatSkill) -> void:
 	assert_int(a.recovery).is_equal(0)
 	assert_int(a.hit_count).is_equal(1)
 	assert_str(a.damage_type).is_empty()
 	assert_array(a.tags).is_empty()
 	assert_str(a.applies_status).is_empty()
-	assert_str(a.payoff_condition).is_empty()
-	assert_int(a.payoff_bonus_percent).is_equal(0)
+	# S3: Heavy Strike's payoff against Exposed, a no-op until something
+	# applies Exposed.
+	assert_str(a.payoff_condition).is_equal("exposed" if a.id == "heavy_strike" else "")
+	assert_int(a.payoff_bonus_percent).is_equal(50 if a.id == "heavy_strike" else 0)
 
 
 func _full() -> CombatSkill:
@@ -43,7 +49,8 @@ func test_the_shipped_actions_load_and_validate() -> void:
 
 func test_every_pre_rework_skill_migrated_with_the_same_numbers() -> void:
 	var table := ActionTable.load_default()
-	assert_array(table.actions.keys()).contains_exactly_in_any_order(PRE_REWORK.keys())
+	var expected: Array = PRE_REWORK.keys() + ADDED
+	assert_array(table.actions.keys()).contains_exactly_in_any_order(expected)
 	for id: String in PRE_REWORK:
 		var want: Array = PRE_REWORK[id]
 		var a: CombatSkill = table.actions[id]

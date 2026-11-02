@@ -10,7 +10,7 @@ const SEEDS := 12
 const MAX_DECISIONS := 120
 
 var _events: Array[FightEvent] = []
-var _checked := {"player": 0, "enemy": 0, "ko": 0, "heal": 0, "guard": 0, "order_shift": 0}
+var _checked := {"player": 0, "enemy": 0, "ko": 0, "heal": 0, "guard": 0, "order_shift": 0, "status": 0, "multi_hit": 0}
 
 
 func test_previews_equal_resolutions_over_many_seeded_fights() -> void:
@@ -22,11 +22,29 @@ func test_previews_equal_resolutions_over_many_seeded_fights() -> void:
 	# Heal intents: two Warden Mechs that Repair each other.
 	for seed_value in range(1, 6):
 		_play(T.healer_fight(), seed_value, T.healer_planner())
+	# Statuses and multi-hit: both sides hold Shred (Exposed) and Heavy Strike
+	# (its payoff), so Exposed is applied, used up and worn off.
+	for seed_value in range(1, 21):
+		_play(_shred_fight(), seed_value * 7)
 	assert_int(_checked.player).is_greater(500)
 	assert_int(_checked.enemy).is_greater(500)
 	assert_int(_checked.ko).is_greater(20)
 	assert_int(_checked.heal).is_greater(10)
 	assert_int(_checked.guard).is_greater(10)
+	assert_int(_checked.status).is_greater(20)
+	assert_int(_checked.multi_hit).is_greater(20)
+
+
+## Two allies and two enemies, every one holding Strike, Shred and Heavy
+## Strike.
+static func _shred_fight() -> Fight:
+	var tuning := T.tuning_with_repair()
+	tuning.player_skills.assign(["strike", "shred", "heavy_strike"])
+	var skills := ["strike", "shred", "heavy_strike"]
+	return T.fight(
+		[{"id": "bolt", "stats": T.stats(40, 9, 3, 9, 8)}, {"id": "ace", "stats": T.stats(36, 11, 2, 5, 10)}],
+		[{"id": "brute#1", "stats": T.stats(45, 8, 3, 7, 8), "skills": skills},
+			{"id": "brute#2", "stats": T.stats(30, 7, 2, 10, 6), "skills": skills}], tuning)
 
 
 func _play(fight: Fight, rng_seed: int, planner: IntentPlanner = null) -> void:
@@ -62,8 +80,10 @@ func _player_turn(fight: Fight, preview: FightPreview, planner: IntentPlanner, r
 	var badges := BattleReadout.choice_badges(fight, action, choice)
 	var hp_before := {}
 	var energy_before := {}
+	var statuses_before := {}
 	for c in fight.combatants:
 		hp_before[c.id] = c.hp
+		statuses_before[c.id] = FightPreview.status_texts(c)
 		energy_before[c.id] = c.energy_milli
 	var current_order := fight.upcoming(preview.order_length)
 	var energy_shown := BattleReadout.energy_after(actor, actor.skill(action.skill_id)) if action.kind == FightAction.Kind.SKILL else -1
@@ -80,6 +100,13 @@ func _player_turn(fight: Fight, preview: FightPreview, planner: IntentPlanner, r
 			assert_int(c.hp).override_failure_message(context).is_equal(hp_before[c.id])
 		if choice.guard_changes.has(c.id):
 			assert_int(c.guard_percent).override_failure_message(context).is_equal(choice.guard_changes[c.id])
+		# Statuses after: as previewed, and unchanged where none was previewed.
+		var statuses_after := FightPreview.status_texts(c)
+		if choice.status_changes.has(c.id):
+			assert_array(statuses_after).override_failure_message(context).is_equal(choice.status_changes[c.id])
+			_checked.status += 1
+		else:
+			assert_array(statuses_after).override_failure_message(context).is_equal(statuses_before[c.id])
 		if choice.energy_after.has(c.id):
 			assert_int(c.energy()).override_failure_message(context).is_equal(choice.energy_after[c.id])
 		else:
@@ -132,9 +159,16 @@ func _check_badges(badges: Array[ArrowBadge], context: String) -> void:
 		var line := "%s, badge %s" % [context, b]
 		match b.kind:
 			ArrowBadge.ATTACK:
-				var hit := _event(FightEvent.Kind.HIT, b.to_id)
-				assert_object(hit).override_failure_message(line).is_not_null()
-				assert_int(hit.amount).override_failure_message(line).is_equal(b.amount.value)
+				# Every hit of a multi-hit skill counts toward the one badge.
+				var hits := _events.filter(func(e: FightEvent) -> bool:
+					return e.kind == FightEvent.Kind.HIT and e.target_id == b.to_id and e.actor_id == b.from_id)
+				assert_bool(hits.is_empty()).override_failure_message(line).is_false()
+				var total := 0
+				for e: FightEvent in hits:
+					total += e.amount
+				assert_int(total).override_failure_message(line).is_equal(b.amount.value)
+				if hits.size() > 1:
+					_checked.multi_hit += 1
 				var downed := _event(FightEvent.Kind.DOWN, b.to_id) != null
 				assert_bool(downed).override_failure_message(line).is_equal(b.knocks_out)
 				if downed:

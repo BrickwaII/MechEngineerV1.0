@@ -318,3 +318,20 @@ func test_an_archetype_weakness_needs_plating() -> void:
 	assert_str(a.plating_weakness).is_equal(ION)
 	assert_array(a.validate()).contains(["archetype x has a plating_weakness but no plating"])
 	assert_array(EnemyArchetype.from_dict("y", {"name": "Y", "plating": 2, "plating_weakness": ION}).validate()).is_empty()
+
+
+func test_the_pipeline_total_counts_the_break_inside_a_multi_hit_action() -> void:
+	var fight := _fight(2)
+	var ally := fight.advance()
+	var foe := _foe(fight)
+	var flurry := ally.skill(FLURRY)
+	var hits := DamagePipeline.hits(ally, foe, flurry, fight.tuning)
+	assert_int(hits.size()).is_equal(3)
+	assert_int(hits[2].stagger_bonus_percent).is_equal(fight.tuning.stagger.damage_bonus_percent)
+	assert_int(hits[0].stagger_bonus_percent).is_equal(0)
+	var total := DamageRules.action_damage_to(ally, foe, flurry, fight.tuning)
+	var hp := foe.hp
+	fight.submit(FightAction.use(FLURRY, foe.id))
+	assert_int(hp - foe.hp).is_equal(total)
+	# The planner's estimate is the pipeline's: no plating left on the live foe was touched.
+	assert_int(foe.plating).is_equal(0)
