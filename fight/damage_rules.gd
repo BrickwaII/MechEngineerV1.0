@@ -1,7 +1,9 @@
 class_name DamageRules
 extends RefCounted
 ## Deterministic damage and healing: the same inputs always give the same
-## number. There is no random dodge, no variance and no crits.
+## number. There is no random dodge, no variance and no crits. Damage is
+## worked out by DamagePipeline (its STEPS list the order of every modifier);
+## these are the entry points the fight and its readers call.
 ##
 ##   damage = max(min_damage, (attack x power% - defense x defense%) / 100)
 ##   heal   = min(attack x power% / 100, hp the target has lost)
@@ -12,22 +14,26 @@ extends RefCounted
 ## its next hit; see damage_to(). `bonus_percent` raises the raw damage (the
 ## d-wait "bonus_damage" option), and a slow attacker hits harder under the
 ## speed-range "compressed" option (SpeedRules); elasticity applies by the
-## d-elasticity switch, see ElasticityRules.
+## d-elasticity switch, see ElasticityRules. A target's statuses (Exposed) and
+## a skill's payoff bonus raise the hit before elasticity and guard.
 
 
-@warning_ignore("integer_division")
 static func damage(attacker: UnitStats, defender: UnitStats, skill: CombatSkill, tuning: CombatTuning, bonus_percent := 0) -> int:
-	bonus_percent += SpeedRules.power_bonus_percent(attacker.speed, tuning)
-	var raw := (attacker.attack * skill.power_percent * (100 + bonus_percent) / 100
-		- defender.defense * tuning.defense_percent * (100 - clampi(skill.pierce_percent, 0, 100)) / 100)
-	var base := maxi(tuning.min_damage, raw / 100)
-	return apply_elasticity(base, defender, tuning)
+	return DamagePipeline.run(attacker, defender, skill, tuning, bonus_percent).final
 
 
-## Damage `attacker` deals `target` with `skill`, the target's guard included.
-## Reads only; the fight clears the guard when the hit lands.
+## Damage `attacker` deals `target` with one hit of `skill`, the target's
+## statuses (Exposed), the skill's payoff and the target's guard included.
+## Reads only; the fight clears the guard and used-up statuses when it lands.
 static func damage_to(attacker: Combatant, target: Combatant, skill: CombatSkill, tuning: CombatTuning, bonus_percent := 0) -> int:
-	return guarded(damage(attacker.stats, target.stats, skill, tuning, bonus_percent), target.guard_percent, tuning)
+	return DamagePipeline.run(attacker.stats, target.stats, skill, tuning, bonus_percent, target).final
+
+
+## Damage of every hit of `skill` (hit_count) on `target`, summed, as the
+## fight lands them: the first hit uses up the guard and Exposed. Equal to
+## damage_to() for a one-hit skill. Not capped at the target's hp.
+static func action_damage_to(attacker: Combatant, target: Combatant, skill: CombatSkill, tuning: CombatTuning, bonus_percent := 0) -> int:
+	return DamagePipeline.total(attacker, target, skill, tuning, bonus_percent)
 
 
 ## `p_damage` after a guard blocking `guard_percent` of it.

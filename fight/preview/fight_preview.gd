@@ -63,6 +63,9 @@ func preview_choice(fight: Fight, action: FightAction) -> ChoicePreview:
 				c.id, c.display_name, c.hp, PreviewValue.of(c.hp - after.hp), PreviewValue.of(after.hp)))
 		if after.guard_percent != c.guard_percent:
 			out.guard_changes[c.id] = after.guard_percent
+		var statuses_after := status_texts(after)
+		if statuses_after != status_texts(c):
+			out.status_changes[c.id] = statuses_after
 		if after.energy_milli != c.energy_milli:
 			out.energy_after[c.id] = after.energy()
 	# Intents and order as the screen shows them next: once time has run to
@@ -79,6 +82,14 @@ func preview_choice(fight: Fight, action: FightAction) -> ChoicePreview:
 		var new: UnitIntent = after_plan.get(id)
 		if not old.same_as(new):
 			out.intent_changes.append(IntentRevision.new(id, old, new, reason, fight.action_count + 1))
+	return out
+
+
+## `unit`'s statuses as ChoicePreview.status_changes lists them.
+static func status_texts(unit: Combatant) -> Array[String]:
+	var out: Array[String] = []
+	for s in unit.statuses:
+		out.append(str(s))
 	return out
 
 

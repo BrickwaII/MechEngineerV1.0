@@ -3,13 +3,16 @@ extends RefCounted
 ## How the battle screen's numbers come about, as formula lines from the real
 ## values (ui/README.md rule 15): the damage on an arrow badge, the hp a
 ## repair restores, and when a unit acts next. The rules are the fight's
-## (DamageRules, SpeedRules, Timeline); this only explains them.
+## (DamagePipeline, SpeedRules, Timeline); this only explains them.
 ##
 ##   BattleMath.damage_lines(fight, "rust_hound#1", "bolt", "bite", 6)
-##   -> ["ATK 7 − DEF 4 × 50% = 5", ...] (Power and Pierce when they matter)
+##   -> ["ATK 7 − DEF 4 × 50% = 5", ...] (Power, Pierce, Exposed, Payoff and
+##      Guard when they matter)
 
 
 ## Lines explaining `amount`, the damage `from` deals `to` with `skill_id`.
+## Every number is read from the fight's DamagePipeline breakdown, step by
+## step in its order; nothing here redoes the math.
 static func damage_lines(fight: Fight, from_id: String, to_id: String, skill_id: String, amount: int) -> Array:
 	var a := fight.combatant(from_id)
 	var t := fight.combatant(to_id)
@@ -18,30 +21,41 @@ static func damage_lines(fight: Fight, from_id: String, to_id: String, skill_id:
 	var skill := a.skill(skill_id)
 	if skill == null:
 		return []
-	var tuning := fight.tuning
-	var speed_bonus := SpeedRules.power_bonus_percent(a.stats.speed, tuning)
+	var hits := DamagePipeline.hits(a, t, skill, fight.tuning)
+	var b: DamageBreakdown = hits[0]
 	# Terms that change nothing (Power 100%, Pierce 0%) are left out.
-	var f := UiFormula.new().term("ATK", a.stats.attack)
-	if skill.power_percent != 100:
-		f.op("×").term("Power", "%d%%" % skill.power_percent)
-	if speed_bonus > 0:
-		f.op("×").term("Slow bonus", "%d%%" % (100 + speed_bonus))
-	f.op("−").term("DEF", t.stats.defense).op("×").num("%d%%" % tuning.defense_percent)
-	if skill.pierce_percent > 0:
-		f.op("×").open().num(1).op("−").term("Pierce", "%d%%" % clampi(skill.pierce_percent, 0, 100)).close()
-	var base := DamageRules.damage(a.stats, t.stats, skill, tuning)
-	f.equals(base)
+	var f := UiFormula.new().term("ATK", b.attack)
+	if b.power_percent != 100:
+		f.op("×").term("Power", "%d%%" % b.power_percent)
+	if b.speed_bonus_percent > 0:
+		f.op("×").term("Slow bonus", "%d%%" % (100 + b.speed_bonus_percent))
+	f.op("−").term("DEF", b.defense).op("×").num("%d%%" % b.defense_percent)
+	if b.pierce_percent > 0:
+		f.op("×").open().num(1).op("−").term("Pierce", "%d%%" % b.pierce_percent).close()
+	f.equals(b.floored)
 	var out: Array = [f]
-	var raw := _raw_damage(a.stats, t.stats, skill, tuning)
-	if raw < tuning.min_damage:
-		out.append("At least %d: no hit does less." % tuning.min_damage)
-	elif base != maxi(tuning.min_damage, raw):
-		out.append("Elasticity takes it to %d." % base)
-	var guarded := DamageRules.guarded(base, t.guard_percent, tuning)
-	if t.guard_percent > 0:
-		out.append(UiFormula.new().num(base).op("×").open().num(1).op("−").term("Guard", "%d%%" % t.guard_percent).close().equals(guarded))
-	if amount != guarded:
-		if amount == mini(guarded, t.hp):
+	if b.is_floored():
+		out.append("At least %d: no hit does less." % b.min_damage)
+	if b.status_percent > 0:
+		var names := PackedStringArray()
+		for id in b.status_ids:
+			names.append(fight.statuses.name_of(id))
+		out.append(UiFormula.new().num(b.floored).op("×").term(", ".join(names), "%d%%" % (100 + b.status_percent)).equals(b.after_status))
+	if b.payoff_percent > 0:
+		out.append(UiFormula.new().num(b.after_status).op("×").term("Payoff", "%d%%" % (100 + b.payoff_percent)).equals(b.after_payoff))
+	if b.elasticity_changed():
+		out.append("Elasticity takes it to %d." % b.before_guard)
+	if b.guard_percent > 0:
+		out.append(UiFormula.new().num(b.before_guard).op("×").open().num(1).op("−").term("Guard", "%d%%" % b.guard_percent).close().equals(b.final))
+	var total := 0
+	var parts := PackedStringArray()
+	for h in hits:
+		total += h.final
+		parts.append(str(h.final))
+	if hits.size() > 1:
+		out.append("%d hits: %s = %d." % [hits.size(), " + ".join(parts), total])
+	if amount != total:
+		if amount == mini(total, t.hp):
 			out.append("Only %d left to take: it has %d HP." % [amount, t.hp])
 		else:
 			out.append("With this turn's bonuses: %d." % amount)
@@ -124,10 +138,3 @@ static func ordinal(n: int) -> String:
 	if n % 100 < 11 or n % 100 > 13:
 		suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
 	return "%d%s" % [n, suffix]
-
-
-@warning_ignore("integer_division")
-static func _raw_damage(attacker: UnitStats, defender: UnitStats, skill: CombatSkill, tuning: CombatTuning) -> int:
-	var bonus := SpeedRules.power_bonus_percent(attacker.speed, tuning)
-	return (attacker.attack * skill.power_percent * (100 + bonus) / 100
-		- defender.defense * tuning.defense_percent * (100 - clampi(skill.pierce_percent, 0, 100)) / 100) / 100
