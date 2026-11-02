@@ -48,6 +48,9 @@ var guard_percent := 0
 ## Share of the damage the guard blocks that goes back to the attacker (a
 ## Mega or Ultra guard skill's reflect). Cleared with the guard.
 var reflect_percent := 0
+## Statuses the unit holds (Exposed, ...), in the order first applied. Changed
+## only through StatusManager. See StatusInstance.
+var statuses: Array[StatusInstance] = []
 
 var _tuning: CombatTuning
 ## Skill id -> this unit's CombatSkill, built from the tuning and the overrides.
@@ -103,6 +106,26 @@ func is_waiting() -> bool:
 func energy() -> int:
 	@warning_ignore("integer_division")
 	return energy_milli / MILLI
+
+
+## The unit's instance of status `status_id`, or null when it does not hold it.
+func status(status_id: String) -> StatusInstance:
+	for s in statuses:
+		if s.status_id == status_id:
+			return s
+	return null
+
+
+func has_status(status_id: String) -> bool:
+	return status(status_id) != null
+
+
+## Ids of the statuses the unit holds, in order.
+func status_ids() -> Array[String]:
+	var out: Array[String] = []
+	for s in statuses:
+		out.append(s.status_id)
+	return out
 
 
 func can_afford(skill: CombatSkill) -> bool:
@@ -175,7 +198,7 @@ func finish_action(threshold: int) -> void:
 	wait_length = 0
 
 
-## A copy of the timing and guard state, for previews. Shares stats and skills.
+## A copy of the timing, guard and status state, for previews. Shares stats and skills.
 func clone_for_preview() -> Combatant:
 	var no_skills: Array[String] = []
 	var c := Combatant.new(id, display_name, side, order, stats, hp, no_skills, _tuning, skill_overrides)
@@ -184,6 +207,8 @@ func clone_for_preview() -> Combatant:
 	c.max_hp = max_hp
 	c.guard_percent = guard_percent
 	c.reflect_percent = reflect_percent
+	for st in statuses:
+		c.statuses.append(st.copy())
 	c.gauge = gauge
 	c.energy_milli = energy_milli
 	c.wait_target_milli = wait_target_milli

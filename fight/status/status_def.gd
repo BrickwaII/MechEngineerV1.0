@@ -4,8 +4,8 @@ extends RefCounted
 ## ends and what uses it up. Plain data, read from data/combat/statuses.json by
 ## StatusTable. The combat rework plan's StatusDef (S1).
 ##
-## Definitions only: nothing applies a status yet. S3's status manager gives
-## them meaning; until then no action names one (CombatSkill.applies_status).
+## StatusManager applies, uses up and expires them; DamagePipeline reads their
+## effects. An action names one through CombatSkill.applies_status.
 ##
 ## Effects:
 ##   damage_taken_percent  the holder takes `amount` percent more damage
