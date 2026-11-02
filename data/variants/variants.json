@@ -25,6 +25,17 @@
 			]
 		},
 		{
+			"id": "action-recovery",
+			"name": "Action recovery",
+			"layer": "fight",
+			"applies": "next_fight",
+			"default": "by_action",
+			"options": [
+				{"id": "by_action", "name": "Actions cost time (combat rework S2)", "description": "After acting, a unit is pushed back on the timeline by its action's recovery in data/combat/actions.json, in percent of a turn: heavy actions buy fewer turns. Recovery values are first guesses; S10 tunes them beside speed-range's slow-unit bonus."},
+				{"id": "none", "name": "No recovery (old)", "description": "Every action costs one turn of gauge and nothing more, whatever its recovery says."}
+			]
+		},
+		{
 			"id": "d-elasticity",
 			"name": "Elasticity in combat",
 			"layer": "fight",
