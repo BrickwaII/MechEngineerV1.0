@@ -13,8 +13,10 @@ extends RefCounted
 ##               slow_power_percent of the tempo it gives up comes back as power,
 ##               bonus% = slow_power_percent x (charge_high - charge) / charge.
 ##
-## TODO(decision: speed-range): the compressed numbers are stand-ins (max:min
-## 1.6:1, 80% of lost tempo returned as damage) until playtested.
+## The compressed numbers are stand-ins (max:min 1.6:1, 80% of lost tempo
+## returned as damage) until playtested. Decided Nov 2 (speed-range,
+## docs/design/combat-rework-questions.md): keep this slow-unit damage bonus
+## beside action recovery until S10 tunes the two together.
 
 
 static func compressed(tuning: CombatTuning) -> bool:

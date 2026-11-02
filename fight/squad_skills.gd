@@ -5,10 +5,10 @@ extends RefCounted
 ## through CombatTuning.bot_skill_effects; the bot's name and level for it
 ## carry over. A skill whose effect has no combat skill is left out.
 ##
-## Every member keeps CombatTuning.basic_attack: it is added, first, when none
-## of the member's skills is a free single-target attack, so a bot is never
-## stuck. A member whose summary lists no skills, or none that maps to a
-## combat skill, fights with CombatTuning.player_skills, as every member did
+## Every member keeps CombatTuning.basic_attack: it is added, first, when the
+## member's skills do not include it. A unit that cannot afford it may always
+## wait, which is free. A member whose summary lists no skills, or none that
+## maps to a combat skill, fights with CombatTuning.player_skills, as every member did
 ## before bots had skills.
 
 
@@ -18,17 +18,14 @@ static func ids_for(member: SquadMemberSummary, tuning: CombatTuning) -> Array[S
 	if member.skills.is_empty():
 		ids.assign(tuning.player_skills)
 		return ids
-	var has_basic := false
 	for entry in member.skills:
 		var combat_id := tuning.combat_skill_for_effect(String(entry.get(SquadMemberSummary.SKILL_EFFECT_ID, "")))
 		if combat_id.is_empty() or tuning.skill(combat_id) == null or combat_id in ids:
 			continue
 		ids.append(combat_id)
-		if CombatTuning.is_basic_attack(tuning.skill(combat_id)):
-			has_basic = true
 	if ids.is_empty():
 		ids.assign(tuning.player_skills)
-	elif not has_basic and tuning.skill(tuning.basic_attack) != null and not tuning.basic_attack in ids:
+	elif tuning.skill(tuning.basic_attack) != null and not tuning.basic_attack in ids:
 		ids.push_front(tuning.basic_attack)
 	return ids
 

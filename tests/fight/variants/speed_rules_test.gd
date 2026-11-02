@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## speed-range: the compressed option keeps the fastest unit within 1.6
 ## times the slowest's turns and pays slow units back in damage; wide is the
-## old rule. TODO(decision: speed-range).
+## old rule. Decided Nov 2: kept beside action recovery until S10.
 
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 const V := preload("res://tests/fight/variants/variant_test_helpers.gd")

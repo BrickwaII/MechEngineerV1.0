@@ -3,7 +3,7 @@
 	"_fields_comment": "name, energy_cost (whole points), power_percent (damage per hit or hp restored, in percent of attack; for a guard, the share of the next hit blocked). effect: damage (default), heal or guard. target: opponent (default for damage), all_opponents, ally (default for heal and guard; the user included) or self.",
 	"_rework_fields_comment": "Combat rework fields, all optional, unused by fights until the session named: recovery (gauge pushed back after acting, default 0; S2), hit_count (default 1; S3), damage_type (default untyped \"\"; S13), tags (labels for the action tagger; S6), applies_status (a statuses.json id; S3), payoff_condition (a statuses.json id the target must hold) with payoff_bonus_percent (S3).",
 	"actions": {
-		"strike": {"name": "Strike", "energy_cost": 0, "power_percent": 100},
+		"strike": {"name": "Strike", "energy_cost": 1, "power_percent": 100},
 		"heavy_strike": {"name": "Heavy Strike", "energy_cost": 4, "power_percent": 150},
 		"overload": {"name": "Overload", "energy_cost": 9, "power_percent": 220},
 		"repair": {"name": "Repair", "energy_cost": 2, "power_percent": 100, "effect": "heal"},
