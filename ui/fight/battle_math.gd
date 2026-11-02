@@ -29,6 +29,8 @@ static func damage_lines(fight: Fight, from_id: String, to_id: String, skill_id:
 		f.op("×").term("Power", "%d%%" % b.power_percent)
 	if b.speed_bonus_percent > 0:
 		f.op("×").term("Slow bonus", "%d%%" % (100 + b.speed_bonus_percent))
+	if b.stagger_bonus_percent > 0:
+		f.op("×").term("Staggered", "%d%%" % (100 + b.stagger_bonus_percent))
 	f.op("−").term("DEF", b.defense).op("×").num("%d%%" % b.defense_percent)
 	if b.pierce_percent > 0:
 		f.op("×").open().num(1).op("−").term("Pierce", "%d%%" % b.pierce_percent).close()
@@ -46,7 +48,9 @@ static func damage_lines(fight: Fight, from_id: String, to_id: String, skill_id:
 	if b.elasticity_changed():
 		out.append("Elasticity takes it to %d." % b.before_guard)
 	if b.guard_percent > 0:
-		out.append(UiFormula.new().num(b.before_guard).op("×").open().num(1).op("−").term("Guard", "%d%%" % b.guard_percent).close().equals(b.final))
+		out.append(UiFormula.new().num(b.before_guard).op("×").open().num(1).op("−").term("Guard", "%d%%" % b.guard_percent).close().equals(b.after_guard))
+	if b.brace_absorb > 0:
+		out.append(UiFormula.new().num(b.after_guard).op("−").term("Brace", b.absorbed).equals(b.final))
 	var total := 0
 	var parts := PackedStringArray()
 	for h in hits:
@@ -84,6 +88,17 @@ static func guard_lines(fight: Fight, from_id: String, skill_id: String, percent
 	return ["Guard %d%%: its next hit does %d%% less." % [percent, percent]]
 
 
+## Lines explaining a Brace that absorbs `amount` damage.
+static func brace_lines(fight: Fight, from_id: String, skill_id: String, amount: int) -> Array:
+	var a := fight.combatant(from_id)
+	if a == null or a.skill(skill_id) == null:
+		return []
+	var skill := a.skill(skill_id)
+	return [
+		UiFormula.new().term("DEF", a.stats.defense).op("×").term("Brace", "%d%%" % skill.power_percent).equals(amount),
+		"Absorbs %d damage, over any number of hits, until its next action." % amount]
+
+
 ## Explanation lines for an arrow badge, by its kind.
 static func badge_lines(fight: Fight, badge: ArrowBadge) -> Array:
 	if badge == null or not badge.amount.known:
@@ -93,6 +108,8 @@ static func badge_lines(fight: Fight, badge: ArrowBadge) -> Array:
 		ArrowBadge.HEAL:
 			return heal_lines(fight, badge.from_id, badge.to_id, badge.skill_id, n)
 		ArrowBadge.GUARD:
+			if badge.absorb:
+				return brace_lines(fight, badge.from_id, badge.skill_id, n)
 			return guard_lines(fight, badge.from_id, badge.skill_id, n)
 	return damage_lines(fight, badge.from_id, badge.to_id, badge.skill_id, n)
 

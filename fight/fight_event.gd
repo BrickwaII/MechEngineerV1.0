@@ -7,20 +7,22 @@ extends RefCounted
 ## fight, so they never change a result.
 ##
 ## One action raises, in order: SKILL (or WAIT); STATUS_EXPIRED for each of
-## the actor's statuses that end as it acts; then per target HIT / HEAL /
-## GUARD (one HIT per hit of a multi-hit skill), DOWN right after the HIT that
-## downed a unit, STATUS_CONSUMED right after the HIT that used a status up,
-## and STATUS_APPLIED once the target's hits are done.
+## the actor's statuses that end as it acts (BRACE_END first, for its Brace);
+## then per target HIT / HEAL / GUARD / BRACE (one HIT per hit of a multi-hit
+## skill), DOWN right after the HIT that downed a unit, STATUS_CONSUMED right
+## after the HIT that used a status up, PLATING after a HIT on a plated unit
+## and STAGGER when that breaks the plating, and STATUS_APPLIED once the
+## target's hits are done. A Staggered unit's lost turn raises RECOVER on its
+## own, between decisions (Fight.advance()).
 ##
-## Timeline moves (TimelineOps): RECOVERY last, once an action with recovery
-## has landed; DELAY, ADVANCE and KNOCKBACK whenever a rule moves a
-## unit. For these, target_id is the unit moved, actor_id the unit that moved
-## it ("" for none) and amount the gauge moved.
+## Timeline moves (TimelineOps, S2): RECOVERY last, once an action with
+## recovery has landed (not to be confused with RECOVER, a Staggered unit's
+## lost turn); DELAY, ADVANCE and KNOCKBACK whenever a rule moves a unit. For
+## these, target_id is the unit moved, actor_id the unit that moved it ("" for
+## none) and amount the gauge moved.
 
-enum Kind {
-	SKILL, HIT, HEAL, GUARD, WAIT, DOWN, STATUS_APPLIED, STATUS_CONSUMED, STATUS_EXPIRED,
-	RECOVERY, DELAY, ADVANCE, KNOCKBACK,
-}
+enum Kind { SKILL, HIT, HEAL, GUARD, WAIT, DOWN, STATUS_APPLIED, STATUS_CONSUMED, STATUS_EXPIRED,
+	PLATING, STAGGER, RECOVER, BRACE, BRACE_END, RECOVERY, DELAY, ADVANCE, KNOCKBACK }
 
 var kind: Kind
 ## Fight.action_count of the action that raised it (1 for the first action).
@@ -32,11 +34,17 @@ var skill_id := ""
 ## The actor's level in the skill (1 for enemies and unlevelled skills).
 var skill_level := 1
 ## HIT: damage dealt. HEAL: hp restored. GUARD: percent of the next hit blocked.
-## SKILL: energy points spent. STATUS_*: the status's stacks. RECOVERY,
+## SKILL: energy points spent. STATUS_*: the status's stacks. PLATING: pips
+## stripped. STAGGER: gauge knocked back. RECOVER: plating pips restored.
+## BRACE: damage it will absorb. BRACE_END: absorb left unused. RECOVERY,
 ## DELAY, ADVANCE, KNOCKBACK: gauge moved.
 var amount := 0
+## PLATING, STAGGER and RECOVER: the target's plating pips after the event.
+var plating_after := 0
 ## HIT only: the guard percent that softened it (0 when unguarded).
 var blocked_percent := 0
+## HIT only: damage the target's Brace absorbed.
+var absorbed := 0
 ## HIT only: extra damage from the target's statuses (Exposed), in percent.
 var status_bonus_percent := 0
 ## HIT only: the skill's payoff bonus, in percent, when it applied.

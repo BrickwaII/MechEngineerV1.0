@@ -198,6 +198,7 @@ func _capture_statuses() -> void:
 	anvil.begin_wait(10 * Combatant.MILLI)
 	var spark := f.combatant("spark")
 	spark.energy_milli = 1000
+	spark.brace_absorb = 6
 	var enemies := f.living(Combatant.Side.ENEMY)
 	enemies[0].hp = 0
 	screen.refresh()

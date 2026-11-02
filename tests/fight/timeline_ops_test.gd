@@ -162,6 +162,18 @@ func test_resist_knockback_keeps_a_debt_and_floors_others_at_zero() -> void:
 	assert_int(ally.gauge).is_equal(0)
 
 
+func test_a_stagger_knockback_does_not_lift_a_debt() -> void:
+	# Timeline.knockback() (S4's Stagger) floors at 0 but keeps a debt.
+	var fight := _fight()
+	var ally := fight.advance()
+	ally.gauge = -100
+	assert_int(fight.timeline.knockback(ally, 300)).is_equal(0)
+	assert_int(ally.gauge).is_equal(-100)
+	ally.gauge = 200
+	assert_int(fight.timeline.knockback(ally, 300)).is_equal(200)
+	assert_int(ally.gauge).is_equal(0)
+
+
 func test_knockback_moves_like_delay_and_reports_knockback() -> void:
 	var fight := _fight()
 	fight.advance()

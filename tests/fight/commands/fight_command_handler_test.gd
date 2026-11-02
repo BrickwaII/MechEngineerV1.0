@@ -210,7 +210,7 @@ func test_a_self_only_skill_is_used_on_selection() -> void:
 	assert_str(handler.actor().id).is_equal("anvil")
 	assert_str(handler.apply(FightCommand.select_skill("brace"))).is_empty()
 	assert_str(handler.fight.action_tags[0]).is_equal("anvil:brace")
-	assert_int(handler.fight.combatant("anvil").guard_percent).is_greater(0)
+	assert_int(handler.fight.combatant("anvil").brace_absorb).is_greater(0)
 
 
 ## These tests' numbers were worked out under the old fight switches.

@@ -63,6 +63,8 @@ func preview_choice(fight: Fight, action: FightAction) -> ChoicePreview:
 				c.id, c.display_name, c.hp, PreviewValue.of(c.hp - after.hp), PreviewValue.of(after.hp)))
 		if after.guard_percent != c.guard_percent:
 			out.guard_changes[c.id] = after.guard_percent
+		if after.brace_absorb != c.brace_absorb:
+			out.brace_changes[c.id] = after.brace_absorb
 		var statuses_after := status_texts(after)
 		if statuses_after != status_texts(c):
 			out.status_changes[c.id] = statuses_after

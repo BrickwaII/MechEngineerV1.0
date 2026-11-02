@@ -43,6 +43,8 @@ static func skill_line(skill: CombatSkill) -> String:
 		what = "heal %d%%" % skill.power_percent
 	elif skill.is_guard():
 		what = "guard %d%%" % skill.power_percent
+	elif skill.is_absorb():
+		what = "absorb %d%% DEF" % skill.power_percent
 	else:
 		what = "dmg %d%%" % skill.power_percent
 	var aim: String = "all enemies" if skill.hits_all() else {
