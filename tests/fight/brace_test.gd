@@ -200,3 +200,15 @@ func test_a_brace_badge_reads_as_damage_absorbed_not_a_percent() -> void:
 	var badge := ArrowBadge.new("a", "a", ArrowBadge.GUARD, "brace", PreviewValue.of(6))
 	badge.absorb = true
 	assert_str(badge.text()).is_equal("6")
+
+
+func test_the_damage_math_shows_the_brace() -> void:
+	var fight := _fight(6, 12)
+	var ally := _brace_up(fight)
+	var foe := _foe_turn(fight)
+	var amount := DamageRules.damage_to(foe, ally, foe.skill("strike"), fight.tuning)
+	var lines := BattleMath.damage_lines(fight, foe.id, ally.id, "strike", amount)
+	var brace_line: Array = lines.filter(func(l: Variant) -> bool: return l is UiFormula and (l as UiFormula).text().contains("Brace"))
+	assert_int(brace_line.size()).is_equal(1)
+	assert_str((brace_line[0] as UiFormula).text()).ends_with("= %d" % amount)
+	assert_int(BattleMath.brace_lines(fight, ally.id, "brace", ally.brace_absorb).size()).is_equal(2)

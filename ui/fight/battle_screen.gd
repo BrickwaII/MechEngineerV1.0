@@ -904,7 +904,7 @@ static func skill_card_face(skill: CombatSkill, attack: int) -> Dictionary:
 		if skill.reflect_percent > 0:
 			parts.append("Reflect %d%%." % skill.reflect_percent)
 	elif skill.is_absorb():
-		parts.append("Absorb %d%% DEF until next action." % skill.power_percent)
+		parts.append("Absorb %d%% DEF." % skill.power_percent)
 	return {"name": title, "rank": rank, "effect": " ".join(parts)}
 
 
