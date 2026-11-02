@@ -82,6 +82,34 @@ func preview_choice(fight: Fight, action: FightAction) -> ChoicePreview:
 	return out
 
 
+## The next `count` turns, in order, if the pending unit takes `action`:
+## who acts and at which tick. Played forward on a FightCopy with the real
+## rules, so recovery, delays, deaths and waits all count; the fight given is
+## never changed. Empty when `action` is refused.
+##
+## Every later decision is what `policy` would choose: by default
+## IntentFightPolicy, each unit's current intent (TODO(decision:
+## recovery-projection), the S0 recommendation). The projection is exact when
+## the fight is played by the same policy; a policy that draws randomness
+## replays from the fight seed's policy rng, not from the live fight's.
+func project_turns(fight: Fight, action: FightAction, count: int, policy: FightPolicy = null) -> Array[TimelineEntry]:
+	var out: Array[TimelineEntry] = []
+	if not fight.check_action(action).is_empty():
+		return out
+	var player := policy if policy != null else IntentFightPolicy.new(planner)
+	var fallback := SimpleFightPolicy.new()
+	var rng := HeadlessFightRunner.policy_rng(fight.fight_seed)
+	var copy := FightCopy.of(fight)
+	copy.submit(action)
+	while out.size() < count:
+		var unit := copy.advance()
+		if unit == null:
+			break
+		out.append(TimelineEntry.new(unit.id, unit.display_name, unit.side, copy.timeline.current_tick, unit.is_waiting()))
+		HeadlessFightRunner.play_turn(copy, unit, player, fallback, rng)
+	return out
+
+
 static func _squad_tag(fight: Fight, unit_id: String) -> String:
 	for m in fight.request.squad:
 		if m.id == unit_id:

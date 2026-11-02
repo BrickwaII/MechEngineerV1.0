@@ -8,8 +8,13 @@ extends RefCounted
 ##
 ## One action raises, in order: SKILL (or WAIT), then per target HIT / HEAL /
 ## GUARD, and DOWN right after the HIT that downed a unit.
+##
+## Timeline moves (TimelineOps): RECOVERY last, once an action with recovery
+## has landed; DELAY, ADVANCE and KNOCKBACK whenever a rule moves a
+## unit. For these, target_id is the unit moved, actor_id the unit that moved
+## it ("" for none) and amount the gauge moved.
 
-enum Kind { SKILL, HIT, HEAL, GUARD, WAIT, DOWN }
+enum Kind { SKILL, HIT, HEAL, GUARD, WAIT, DOWN, RECOVERY, DELAY, ADVANCE, KNOCKBACK }
 
 var kind: Kind
 ## Fight.action_count of the action that raised it (1 for the first action).
@@ -21,7 +26,7 @@ var skill_id := ""
 ## The actor's level in the skill (1 for enemies and unlevelled skills).
 var skill_level := 1
 ## HIT: damage dealt. HEAL: hp restored. GUARD: percent of the next hit blocked.
-## SKILL: energy points spent.
+## SKILL: energy points spent. RECOVERY, DELAY, ADVANCE, KNOCKBACK: gauge moved.
 var amount := 0
 ## HIT only: the guard percent that softened it (0 when unguarded).
 var blocked_percent := 0
@@ -31,6 +36,9 @@ var max_hp := 0
 ## SKILL and WAIT: the actor's whole energy points before and after.
 var energy_before := 0
 var energy_after := 0
+## Timeline moves only: the moved unit's gauge before and after.
+var gauge_before := 0
+var gauge_after := 0
 
 
 func _init(p_kind := Kind.SKILL, p_action_index := 0, p_actor_id := "", p_target_id := "", p_skill_id := "") -> void:

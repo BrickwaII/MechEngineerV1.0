@@ -37,6 +37,13 @@ Combat core (M2), pure logic with no scenes:
   keeps the basic attack (Strike).
   Enemies keep their enemy-table skills. Read a unit's skills with
   `Combatant.skill(id)`, not `CombatTuning.skill(id)`.
+- `TimelineOps`: timeline moves other rules call (combat rework S2):
+  `delay()`, `advance()`, `knockback()` and `recover()` (an action's
+  `recovery` pushes its user back after the action lands). Amounts are raw
+  gauge; `turn_gauge(percent_of_turn, tuning)` converts data's percent of a
+  turn. Gauge may go below 0 (a debt). Each move raises a `FightEvent`
+  (RECOVERY, DELAY, ADVANCE, KNOCKBACK). `FightPreview.project_turns()`
+  lists the next turns for a hypothetical action, played forward on a copy.
 - `variants/`: the fight side of the variant switchboard. `FightVariants`
   reads this layer's switches from `data/variants/variants.json` (plus the
   player's choices in `user://variants.json`); `CombatTuning.variants` holds

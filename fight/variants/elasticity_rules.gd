@@ -28,7 +28,10 @@ static func reduce(p_damage: int, defender: UnitStats, tuning: CombatTuning) -> 
 	return maxi(tuning.min_damage, big + (p_damage - big) * (100 - cut) / 100)
 
 
-## Gauge a damaging hit takes off `target`.
+## Gauge a damaging hit takes off `target`. after_hit() applies it straight to
+## the gauge, floored at 0 and even mid-wait, as it always did, not through
+## TimelineOps.knockback() (which may push into debt and holds a delay during
+## a wait), so this option's fights do not change. TODO(decision: d-elasticity).
 static func knockback(target: UnitStats, tuning: CombatTuning) -> int:
 	if not tuning.variants.is_chosen(FightVariants.ELASTICITY, FightVariants.ELASTICITY_KNOCKBACK):
 		return 0
