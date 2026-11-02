@@ -130,7 +130,8 @@ func test_exposed_wears_off_when_the_enemy_acts_before_the_payoff() -> void:
 	var b := _next(fight, "b")
 	var heavy := b.skill("heavy_strike")
 	var events := _submit(fight, FightAction.use("heavy_strike", foe.id))
-	assert_array(_kinds(events)).is_equal(["SKILL", "HIT"])
+	# RECOVERY last: Heavy Strike costs time as well (combat rework S2).
+	assert_array(_kinds(events)).is_equal(["SKILL", "HIT", "RECOVERY"])
 	assert_int(events[1].amount).is_equal(DamageRules.damage(b.stats, foe.stats, heavy, fight.tuning))
 	assert_int(events[1].payoff_bonus_percent).is_equal(0)
 
