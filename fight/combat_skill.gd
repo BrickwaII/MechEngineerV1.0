@@ -193,6 +193,8 @@ func validate(status_ids: Variant = null) -> Array[String]:
 			problems.append("action %s has an empty tag" % id)
 		elif seen.has(tag):
 			problems.append("action %s lists tag %s twice" % [id, tag])
+		elif not tag in ActionTag.TAGS:
+			problems.append("action %s has unknown tag %s (not an ActionTag tag)" % [id, tag])
 		seen[tag] = true
 	if has_payoff():
 		if not is_damage():

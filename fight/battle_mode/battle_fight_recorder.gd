@@ -2,8 +2,11 @@ class_name BattleFightRecorder
 extends RefCounted
 ## Watches one fight from outside and measures what Battle Mode reports: the
 ## squad's turns, HP lost, energy spent and wasted, action uses, combos and
-## Staggers. Reads only the fight's public record (FightEvents, action tags,
-## combatant energy), so it changes nothing and needs no new fight state.
+## Staggers. Turns, uses, HP, combos, setups and Staggers come from the
+## fight's summary (FightSummary, read off the one combat log), so Battle
+## Mode counts them exactly as the harness and post-fight do. Only wasted
+## energy is its own measure, from combatant energy between actions. It
+## changes nothing in the fight and needs no new fight state.
 ##
 ##   var rec := BattleFightRecorder.new(fight)   # before the first submit()
 ##   ... after every successful fight.submit(): rec.after_action(fight)
@@ -14,11 +17,7 @@ extends RefCounted
 ## wait rate while waiting), up to its capacity, and whatever went past the
 ## capacity is lost. Every other energy change happens inside an action, so
 ## the snapshot after it already holds it.
-## TODO(S6): read Fight.events (the one combat log) once it lands, in place of
-## listening to event_raised.
 
-var _events: Array[FightEvent] = []
-var _hp_start := {}
 var _last_tick := 0
 var _last_energy := {}
 var _last_rate := {}
@@ -26,9 +25,6 @@ var _wasted_milli := 0
 
 
 func _init(fight: Fight) -> void:
-	for c in fight.combatants:
-		if c.side == Combatant.Side.PLAYER:
-			_hp_start[c.id] = c.hp
 	_snapshot(fight)
 	if fight.action_count == 0 and fight.timeline.current_tick > 0:
 		# Attached after time ran to the first decision (a battle screen
@@ -40,7 +36,6 @@ func _init(fight: Fight) -> void:
 				@warning_ignore("integer_division")
 				_last_energy[c.id] = c.max_energy_milli * fight.tuning.starting_energy_percent / 100
 				_last_rate[c.id] = c.recharge_milli
-	fight.event_raised.connect(_events.append)
 
 
 ## Call after every resolved action (and before reading the record).
@@ -64,41 +59,22 @@ func finish(fight: Fight, encounter: BattleEncounter) -> BattleFightRecord:
 		r.kind = BattleEncounter.kind_name(encounter.kind)
 		r.enemy_ids = encounter.enemy_ids.duplicate()
 		r.distinct_types = encounter.distinct_types()
-	r.victory = fight.outcome == FightResult.Outcome.VICTORY
-	r.actions = fight.action_count
-	r.ticks = fight.timeline.current_tick
-	for c in fight.combatants:
-		if c.side == Combatant.Side.PLAYER:
-			r.hp_start += int(_hp_start.get(c.id, c.hp))
-			r.hp_end += c.hp
-			r.hp_max += c.max_hp
-			if not c.is_alive():
-				r.bots_downed += 1
-		elif not c.is_alive():
-			r.enemies_downed += 1
-	r.energy_spent_milli = fight.energy_spent_milli(Combatant.Side.PLAYER)
+	var s := fight.summary()
+	r.victory = s.is_victory()
+	r.actions = s.decisions
+	r.ticks = s.ticks
+	r.hp_start = s.squad.hp_start
+	r.hp_end = s.squad.hp_end
+	r.hp_max = s.squad.max_hp
+	r.bots_downed = s.squad.downed
+	r.enemies_downed = s.enemies.downed
+	r.energy_spent_milli = s.squad.energy_spent_milli
 	r.energy_wasted_milli = _wasted_milli
-	for tag in fight.action_tags:
-		var unit := fight.combatant(tag.get_slice(":", 0))
-		if unit == null or unit.side != Combatant.Side.PLAYER:
-			continue
-		var action := tag.get_slice(":", 1)
-		r.action_uses[action] = r.action_uses.get(action, 0) + 1
-		r.turns += 1
-	for e in _events:
-		var actor := fight.combatant(e.actor_id)
-		if actor == null or actor.side != Combatant.Side.PLAYER:
-			continue
-		match e.kind:
-			FightEvent.Kind.HIT:
-				if e.status_bonus_percent > 0 or e.payoff_bonus_percent > 0:
-					r.combos += 1
-			FightEvent.Kind.STATUS_APPLIED:
-				var target := fight.combatant(e.target_id)
-				if target != null and target.side != actor.side:
-					r.setups += 1
-			FightEvent.Kind.STAGGER:
-				r.staggers += 1
+	r.turns = s.squad.decisions
+	r.action_uses = s.squad.action_uses.duplicate()
+	r.combos = s.squad.combos
+	r.setups = s.squad.setups
+	r.staggers = s.squad.staggers
 	return r
 
 

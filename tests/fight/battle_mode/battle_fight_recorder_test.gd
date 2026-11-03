@@ -82,7 +82,7 @@ func test_a_bot_that_spends_what_it_gets_wastes_nothing() -> void:
 	assert_int(rec.finish(fight, null).energy_wasted_milli).is_equal(0)
 
 
-func test_combos_setups_and_staggers_come_from_events() -> void:
+func test_combos_setups_and_staggers_come_from_the_log() -> void:
 	var fight := _duel(H.stats(40, 6, 2, 6, 10))
 	var rec := BattleFightRecorder.new(fight)
 	var hit := FightEvent.new(FightEvent.Kind.HIT, 1, "a", "foe#1", "heavy_strike")
@@ -92,8 +92,8 @@ func test_combos_setups_and_staggers_come_from_events() -> void:
 	var stagger := FightEvent.new(FightEvent.Kind.STAGGER, 1, "a", "foe#1", "strike")
 	var enemy_combo := FightEvent.new(FightEvent.Kind.HIT, 2, "foe#1", "a", "strike")
 	enemy_combo.status_bonus_percent = 50
-	for e in [hit, plain, applied, stagger, enemy_combo]:
-		fight.event_raised.emit(e)
+	for e: FightEvent in [hit, plain, applied, stagger, enemy_combo]:
+		fight.events.append(e)
 	var r := rec.finish(fight, null)
 	assert_int(r.combos).is_equal(1)
 	assert_int(r.setups).is_equal(1)
@@ -129,3 +129,23 @@ func test_attaching_after_the_first_advance_records_the_same() -> void:
 	var late_rec := BattleFightRecorder.new(late)
 	_play(late, late_rec, SimpleFightPolicy.new())
 	assert_array(late_rec.finish(late, null).csv_row("x")).is_equal(early_rec.finish(early, null).csv_row("x"))
+
+
+## Battle Mode counts what the fight summary counts (S6), so its fun metrics
+## and the harness agree.
+func test_the_record_matches_the_fight_summary() -> void:
+	var tuning := CombatTuning.load_default()
+	tuning.player_skills.assign(["strike", "shred", "heavy_strike", "brace"])
+	var fight := _duel(H.stats(60, 8, 3, 7, 12), tuning)
+	var rec := BattleFightRecorder.new(fight)
+	_play(fight, rec, RandomFightPolicy.new())
+	var r := rec.finish(fight, null)
+	var s := fight.summary()
+	assert_int(r.turns).is_equal(s.squad.decisions)
+	assert_dict(r.action_uses).is_equal(s.squad.action_uses)
+	assert_int(r.combos).is_equal(s.squad.combos)
+	assert_int(r.setups).is_equal(s.squad.setups)
+	assert_int(r.staggers).is_equal(s.squad.staggers)
+	assert_int(r.hp_lost()).is_equal(s.squad.hp_lost())
+	assert_int(r.actions).is_equal(fight.action_count)
+	assert_int(r.enemies_downed).is_equal(s.enemies.downed)
