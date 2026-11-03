@@ -93,3 +93,25 @@ func test_a_sample_scenario_loads_and_runs() -> void:
 	assert_bool(_builder.load_file("res://data/scenarios/duo_vs_turret.json")).is_true()
 	_builder.set_run_options(5, 1, false)
 	assert_array((_builder.run_batch() as BatchReport).problems).is_empty()
+
+
+## S9: the sandbox loads with its kit and opening spread, and runs from the
+## screen exactly as the file does with the batch simulator.
+func test_the_sandbox_loads_with_its_kit_and_runs_like_the_file() -> void:
+	var path := "res://data/scenarios/sandbox_3v3.json"
+	assert_bool(_builder.load_file(path)).is_true()
+	var file := ScenarioFiles.load_scenario(path)
+	var form: FightScenario = _builder.scenario_from_form()
+	assert_array(form.kit).is_equal(["strike", "shred", "heavy_strike", "brace"])
+	assert_int(form.opening_gauge_spread_percent).is_equal(file.opening_gauge_spread_percent)
+	assert_that(form.to_dict()).is_equal(file.to_dict())
+	_builder.set_run_options(4, 1, false)
+	var report: BatchReport = _builder.run_batch()
+	assert_array(report.problems).is_empty()
+	assert_str(report.format_text()).is_equal(BatchSimulator.run(file, 4, 1, "").format_text())
+
+
+func test_an_empty_kit_field_keeps_each_bots_own_skills() -> void:
+	_fill_form()
+	assert_array((_builder.scenario_from_form() as FightScenario).kit).is_empty()
+	assert_bool((_builder.scenario_from_form() as FightScenario).to_dict().has("opening_gauge_spread_percent")).is_false()

@@ -33,6 +33,11 @@ func test_previews_equal_resolutions_over_many_seeded_fights() -> void:
 		_play(A.charger_fight(), seed_value * 13)
 		_play(A.plated_fight(), seed_value * 17)
 		_play(A.scaler_fight(), seed_value * 19)
+	# The S9 sandbox: the five-verb kit against the three archetypes, with
+	# seeded opening gauges.
+	var sandbox := ScenarioFiles.load_scenario("res://data/scenarios/sandbox_3v3.json").resolve()
+	for seed_value in range(1, 11):
+		_play(Fight.new(sandbox.request, seed_value, sandbox.tuning, sandbox.enemy_table), seed_value * 23)
 	assert_int(_checked.player).is_greater(500)
 	assert_int(_checked.enemy).is_greater(500)
 	assert_int(_checked.ko).is_greater(20)

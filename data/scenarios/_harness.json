@@ -1,6 +1,6 @@
 {
 	"_comment": "Settings for the simulation harness (combat rework S8): tools/policy_comparison.gd, run by tools/batch_sim.gd with --policies. Not a scenario: files starting with _ are skipped when scenarios are listed.",
-	"_policies_comment": "policies: who plays the squad, in table order (FightScenario policy names). runs: seeded fights per policy; every policy plays the same seeds. scenario: the scenario played when none is named (TODO(decision: sandbox-scenario): S9's sandbox replaces this file's stand-in). csv_dir: where fights.csv and policies.csv are written.",
+	"_policies_comment": "policies: who plays the squad, in table order (FightScenario policy names). runs: seeded fights per policy; every policy plays the same seeds. scenario: the scenario played when none is named (the S9 sandbox, data/scenarios/sandbox_3v3.json). csv_dir: where fights.csv and policies.csv are written.",
 	"policies": ["greedy", "smart", "random"],
 	"runs": 100,
 	"base_seed": 1,

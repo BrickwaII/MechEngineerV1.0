@@ -9,6 +9,10 @@
 		"recharge_floor_milli_per_tick": 100,
 		"starting_percent": 50
 	},
+	"_opening_comment": "gauge_spread_percent: each unit starts a fight with a gauge drawn from the fight's seed, 0 to this percent of a turn. 0 starts everyone empty (no draw). Scenarios may set their own (data/scenarios, opening_gauge_spread_percent): the S9 sandbox does, so its fixed enemies differ per seed. TODO(decision: sandbox-seed-variation)",
+	"opening": {
+		"gauge_spread_percent": 0
+	},
 	"wait": {
 		"recharge_bonus_percent": 100
 	},
