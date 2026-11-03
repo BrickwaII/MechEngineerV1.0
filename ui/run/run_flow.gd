@@ -640,7 +640,7 @@ func _on_screen_opened(screen: BattleScreen) -> void:
 	screen.show_home_button(go_home)
 	if recorder != null:
 		recorder.watch_battle(screen)
-	# Dev builds: F6 opens the battle debugger (S9b) on this fight.
+	# Dev builds: F7 opens the battle debugger (S9b) on this fight.
 	BattleDebugger.install(screen)
 	_set_stage(Stage.FIGHT)
 

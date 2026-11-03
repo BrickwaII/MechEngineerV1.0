@@ -7,7 +7,8 @@ extends PanelContainer
 ##
 ##   var dbg := BattleDebugger.attach(screen)   # null in release builds
 ##
-## F6 (data/dev/battle_debugger.json) shows and hides it. While shown the
+## F7 (data/dev/battle_debugger.json; F6 is the S9 action-share panel) shows
+## and hides it. While shown the
 ## fight is paused: enemy turns wait for Step or Resume. Alt-click a unit
 ## card or an action tile to inspect it.
 ##
@@ -61,6 +62,8 @@ var forced_label: Label
 var enemy_pick: OptionButton
 var sim_runs: SpinBox
 var sim_label: Label
+## S9's live action-use share of the squad in this fight (ActionSharePanel).
+var share_panel: ActionSharePanel
 var changes_label: Label
 var save_box: VBoxContainer
 ## Change seq -> its "save" CheckBox.
@@ -68,7 +71,7 @@ var save_checks: Dictionary = {}
 var diff_label: Label
 var save_dialog: ConfirmationDialog
 
-var _toggle_key := KEY_F6
+var _toggle_key := KEY_F7
 ## True while the panel writes values into its editors (no edits sent).
 var _filling := false
 
@@ -94,7 +97,7 @@ static func attach(p_screen: BattleScreen, force := false, p_settings: BattleDeb
 class Hook:
 	extends Node
 	var screen: BattleScreen
-	var key := KEY_F6
+	var key := KEY_F7
 
 	func _unhandled_key_input(event: InputEvent) -> void:
 		var k := event as InputEventKey
@@ -107,7 +110,7 @@ class Hook:
 		queue_free()
 
 
-## Puts a Hook on `p_screen` (dev builds only): F6 then attaches the
+## Puts a Hook on `p_screen` (dev builds only): F7 then attaches the
 ## debugger. Returns the hook, or null when the debugger is off.
 static func install(p_screen: BattleScreen) -> Node:
 	if not BattleDebugSession.is_enabled():
@@ -277,6 +280,8 @@ func refresh() -> void:
 	_fill_action()
 	_fill_ai()
 	_fill_changes()
+	if share_panel != null:
+		share_panel.refresh()
 	status_label.text = status_text
 	_filling = false
 
@@ -608,6 +613,12 @@ func _build_simulate_tab() -> VBoxContainer:
 	sim_label = Ui.label("", Palette.TEXT, 12)
 	sim_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(sim_label)
+	box.add_child(Ui.label("This fight, live", Palette.ACCENT))
+	share_panel = ActionSharePanel.new()
+	# Shown in this tab, not toggled by its own key.
+	share_panel.toggle_key = KEY_NONE
+	box.add_child(share_panel)
+	share_panel.fight = session.fight
 	return box
 
 
