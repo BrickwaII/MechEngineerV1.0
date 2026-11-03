@@ -109,8 +109,17 @@ Combat core (M2), pure logic with no scenes:
 - `CarefulFightPolicy`: a squad policy that uses the rework's verbs (answer
   a wind-up with Shred or Brace, Heavy Strike an Exposed or Staggered enemy,
   Shred plating, Shred when an ally's payoff comes before the Exposed wears
-  off, Wait for Heavy Strike when Strike barely scratches). A stand-in until
-  S8's Smart policy; `SimpleFightPolicy` stays the greedy baseline.
+  off, Wait for Heavy Strike when Strike barely scratches). Battle Mode's
+  careful player; `SmartFightPolicy` builds on it.
+- `GreedyFightPolicy` (S8): the deep dive's greedy bot. The affordable damage
+  action that takes the most HP off the opponents now, tried on a FightCopy
+  with the real rules (hit counts, Exposed, payoff, Stagger, guard, Brace,
+  overkill). Never Braces or sets up.
+- `SmartFightPolicy` (S8): the harness's scripted-smart player. The careful
+  rules, plus a Brace against any big telegraphed hit aimed at the bot (a
+  share of its HP set in data/combat/smart_policy.json, read by
+  `SmartPolicyTuning`), and the greedy policy as its fallback. The harness
+  (tools/policy_comparison.gd) compares it with greedy and random.
 - `battle_mode/`: Battle Mode (S9c), fight after fight with growth carried
   forward and no map. `BattleModeRun` draws each encounter from the curve in
   data/battle_mode/ (`BattleEncounterPicker`, fought through
