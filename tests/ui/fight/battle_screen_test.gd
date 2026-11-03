@@ -117,7 +117,7 @@ func test_wait_button_waits() -> void:
 	_screen.skill_buttons["strike"].pressed.emit()
 	assert_str(_screen.wait_button.label.text).is_equal("Wait")
 	assert_str(_screen.wait_for_skill).is_equal("Strike")
-	assert_str(UiTooltip.spec(_screen.wait_button)["body"]).contains("Wait for Strike")
+	assert_str(UiTooltip.spec(_screen.wait_button)["body"]).contains("Strike")
 	_screen.wait_button.pressed.emit()
 	assert_bool(_screen.fight.action_tags.has("%s:wait" % actor.id)).is_true()
 

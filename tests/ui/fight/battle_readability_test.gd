@@ -162,7 +162,7 @@ func test_hovering_a_unit_lights_its_slots_on_the_next_bar() -> void:
 	assert_array(bar.lit_slots()).is_empty()
 
 
-func test_a_choice_that_changes_the_order_previews_the_shift() -> void:
+func test_a_previewed_choice_shows_the_order_it_leaves() -> void:
 	await _start(Helpers.screen())
 	var bar := _screen.timeline_bar
 	# An empty battery, so the bot has a skill to wait for.
@@ -170,19 +170,22 @@ func test_a_choice_that_changes_the_order_previews_the_shift() -> void:
 	_screen.refresh()
 	var current := _screen.fight.upcoming(_screen.tuning.timeline_length)
 	assert_bool(bar.showing_preview).is_false()
-	# Pointing at WAIT previews the wait; a wait holds the bot back.
+	# Pointing at WAIT previews the wait: the order it leaves, played forward
+	# with the real rules (ChoiceReadout.landing()), the bot's landing lit.
 	_screen.on_wait_hovered(true)
-	var choice := _screen.shown_preview
-	assert_object(choice).is_not_null()
-	var order := BattleReadout.order_with_choice(current, choice)
-	var shifts := not BattleReadout.same_order(order, current)
-	assert_bool(bar.showing_preview).is_equal(shifts)
+	assert_object(_screen.shown_preview).is_not_null()
+	var order := ChoiceReadout.after_bar(current, _screen.landing)
+	assert_bool(order.is_empty()).is_false()
+	assert_bool(bar.showing_preview).is_true()
 	var ids: Array[String] = []
-	for e in (order if shifts else current):
+	for e in order:
 		ids.append(e.combatant_id)
 	assert_array(bar.shown_ids).is_equal(ids)
+	assert_int(bar.landing_slot).is_equal(int(_screen.landing.slot) + 1)
+	assert_str(bar.shown_ids[bar.landing_slot]).is_equal(_screen.handler.actor().id)
 	_screen.on_wait_hovered(false)
 	assert_bool(bar.showing_preview).is_false()
+	assert_int(bar.landing_slot).is_equal(-1)
 
 
 func test_no_preview_text_sits_under_the_sprites() -> void:

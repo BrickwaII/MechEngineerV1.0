@@ -7,7 +7,8 @@ live in data/ui/icons.json. Each icon has its own shape AND color, so it
 reads without color too. Drawn with the kit of gen_sprites.py; our own work,
 dedicated to the public domain (CC0), see CREDITS.md.
 
-Usage (from the repo root): python3 tools/asset_gen/gen_ui_icons.py
+Usage (from the repo root): python3 tools/asset_gen/gen_ui_icons.py [icon ids]
+(no ids: every icon)
 Needs Pillow.
 """
 import os
@@ -538,11 +539,88 @@ ICONS = {
         "......o.....",
         "............",
     ]),
+    # Combat rework statuses (S7). Exposed: a shield split by a crack.
+    "status_exposed": ("danger", [
+        "............",
+        ".oooo.ooooo.",
+        ".oaao.oaaao.",
+        ".oabo.oaaao.",
+        ".oaaoooaao..",
+        ".oaaoaoaao..",
+        "..oaoaoao...",
+        "..oaao.ao...",
+        "...oao.o....",
+        "....oo......",
+        "....o.......",
+        "............",
+    ]),
+    # Brace: a wall of three blocks with a band across.
+    "status_brace": ("accent", [
+        "............",
+        ".oooooooooo.",
+        ".oabaoabaao.",
+        ".oaaaoaaaao.",
+        ".oooooooooo.",
+        ".oaaoaaaoao.",
+        ".oaaoaaaoao.",
+        ".oooooooooo.",
+        ".oabaoabaao.",
+        ".oaaaoaaaao.",
+        ".oooooooooo.",
+        "............",
+    ]),
+    # Plating: a bolted hex plate.
+    "status_plating": ("sprite_metal_light", [
+        "............",
+        "...oooooo...",
+        "..oaaaaaao..",
+        ".oaboaaobao.",
+        ".oaaaaaaaao.",
+        ".oaaaaaaaao.",
+        ".oaaaaaaaao.",
+        ".oaboaaobao.",
+        "..oaaaaaao..",
+        "...oooooo...",
+        "............",
+        "............",
+    ]),
+    # Staggered: a dizzy spiral.
+    "status_staggered": ("warning", [
+        "............",
+        "...ooooooo..",
+        "..oaaaaaaao.",
+        ".oaoooooao..",
+        ".oaoaaaoao..",
+        ".oaoaoaoao..",
+        ".oaoaooaao..",
+        ".oaoaaaao...",
+        ".oaooooo....",
+        "..oaaaaaaao.",
+        "...oooooooo.",
+        "............",
+    ]),
+    # Wind-up: a fist drawn back behind speed lines.
+    "intent_wind_up": ("danger", [
+        "............",
+        "......oooo..",
+        "oooo.oaaaao.",
+        ".....oabaaao",
+        "ooo.oaaaaaao",
+        ".....oaaaaao",
+        "oooo.oaaaaao",
+        ".....oaaaao.",
+        "ooo...oaao..",
+        "......oooo..",
+        "............",
+        "............",
+    ]),
 }
 
 
 def main():
-    for name, (color, rows) in ICONS.items():
+    names = sys.argv[1:] or list(ICONS)
+    for name in names:
+        color, rows = ICONS[name]
         rows = [r.ljust(12, ".")[:12] for r in rows]
         img = gs.icon(rows, {"o": O, "a": gs.pal(color), "b": rgba("#ffffff", 220)})
         print(os.path.relpath(save(img, f"{OUT}/{name}.png"), gs.ROOT))

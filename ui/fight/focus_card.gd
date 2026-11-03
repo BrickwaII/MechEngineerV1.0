@@ -75,8 +75,9 @@ func _init() -> void:
 
 ## Shows the card for `p_skill_id`: `face` is BattleScreen.skill_card_face(),
 ## `math` formula lines (UiFormula or String), `hint` the step's words. The
-## card lifts in the first time it shows for a skill.
-func show_skill(p_skill_id: String, face: Dictionary, cost: int, math: Array, hint: String) -> void:
+## card lifts in the first time it shows for a skill. `cost` is the Energy
+## cost, or a word ("Free" for Wait).
+func show_skill(p_skill_id: String, face: Dictionary, cost: Variant, math: Array, hint: String) -> void:
 	var fresh := not visible or p_skill_id != skill_id
 	skill_id = p_skill_id
 	cost_label.text = str(cost)

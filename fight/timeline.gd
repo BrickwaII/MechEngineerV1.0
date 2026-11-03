@@ -49,7 +49,8 @@ func advance_to_next_ready() -> Combatant:
 
 
 ## The next `count` actions in order, assuming each unit acts as soon as it is
-## ready and spends no energy. Read-only: works on copies, never changes the fight.
+## ready and spends no energy. Every action counts toward the opponents'
+## wind-up waits (Combatant.telegraph_wait). Read-only: works on copies, never changes the fight.
 func preview(count: int) -> Array[TimelineEntry]:
 	var entries: Array[TimelineEntry] = []
 	var sim: Array[Combatant] = []
@@ -66,6 +67,12 @@ func preview(count: int) -> Array[TimelineEntry]:
 			continue
 		entries.append(TimelineEntry.new(unit.id, unit.display_name, unit.side, tick, unit.is_waiting()))
 		unit.finish_action(threshold)
+		# Each action counts toward the opponents' wind-ups, as
+		# ArchetypeRules.count_telegraph() does in the fight, so a wound-up
+		# hit shows where it lands instead of never.
+		for u in sim:
+			if u.side != unit.side and u.telegraph_wait > 0:
+				u.telegraph_wait -= 1
 	return entries
 
 
