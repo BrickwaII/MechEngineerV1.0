@@ -101,3 +101,38 @@ func before() -> void:
 func after() -> void:
 	Legacy.unpin()
 
+
+
+## A wound-up enemy holds its wait until an opponent has acted
+## (telegraph_wait); the preview counts each previewed action toward it, so
+## the committed hit shows on the order, at the tick the fight lands it.
+func test_preview_shows_where_a_wound_up_hit_lands() -> void:
+	const A := preload("res://tests/fight/archetypes/archetype_test_helpers.gd")
+	var fight := A.charger_fight()
+	var policy := IntentFightPolicy.new(fight.planner())
+	var rng := HeadlessFightRunner.policy_rng(fight.fight_seed)
+	var charger: Combatant = null
+	for c in fight.combatants:
+		if c.id.begins_with("charger"):
+			charger = c
+	var actor := fight.advance()
+	var guard := 0
+	while actor != null and charger.committed == null and guard < 40:
+		HeadlessFightRunner.play_turn(fight, actor, policy, SimpleFightPolicy.new(), rng)
+		actor = fight.advance()
+		guard += 1
+	assert_object(charger.committed).is_not_null()
+	assert_int(charger.telegraph_wait).is_greater(0)
+	var upcoming := fight.upcoming(8)
+	var slot := upcoming.map(func(e: TimelineEntry) -> String: return e.combatant_id).find(charger.id)
+	assert_int(slot).is_greater(0)
+	assert_bool(upcoming[slot].ends_wait).is_true()
+	# Played on by the same choices nothing else changes (no recovery among
+	# the strikes before it), the Ram lands at that tick.
+	var expected := upcoming[slot].tick
+	while actor != null and actor != charger and guard < 80:
+		HeadlessFightRunner.play_turn(fight, actor, policy, SimpleFightPolicy.new(), rng)
+		actor = fight.advance()
+		guard += 1
+	assert_object(actor).is_same(charger)
+	assert_int(fight.timeline.current_tick).is_equal(expected)
