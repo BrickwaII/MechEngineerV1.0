@@ -26,7 +26,12 @@ var skill_overrides: Dictionary = {}
 var hp: int
 var max_hp: int
 ## Timeline gauge. The unit is ready to act once it reaches the action threshold.
+## Below 0 after a long recovery or a delay: a debt the unit fills first.
 var gauge := 0
+## Gauge a delay took from the unit while it waited (a wait holds a full
+## gauge, so the delay cannot land yet); paid when it next finishes an action.
+## See TimelineOps.
+var held_delay := 0
 ## Gauge gained per tick.
 var charge_per_tick: int
 var energy_milli: int
@@ -211,9 +216,12 @@ func cancel_wait() -> void:
 	wait_length = 0
 
 
-## Called after the unit acts: spend one threshold of gauge, keep the overflow.
+## Called after the unit acts: spend one threshold of gauge, keep the overflow,
+## then pay any delay held during a wait. The action's recovery is added by
+## TimelineOps.recover() after this.
 func finish_action(threshold: int) -> void:
-	gauge = maxi(0, gauge - threshold)
+	gauge = maxi(0, gauge - threshold) - held_delay
+	held_delay = 0
 	wait_target_milli = NOT_WAITING
 	wait_ticks = 0
 	wait_length = 0
@@ -236,6 +244,7 @@ func clone_for_preview() -> Combatant:
 	c.plating_weakness = plating_weakness
 	c.staggered = staggered
 	c.gauge = gauge
+	c.held_delay = held_delay
 	c.energy_milli = energy_milli
 	c.wait_target_milli = wait_target_milli
 	c.wait_ticks = wait_ticks

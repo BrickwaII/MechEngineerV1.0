@@ -3,6 +3,11 @@ extends RefCounted
 ## What waiting gives, by the d-wait and d-wait-length switches
 ## (FightVariants). Every rule is deterministic.
 ##
+## Wait is the one action that is always free and always available (decided
+## Nov 2), and it has no recovery: the unit holds its full gauge and picks a
+## later slot. Its "bonus charge" is energy (combat rework question 1): the
+## banked default recharges faster while waiting.
+##
 ## d-wait, the bonus a wait gives:
 ##   banked        energy recharges faster while waiting, by
 ##                 CombatTuning.wait_recharge_bonus_percent (the default)

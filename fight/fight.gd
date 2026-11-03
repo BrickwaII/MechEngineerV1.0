@@ -147,6 +147,8 @@ func submit(action: FightAction) -> String:
 		_resolve_wait(actor, action)
 	else:
 		_resolve_skill(actor, action)
+		# Last, once every effect has landed: the action's recovery.
+		TimelineOps.recover(self, actor, actor.skill(action.skill_id))
 	tag.finish(self)
 	decision_tags.append(tag)
 	if not tag.labels.is_empty():
@@ -469,6 +471,12 @@ func _finish(p_outcome: FightResult.Outcome, text: String) -> void:
 	pending_actor = null
 	_log("%s after %d actions, energy spent by squad %d" % [
 		text, action_count, energy_spent_milli(Combatant.Side.PLAYER) / Combatant.MILLI])
+
+
+## Raises `event` as part of the current action, for rule modules outside
+## Fight (TimelineOps). See FightEvent.
+func raise_event(event: FightEvent) -> void:
+	_raise(event)
 
 
 ## A new event for the current action; hp fields read the target as it is now.
