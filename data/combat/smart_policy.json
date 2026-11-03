@@ -1,0 +1,5 @@
+{
+	"_comment": "SmartFightPolicy (fight/smart_fight_policy.gd, combat rework S8): the harness's Scripted-smart squad policy. brace_hp_percent: Brace against a telegraphed hit (an enemy's intent on screen) aimed at this bot that would take at least this percent of its current HP, when that enemy acts before this bot's next turn. order_lookahead: how many upcoming turns it reads for that. First guesses, not balance.",
+	"brace_hp_percent": 30,
+	"order_lookahead": 8
+}

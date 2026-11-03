@@ -12,8 +12,11 @@ extends RefCounted
 ## "defense_level" with each fight's seed, or list them explicitly:
 ##   "rust_hound"  or  {"enemy": "rust_hound", "count": 2}  from the enemy table
 ##   {"squad_file": ...} / {"bot": {...}}                   a saved or inline bot as an enemy
+## "kit" (optional): combat action ids every squad member fights with instead
+## of its own skills, e.g. ["strike", "shred", "heavy_strike", "brace"] (Wait
+## is always there). For trying actions no bot skill maps to yet.
 
-const POLICIES := ["simple", "random", "intent", "patient", "careful"]
+const POLICIES := ["simple", "random", "intent", "patient", "careful", "greedy", "smart"]
 const KINDS := ["attack", "defend"]
 
 var scenario_name := ""
@@ -27,6 +30,8 @@ var player_policy := "simple"
 ## Enemies play by intent unless told otherwise, as on the battle screen and in
 ## AutoFightService, so batch results match play.
 var enemy_policy := "intent"
+## Combat action ids every squad member fights with; empty: their own skills.
+var kit: Array[String] = []
 
 
 static func from_dict(d: Dictionary) -> FightScenario:
@@ -39,6 +44,8 @@ static func from_dict(d: Dictionary) -> FightScenario:
 	s.enemy_entries = (d.get("enemies", []) as Array).duplicate(true)
 	s.player_policy = str(d.get("player_policy", "simple"))
 	s.enemy_policy = str(d.get("enemy_policy", "intent"))
+	for id: Variant in d.get("kit", []):
+		s.kit.append(str(id))
 	return s
 
 
@@ -54,6 +61,8 @@ func to_dict() -> Dictionary:
 	}
 	if not enemy_entries.is_empty():
 		d["enemies"] = enemy_entries.duplicate(true)
+	if not kit.is_empty():
+		d["kit"] = kit.duplicate()
 	return d
 
 
@@ -66,7 +75,7 @@ func resolve(
 	base_table = base_table if base_table != null else EnemyTable.load_default()
 	combat_tuning = combat_tuning if combat_tuning != null else CombatTuning.load_default()
 	var r := ResolvedScenario.new()
-	r.tuning = combat_tuning
+	r.tuning = _with_kit(combat_tuning, r.problems)
 	if scenario_name.is_empty():
 		r.problems.append("scenario has no name")
 	if defense_level < FightRequest.MIN_DEFENSE_LEVEL or defense_level > FightRequest.MAX_DEFENSE_LEVEL:
@@ -75,12 +84,16 @@ func resolve(
 	var squad: Array[SquadMemberSummary] = []
 	for entry: Variant in squad_entries:
 		for bot in _bots_of(entry, bot_tuning, r.problems):
-			squad.append(bot.to_summary())
+			var member := bot.to_summary()
+			# A member with no skills fights with the tuning's player_skills: the kit.
+			if not kit.is_empty():
+				member.skills.clear()
+			squad.append(member)
 	if squad.is_empty():
 		r.problems.append("scenario fields no squad")
 	_check_unique_ids(squad, r.problems)
 	r.request = FightRequest.new(kind, territory_id, defense_level, squad)
-	r.enemy_table = _enemy_table(base_table, bot_tuning, combat_tuning, r.problems)
+	r.enemy_table = _enemy_table(base_table, bot_tuning, r.tuning, r.problems)
 	r.player_policy = make_policy(player_policy, r.problems)
 	r.enemy_policy = make_policy(enemy_policy, r.problems)
 	return r
@@ -98,8 +111,27 @@ static func make_policy(policy_name: String, problems: Array[String]) -> FightPo
 			return PatientFightPolicy.new()
 		"careful":
 			return CarefulFightPolicy.new()
+		"greedy":
+			return GreedyFightPolicy.new()
+		"smart":
+			return SmartFightPolicy.new()
 	problems.append("unknown policy '%s' (use %s)" % [policy_name, ", ".join(POLICIES)])
 	return SimpleFightPolicy.new()
+
+
+## `combat_tuning`, or a copy whose player_skills are the kit. The tuning
+## given is never changed.
+func _with_kit(combat_tuning: CombatTuning, problems: Array[String]) -> CombatTuning:
+	if kit.is_empty():
+		return combat_tuning
+	for id in kit:
+		if combat_tuning.skill(id) == null:
+			problems.append("kit names unknown action '%s'" % id)
+	var t := combat_tuning.with_variants(combat_tuning.variants)
+	var skills: Array[String] = []
+	skills.assign(kit)
+	t.player_skills = skills
+	return t
 
 
 func _enemy_table(base: EnemyTable, bot_tuning: BotTuning, combat_tuning: CombatTuning, problems: Array[String]) -> EnemyTable:
