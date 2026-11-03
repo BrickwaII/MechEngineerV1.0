@@ -6,6 +6,7 @@ extends GdUnitTestSuite
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 const A := preload("res://tests/fight/archetypes/archetype_test_helpers.gd")
 const V := preload("res://tests/fight/variants/variant_test_helpers.gd")
+const C := preload("res://tests/fight/archetypes/charger_test.gd")
 
 
 ## The S5 Charger fight played to the end by the policy that answers it:
@@ -82,10 +83,27 @@ func test_one_decision_event_per_decision_with_its_action_and_tags() -> void:
 
 
 func test_a_wind_up_wait_keeps_its_target_in_the_log() -> void:
-	var fight := _answered_fight()
-	var wind_ups := fight.events.filter(func(e: FightEvent) -> bool:
-		return e.kind == FightEvent.Kind.WAIT and e.actor_id == "charger#1" and not e.action.target_id.is_empty())
-	assert_int(wind_ups.size()).is_greater(0)
+	var fight: Fight = C._wound_up()
+	var charger := fight.combatant(C.CHARGER)
+	var waits := FightLog.of_kind(fight.events, FightEvent.Kind.WAIT).filter(
+		func(e: FightEvent) -> bool: return e.actor_id == C.CHARGER)
+	assert_int(waits.size()).is_greater(0)
+	var wind_up: FightEvent = waits[-1]
+	assert_str(wind_up.target_id).is_empty()
+	assert_str(wind_up.action.target_id).is_equal(charger.committed.target_id())
+	# The replay commits the same Ram at the same target.
+	var again := A.charger_fight()
+	assert_str(FightLog.replay_into(again, fight.decisions())).is_empty()
+	assert_str(again.combatant(C.CHARGER).committed.target_id()).is_equal(charger.committed.target_id())
+
+
+func test_hitting_the_wound_up_charger_is_reactive_in_the_log() -> void:
+	var fight: Fight = C._wound_up()
+	var actor: Combatant = C._next_ally(fight)
+	assert_object(actor).is_not_null()
+	assert_str(fight.submit(FightAction.use("strike", C.CHARGER))).is_empty()
+	assert_array(fight.last_events[0].tags).contains(["offense", "reactive"])
+	assert_int(fight.summary().squad.tag_uses.get("reactive", 0)).is_greater(0)
 
 
 func test_the_decision_event_holds_a_copy_of_the_action() -> void:
