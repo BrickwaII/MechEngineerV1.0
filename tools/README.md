@@ -69,6 +69,37 @@ godot --headless --path . -s res://tools/batch_sim.gd -- \
   `PolicyComparison.compare(resolved, name, names, runs, seed)` on a set-up
   that is already resolved (an edited tuning, a live fight's request).
 
+## Battle debug simulator engine (S9b)
+
+`battle_debug/battle_debug_session.gd` `BattleDebugSession` drives the battle
+debugger with no scene, so every debugger action is tested headless
+(`tests/tools/battle_debug/`). It takes over a live `Fight` and gives:
+
+- **Live edits.** `set_action_field()` (an `ACTION_FIELDS` field of an action
+  definition, for every unit holding it), `set_ai_weight()` (an
+  `IntentWeights` base or lean), `set_personality()`, `set_unit_field()` (hp,
+  stats, energy, gauge, plating, guard, Brace, Stagger). The fight settles at
+  once (`Fight.settle_outside_change()`: intents re-plan, the end is checked).
+  Edits are session-only: the session plays with its own copy of the tuning
+  and planner.
+- **Force states.** `apply_status()`, `remove_status()`, `set_gauge()`,
+  `give_turn()`, `force_action()` (a unit's next action), `add_enemy()`,
+  `copy_unit()`, `remove_unit()`.
+- **Time.** `step()`, `submit()`, `rewind_to()` / `rewind_one()` (a
+  `FightSnapshot` per decision; state comes back exactly, definitions stay as
+  edited), `restart()` (same seed).
+- **Measure.** `simulate()` runs the S8 harness (`PolicyComparison.compare`) on
+  the set-up as edited (`simulation_setup()`, `DebugEnemyTable`).
+- **Keep.** `changes` (the log, `DebugChange`), `preview_save()` (a
+  `TuningPatch`: each file's line diff), `save_to_data()` (writes, reloads
+  through the loaders), `export_tuning_diff()`.
+
+Settings: `data/dev/battle_debugger.json`. Dev builds only:
+`BattleDebugSession.is_enabled()` (the editor, or an export with the
+`battle_debugger` feature tag). Saved files keep their layout:
+`lib/json_text_patch.gd` changes one value in place, `lib/line_diff.gd` shows
+the diff.
+
 ## Battle Mode simulator
 
 Plays whole Battle Mode runs headless (`fight/battle_mode/`): fight after

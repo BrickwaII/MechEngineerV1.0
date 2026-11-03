@@ -138,7 +138,7 @@ static func compare(resolved: ResolvedScenario, p_name: String, policy_names: Ar
 			# A fresh policy per fight, so no fight leaks state into the next.
 			var policy := FightScenario.make_policy(row.policy, cmp.problems)
 			var sim := SimulatedFight.new(resolved.request, seed_value, policy, resolved.enemy_policy,
-				resolved.tuning, resolved.enemy_table).run_to_end()
+				resolved.tuning, resolved.enemy_table, resolved.intent_planner).run_to_end()
 			var record := fight_record(row.policy, seed_value, sim.fight.summary())
 			cmp._add(row, record)
 			cmp.fights.append(record)

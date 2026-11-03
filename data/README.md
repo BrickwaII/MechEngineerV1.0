@@ -20,3 +20,4 @@ Region files and tuning tables. Hand-edited, no code.
   fortifying, the news headlines, and the alert meter and news card sizes.
 - `feel/`: presentation tables. `palette.json` (every screen's colors), `feel.json` (tween presets, hit pause, shake, popups, ghost bar), `audio.json` (sounds, variation, throttling, music tracks and the music director's contexts), `settings.json` (settings defaults), `sprite_manifest.json` (unit sheets and tiers, format in `assets/README.md`).
 - `run/run_data.json`: run data. Where run folders go, the old save path, autosave points, the F8 form's categories and mood range, the load list length, the replay's number tolerance, and the act length target in real minutes.
+- `dev/battle_debugger.json`: the battle debug simulator (combat rework S9b): Simulate's runs and policies, the files Save to data writes, where Export tuning diff goes, the snapshot limit and the panel's sizes.
