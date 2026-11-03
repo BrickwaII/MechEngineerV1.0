@@ -734,11 +734,19 @@ func rebuild_field() -> void:
 	var root := _field.get_parent()
 	var at := _field.get_index()
 	var old := _field
+	arrows.set_arrows([] as Array[Dictionary], "")
+	arrows.views = {}
 	root.remove_child(old)
 	old.queue_free()
 	unit_panels.clear()
 	_build_field(root)
 	root.move_child(_field, at)
+	# The arrows draw from the cards: point them at the new ones. (The
+	# presenter shares unit_panels itself.)
+	var views := {}
+	for id: String in unit_panels:
+		views[id] = unit_panels[id].view
+	arrows.views = views
 	_fit_field()
 
 
