@@ -5,6 +5,9 @@ Layer 2. Combat, energy, intent, preview, post-fight. May import bot_data and co
 Combat core (M2), pure logic with no scenes:
 - `Fight`: one fight in ATB wait mode. `advance()` runs time until a unit is
   ready, `submit()` resolves its action. `upcoming(n)` previews the order.
+  The seed picks the enemies and, when `CombatTuning.opening_gauge_spread_percent`
+  is above 0 (off in `combat_tuning.json`; the S9 sandbox scenario sets 50),
+  each unit's opening gauge (`TODO(decision: sandbox-seed-variation)`).
 - `Timeline`: gauge-based turn order. `Combatant`: per-unit hp, energy, gauge.
 - `DamageRules`: deterministic damage and healing, the entry points. Every
   hit is worked out by `DamagePipeline.run()`, a fixed list of steps (power,

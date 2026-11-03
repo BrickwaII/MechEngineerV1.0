@@ -16,7 +16,9 @@ extends RefCounted
 ## last event of an action or recovery).
 ##
 ## Deterministic: the same request, seed and decisions give the same fight.
-## The seed only picks which enemies appear; nothing else is random.
+## The seed picks which enemies appear and, when the tuning's
+## opening_gauge_spread_percent is above 0 (the S9 sandbox), each unit's
+## opening gauge; nothing else is random.
 
 var request: FightRequest
 var fight_seed: int
@@ -76,6 +78,7 @@ func _init(p_request: FightRequest, p_seed: int, p_tuning: CombatTuning = null, 
 		_invalid_reason = "no enemy table entry for defense level %d" % request.defense_level
 	else:
 		_build_roster(rng)
+		_seed_opening_gauges(rng)
 	timeline = Timeline.new(combatants, tuning.turn_threshold())
 	_log("fight start: %s level %d, seed %d" % [
 		FightRequest.Kind.keys()[request.kind].to_lower(), request.defense_level, fight_seed])
@@ -88,6 +91,8 @@ func _init(p_request: FightRequest, p_seed: int, p_tuning: CombatTuning = null, 
 				c.max_plating, ", weak to %s" % c.plating_weakness if not c.plating_weakness.is_empty() else ""])
 		if c.archetype != null:
 			_log("    archetype %s" % c.archetype.display_name)
+		if c.gauge != 0:
+			_log("    opening gauge %d" % c.gauge)
 	_check_end()
 	_refresh_intents({}, true)
 
@@ -628,6 +633,19 @@ func _raise(event: FightEvent) -> void:
 
 func _log(text: String) -> void:
 	log_lines.append("[t%04d] %s" % [timeline.current_tick if timeline != null else 0, text])
+
+
+## A seeded head start for every unit, in roster order: a gauge of 0 to
+## opening_gauge_spread_percent of a turn. Off (no draw at all) at 0, the
+## default, so fights without it are unchanged. The sandbox scenario turns it
+## on so its fixed enemies give a different opening on every seed.
+## TODO(decision: sandbox-seed-variation)
+func _seed_opening_gauges(rng: RandomNumberGenerator) -> void:
+	if tuning.opening_gauge_spread_percent <= 0:
+		return
+	var most := tuning.turn_threshold() * tuning.opening_gauge_spread_percent / 100
+	for c in combatants:
+		c.gauge = rng.randi_range(0, most)
 
 
 func _build_roster(rng: RandomNumberGenerator) -> void:
