@@ -22,6 +22,8 @@ bots saved from the robot builder to `user://dev/bots/` and `user://dev/enemies/
   "enemies": [ ...entries... ],      // optional; leave out to draw from the enemy table
   "kit": ["strike", "shred"],        // optional: combat action ids every squad member fights with
                                      // instead of its own skills (Wait is always there)
+  "opening_gauge_spread_percent": 50, // optional, 0 to 99: every unit starts with a seeded gauge of
+                                     // 0 to this percent of a turn (left out: none)
   "player_policy": "simple",         // FightScenario.POLICIES: simple, random, intent, patient,
                                      // careful, greedy, smart
   "enemy_policy": "intent"           // default "intent": enemies act as on the battle screen
@@ -51,8 +53,16 @@ no bot skill maps to yet (such as Shred).
 ## Samples
 
 - `level2_drafted_squad.json`: the seed-2024 draft against level 2, enemies drawn per seed.
-- `sandbox_3v3.json`: stand-in for the deep dive's sandbox (S9 may replace it).
-  Three inline bots with the kit Strike, Shred, Heavy Strike, Brace against a
-  Charger, a Plated and a Scaler. The harness's default scenario.
+- `sandbox_3v3.json`: the deep dive's sandbox fight (combat rework S9). Three
+  inline bots (Rook, Ace, Vex) with the five-verb kit Basic (`strike`), Shred,
+  Heavy Shot (`heavy_strike`), Brace and Wait against a Charger, a Plated and a
+  Scaler (`charger_medium`, `plated_medium`, `scaler_medium`), level 3. The
+  harness's default scenario (`tools/batch_sim.gd --policies default`). Its
+  enemies are fixed, so the seed varies the opening instead: each unit starts
+  with a seeded gauge of up to 50% of a turn (`opening_gauge_spread_percent`,
+  `TODO(decision: sandbox-seed-variation)`), which changes who acts first and
+  when the Charger's Ram lands. Play it by hand from the dev menu (Sandbox
+  fight) or the scenario builder (Play on battle screen); F6 shows the live
+  action-use share.
 - `duo_vs_turret.json`: two inline bots, played by the random policy, against a
   sentry turret and two scrap drones, the same enemies every fight.

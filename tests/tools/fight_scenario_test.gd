@@ -169,3 +169,57 @@ func test_a_kit_naming_an_unknown_action_is_a_problem() -> void:
 
 func test_no_kit_is_left_out_of_the_file() -> void:
 	assert_bool(H.scenario().to_dict().has("kit")).is_false()
+
+
+func test_an_opening_gauge_spread_round_trips_and_goes_on_a_copy_of_the_tuning() -> void:
+	var d := H.scenario().to_dict()
+	assert_bool(d.has("opening_gauge_spread_percent")).is_false()
+	d["opening_gauge_spread_percent"] = 40
+	var s := FightScenario.from_dict(d)
+	assert_int(s.to_dict().opening_gauge_spread_percent).is_equal(40)
+	var tuning := H.combat_tuning()
+	var r := s.resolve(H.bot_tuning(), H.enemy_table(), tuning)
+	assert_array(r.problems).is_empty()
+	assert_int(tuning.opening_gauge_spread_percent).is_equal(0)
+	assert_int(r.tuning.opening_gauge_spread_percent).is_equal(40)
+
+
+func test_an_opening_gauge_spread_outside_0_to_99_is_a_problem() -> void:
+	var d := H.scenario().to_dict()
+	d["opening_gauge_spread_percent"] = 100
+	assert_str(", ".join(_resolve(FightScenario.from_dict(d)).problems)).contains("opening_gauge_spread_percent")
+
+
+## The deep dive's sandbox (S9): three bots with Basic, Shred, Heavy Shot,
+## Brace (and Wait) against a Charger, a Plated and a Scaler.
+func test_the_sandbox_is_the_deep_dives_test_fight() -> void:
+	var scenario := ScenarioFiles.load_scenario("res://data/scenarios/sandbox_3v3.json")
+	var resolved := scenario.resolve()
+	assert_array(resolved.problems).is_empty()
+	assert_int(scenario.opening_gauge_spread_percent).is_greater(0)
+	for seed_value in [1, 2, 3]:
+		var fight := resolved.start(seed_value).fight
+		var squad := fight.combatants.filter(func(c: Combatant) -> bool: return c.side == Combatant.Side.PLAYER)
+		var enemies := fight.combatants.filter(func(c: Combatant) -> bool: return c.side == Combatant.Side.ENEMY)
+		assert_int(squad.size()).is_equal(3)
+		for c: Combatant in squad:
+			assert_array(c.skill_ids).is_equal(["strike", "shred", "heavy_strike", "brace"])
+		assert_array(enemies.map(func(c: Combatant) -> String: return c.archetype.id)).is_equal(
+			["charger", "plated", "scaler"])
+
+
+## Fixed enemies, yet each seed opens differently (questions row 67), and the
+## same seed opens the same way.
+func test_the_sandbox_opening_varies_by_seed_and_repeats_for_a_seed() -> void:
+	var resolved := ScenarioFiles.load_scenario("res://data/scenarios/sandbox_3v3.json").resolve()
+	var openings := {}
+	for seed_value in range(1, 11):
+		var gauges: Array = resolved.start(seed_value).fight.combatants.map(func(c: Combatant) -> int: return c.gauge)
+		assert_array(resolved.start(seed_value).fight.combatants.map(func(c: Combatant) -> int: return c.gauge)).is_equal(gauges)
+		openings[str(gauges)] = true
+	assert_int(openings.size()).is_greater(8)
+	var greedy := {}
+	resolved.player_policy = GreedyFightPolicy.new()
+	for seed_value in range(1, 11):
+		greedy["\n".join(FightLog.lines(resolved.start(seed_value).run_to_end().fight.events))] = true
+	assert_int(greedy.size()).is_greater(1)

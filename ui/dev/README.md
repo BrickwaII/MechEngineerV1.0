@@ -13,8 +13,19 @@ The dev menu also plays a run on the switchboard's choices.
 
 - `bot_builder.tscn`: create or edit a bot's or enemy's stats and skills and
   save it through BotSquadStorage (`user://dev/bots/`, `user://dev/enemies/`).
-- `scenario_builder.tscn`: pick saved bots and enemies, save a scenario
-  (`user://dev/scenarios/`), and run it with the batch simulator.
+- `scenario_builder.tscn`: pick saved bots and enemies, set the kit and the
+  opening gauge spread, save a scenario (`user://dev/scenarios/`), run it with
+  the batch simulator, or play it by hand (Play on battle screen). The S9
+  sandbox (`data/scenarios/sandbox_3v3.json`) is in its Load list.
+- `scenario_battle.tscn` (`ScenarioBattle`): plays a scenario on the battle
+  screen, the sandbox when none is given (the dev menu's Sandbox fight), with
+  an `ActionSharePanel` (F6) and a hidden `DebugOverlay` (F3). Next seed, same
+  seed again, or back when a fight ends. `capture_sandbox.gd` renders it.
+- `action_share_panel.gd` (`ActionSharePanel`): a standalone node that shows
+  one side's live action-use share, this fight and the session, read from
+  FightSummary (S6); shares above the harness's
+  `max_action_share_percent` are marked. Add it to any scene and set
+  `panel.fight`; F6 toggles it.
 - `debug_overlay.gd` (`DebugOverlay`): a standalone node that shows a Fight's
   units, energy, gauges, timeline and each enemy's planned intent
   (IntentPlanner), live. Add it to any scene and set `overlay.fight`; F3

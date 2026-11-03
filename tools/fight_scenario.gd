@@ -15,9 +15,16 @@ extends RefCounted
 ## "kit" (optional): combat action ids every squad member fights with instead
 ## of its own skills, e.g. ["strike", "shred", "heavy_strike", "brace"] (Wait
 ## is always there). For trying actions no bot skill maps to yet.
+## "opening_gauge_spread_percent" (optional): every unit starts each fight with
+## a gauge drawn from the fight's seed, 0 to this percent of a turn
+## (CombatTuning.opening_gauge_spread_percent), so a scenario with listed
+## enemies still varies by seed. Left out: the tuning's (0, no head start).
+## TODO(decision: sandbox-seed-variation)
 
 const POLICIES := ["simple", "random", "intent", "patient", "careful", "greedy", "smart"]
 const KINDS := ["attack", "defend"]
+## opening_gauge_spread_percent when the scenario sets none: the tuning's.
+const NO_OPENING_SPREAD := -1
 
 var scenario_name := ""
 var kind := FightRequest.Kind.ATTACK
@@ -32,6 +39,8 @@ var player_policy := "simple"
 var enemy_policy := "intent"
 ## Combat action ids every squad member fights with; empty: their own skills.
 var kit: Array[String] = []
+## Opening gauge spread, percent of a turn; NO_OPENING_SPREAD keeps the tuning's.
+var opening_gauge_spread_percent := NO_OPENING_SPREAD
 
 
 static func from_dict(d: Dictionary) -> FightScenario:
@@ -46,6 +55,7 @@ static func from_dict(d: Dictionary) -> FightScenario:
 	s.enemy_policy = str(d.get("enemy_policy", "intent"))
 	for id: Variant in d.get("kit", []):
 		s.kit.append(str(id))
+	s.opening_gauge_spread_percent = int(d.get("opening_gauge_spread_percent", NO_OPENING_SPREAD))
 	return s
 
 
@@ -63,6 +73,8 @@ func to_dict() -> Dictionary:
 		d["enemies"] = enemy_entries.duplicate(true)
 	if not kit.is_empty():
 		d["kit"] = kit.duplicate()
+	if opening_gauge_spread_percent != NO_OPENING_SPREAD:
+		d["opening_gauge_spread_percent"] = opening_gauge_spread_percent
 	return d
 
 
@@ -75,7 +87,7 @@ func resolve(
 	base_table = base_table if base_table != null else EnemyTable.load_default()
 	combat_tuning = combat_tuning if combat_tuning != null else CombatTuning.load_default()
 	var r := ResolvedScenario.new()
-	r.tuning = _with_kit(combat_tuning, r.problems)
+	r.tuning = _tuned(combat_tuning, r.problems)
 	if scenario_name.is_empty():
 		r.problems.append("scenario has no name")
 	if defense_level < FightRequest.MIN_DEFENSE_LEVEL or defense_level > FightRequest.MAX_DEFENSE_LEVEL:
@@ -119,18 +131,23 @@ static func make_policy(policy_name: String, problems: Array[String]) -> FightPo
 	return SimpleFightPolicy.new()
 
 
-## `combat_tuning`, or a copy whose player_skills are the kit. The tuning
-## given is never changed.
-func _with_kit(combat_tuning: CombatTuning, problems: Array[String]) -> CombatTuning:
-	if kit.is_empty():
+## `combat_tuning`, or a copy whose player_skills are the kit and whose
+## opening gauge spread is the scenario's. The tuning given is never changed.
+func _tuned(combat_tuning: CombatTuning, problems: Array[String]) -> CombatTuning:
+	if kit.is_empty() and opening_gauge_spread_percent == NO_OPENING_SPREAD:
 		return combat_tuning
-	for id in kit:
-		if combat_tuning.skill(id) == null:
-			problems.append("kit names unknown action '%s'" % id)
 	var t := combat_tuning.with_variants(combat_tuning.variants)
-	var skills: Array[String] = []
-	skills.assign(kit)
-	t.player_skills = skills
+	if not kit.is_empty():
+		for id in kit:
+			if combat_tuning.skill(id) == null:
+				problems.append("kit names unknown action '%s'" % id)
+		var skills: Array[String] = []
+		skills.assign(kit)
+		t.player_skills = skills
+	if opening_gauge_spread_percent != NO_OPENING_SPREAD:
+		if opening_gauge_spread_percent < 0 or opening_gauge_spread_percent > 99:
+			problems.append("opening_gauge_spread_percent %d is outside 0 to 99" % opening_gauge_spread_percent)
+		t.opening_gauge_spread_percent = opening_gauge_spread_percent
 	return t
 
 

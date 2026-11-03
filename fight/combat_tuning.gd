@@ -16,6 +16,12 @@ var recharge_milli_per_battery_per_tick: int
 var recharge_floor_milli_per_tick: int
 ## Energy each unit starts a fight with, in percent of its pool.
 var starting_energy_percent: int
+## The most gauge a unit may start a fight with, in percent of a turn
+## (turn_threshold()), drawn per unit from the fight's seed. 0 (the default)
+## starts every unit empty and draws nothing. Scenarios set it
+## (FightScenario.opening_gauge_spread_percent) so fixed enemies still give a
+## different fight per seed. TODO(decision: sandbox-seed-variation)
+var opening_gauge_spread_percent := 0
 ## Extra recharge while waiting, in percent of normal recharge. 0 is a plain wait.
 ## Used by the d-wait "banked" option; see WaitRules.
 ## TODO(decision: d-wait): the form of the wait bonus is open. Default until
@@ -81,6 +87,7 @@ static func from_dict(d: Dictionary) -> CombatTuning:
 	t.recharge_milli_per_battery_per_tick = int(d.energy.recharge_milli_per_battery_per_tick)
 	t.recharge_floor_milli_per_tick = int(d.energy.recharge_floor_milli_per_tick)
 	t.starting_energy_percent = int(d.energy.starting_percent)
+	t.opening_gauge_spread_percent = int(d.get("opening", {}).get("gauge_spread_percent", 0))
 	t.wait_recharge_bonus_percent = int(d.wait.recharge_bonus_percent)
 	t.defense_percent = int(d.damage.defense_percent)
 	t.min_damage = int(d.damage.min_damage)
@@ -115,6 +122,8 @@ func validate() -> Array[String]:
 		problems.append("recharge_floor_milli_per_tick must be at least 1")
 	if wait_recharge_bonus_percent < 0:
 		problems.append("wait_recharge_bonus_percent may not be negative")
+	if opening_gauge_spread_percent < 0 or opening_gauge_spread_percent > 99:
+		problems.append("opening gauge_spread_percent must be 0 to 99")
 	if max_actions < 1:
 		problems.append("max_actions must be at least 1")
 	for id in player_skills:
