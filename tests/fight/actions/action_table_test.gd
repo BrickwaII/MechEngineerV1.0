@@ -26,9 +26,12 @@ const DECIDED_COSTS := {"strike": 1}
 ## Ram, the Charger's big hit).
 const ADDED: Array[String] = ["shred", "ram"]
 
+## Recovery given to the migrated actions on purpose (S2), in percent of a turn.
+const RECOVERY := {"heavy_strike": 30, "overload": 50, "arc_sweep": 20}
+
 
 func _rework_fields_are_defaults(a: CombatSkill) -> void:
-	assert_int(a.recovery).is_equal(0)
+	assert_int(a.recovery).is_equal(RECOVERY.get(a.id, 0))
 	assert_int(a.hit_count).is_equal(1)
 	assert_str(a.damage_type).is_empty()
 	assert_array(a.tags).is_empty()

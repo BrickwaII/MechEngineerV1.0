@@ -70,8 +70,10 @@ var heal_guard_percent := 0
 var reflect_percent := 0
 
 ## Rework definition fields (S1). See the class comment for which fights read.
-## Gauge the user is pushed back after acting, on top of the turn threshold,
-## in the same units as action_threshold. 0: no extra cost in time. (S2)
+## How far the user is pushed back after acting, on top of the turn
+## threshold, in percent of a turn (action_threshold units: 100 is one whole
+## turn, scaled by TimelineOps.turn_gauge()). 0: no extra cost in time. Read
+## by fights since S2.
 var recovery := 0
 ## Hits a damage action lands per use; power_percent is the damage of each. (S3)
 var hit_count := 1
