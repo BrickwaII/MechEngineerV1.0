@@ -114,6 +114,32 @@ func test_a_unit_type_joins_the_pool_at_its_level() -> void:
 					.override_failure_message("%s level %d" % [id, level]).is_equal(level >= int(u.from_level))
 
 
+## The enemy archetypes (S5) are shared units: every faction fields them,
+## after its own units, from their level; their enemies name no faction.
+func test_shared_units_join_every_faction_pool_at_their_level() -> void:
+	assert_int(_factions.shared_units.size()).is_equal(3)
+	for faction: String in _factions.factions:
+		var own: Array = _factions.factions[faction].units
+		for u: Dictionary in _factions.shared_units:
+			var id := FactionTable.enemy_id(u.unit, "medium")
+			assert_bool(_table.enemies[id].has("faction")).is_false()
+			for level in range(FightRequest.MIN_DEFENSE_LEVEL, FightRequest.MAX_DEFENSE_LEVEL + 1):
+				var pool := _factions.pool(faction, level, "medium")
+				assert_bool(id in pool).override_failure_message("%s %s level %d" % [faction, id, level]) \
+					.is_equal(level >= int(u.from_level))
+				if id in pool:
+					assert_int(pool.find(id)).is_greater_equal(own.filter(
+						func(o: Dictionary) -> bool: return int(o.from_level) <= level).size())
+
+
+func test_validate_reports_a_shared_unit_with_a_faction_or_no_enemy() -> void:
+	var d: Dictionary = JsonFile.read("res://data/combat/factions.json")
+	d["shared_units"] = [{"unit": "missing", "from_level": 0}, {"unit": "resistance_soldier", "from_level": 0}]
+	var problems := "\n".join(FactionTable.from_dict(d).validate(_table))
+	assert_str(problems).contains("shared unit: no enemy missing_beginner").contains(
+		"shared enemy resistance_soldier_beginner may not name a faction")
+
+
 func test_a_faction_fight_fields_the_region_faction_at_the_act_tier() -> void:
 	var cases := [["bellevue", 3, "human_resistance", "act1"], ["illinois", 2, "enhanced_humans", "act2"],
 		["california", 4, "rival_ai", "act2"], ["china", 1, "aliens", "act3"]]
@@ -123,7 +149,8 @@ func test_a_faction_fight_fields_the_region_faction_at_the_act_tier() -> void:
 		assert_int(ids.size()).is_equal(int(_table.levels[spec[1]].count))
 		for id in ids:
 			var e: Dictionary = _table.enemies[id]
-			assert_str(e.faction).override_failure_message(id).is_equal(spec[2])
+			# A shared archetype enemy (S5) names no faction.
+			assert_str(e.get("faction", spec[2])).override_failure_message(id).is_equal(spec[2])
 			assert_str(e.tier).override_failure_message(id).is_equal(_factions.tier_for(spec[3], spec[1]))
 
 
@@ -144,7 +171,7 @@ func test_the_mixed_switch_fields_the_mixed_faction() -> void:
 		var faction := _factions.faction_for_region(region, FightVariants.FACTIONS_MIXED)
 		var request := FightRequest.new(FightRequest.Kind.ATTACK, region, 2, _squad())
 		for id in _enemy_ids(Fight.new(request, 3, mixed)):
-			assert_str(_table.enemies[id].faction).is_equal(faction)
+			assert_str(_table.enemies[id].get("faction", faction)).is_equal(faction)
 
 
 func test_seeded_faction_fights_replay_exactly() -> void:
