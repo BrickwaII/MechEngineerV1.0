@@ -205,12 +205,29 @@ func summary() -> BattleRunSummary:
 	return s
 
 
-## The display name of a combat action id ("wait" -> "Wait").
+## The name of a combat action id as the squad knows it: the name of the
+## bot skill that fights with it ("Overcharge Shot" for heavy_strike), else
+## the action's own name; "wait" is Wait.
 func action_name(action_id: String) -> String:
 	if action_id == "wait":
 		return "Wait"
+	var effect: String = _skill_effects().get(action_id, "")
+	if not effect.is_empty() and squad != null:
+		for bot in squad.get_fielded():
+			for s in bot.skills:
+				if s.effect_id == effect:
+					return s.display_name
 	var skill := combat_tuning.skill(action_id)
 	return skill.display_name if skill != null else action_id
+
+
+var _effects: Dictionary = {}
+
+
+func _skill_effects() -> Dictionary:
+	if _effects.is_empty():
+		_effects = PostFightTuning.load_default().combat_skill_effects
+	return _effects
 
 
 ## Appends this run's fights and its summary to fights.csv and runs.csv in

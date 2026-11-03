@@ -135,3 +135,17 @@ func test_summary_text_names_actions_and_shares() -> void:
 	assert_str(text).contains("Fights with one action above 50%: 3 of 3")
 	assert_int(s.records.size()).is_equal(3)
 	assert_str(text).contains("Fight 3 boss: won")
+
+
+func test_actions_are_named_as_the_squads_skills() -> void:
+	var run := BattleModeRun.create(BattleModeRun.preset_squad("vanguard"), "gauntlet", 1, FightVariants.defaults())
+	var heavy := ""
+	for bot in run.squad.get_fielded():
+		for s in bot.skills:
+			if s.effect_id == "damage_single_heavy":
+				heavy = s.display_name
+	assert_str(heavy).is_not_empty()
+	assert_str(run.action_name("heavy_strike")).is_equal(heavy)
+	assert_str(run.action_name("wait")).is_equal("Wait")
+	# No bot holds it: the action's own name.
+	assert_str(run.action_name("arc_sweep")).is_equal(run.combat_tuning.skill("arc_sweep").display_name)
