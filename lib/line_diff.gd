@@ -77,13 +77,16 @@ static func unified(a: String, b: String, name := "", context := 1) -> String:
 		lines.append("--- " + name)
 		lines.append("+++ " + name)
 	var gap := false
+	var shown_any := false
 	for k in all.size():
 		if keep[k] == 0:
 			gap = true
 			continue
-		if gap and not lines.is_empty():
+		# "..." only between two shown parts, never before the first.
+		if gap and shown_any:
 			lines.append("...")
 		gap = false
+		shown_any = true
 		lines.append("%s %s" % [all[k][0], all[k][1]])
 	return "\n".join(lines)
 
