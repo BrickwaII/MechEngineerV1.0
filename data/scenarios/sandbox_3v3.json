@@ -1,0 +1,25 @@
+{
+	"_comment": "Stand-in for the deep dive's sandbox fight until S9 builds it (TODO(decision: sandbox-scenario)): three bots, each with the minimal kit (Strike, Shred, Heavy Strike, Brace; Wait is always there), against one of each S5 archetype. The simulation harness (tools/batch_sim.gd --policies) plays it by default. S9 may replace this file.",
+	"name": "Sandbox 3v3",
+	"kind": "attack",
+	"territory_id": "scenario",
+	"defense_level": 3,
+	"squad": [
+		{"bot": {
+			"id": "rook", "name": "Rook",
+			"stats": {"hp": 38, "attack": 7, "defense": 6, "speed": 4, "elasticity": 2, "battery_capacity": 12}
+		}},
+		{"bot": {
+			"id": "ace", "name": "Ace",
+			"stats": {"hp": 28, "attack": 8, "defense": 3, "speed": 8, "elasticity": 3, "battery_capacity": 10}
+		}},
+		{"bot": {
+			"id": "vex", "name": "Vex",
+			"stats": {"hp": 32, "attack": 6, "defense": 4, "speed": 6, "elasticity": 4, "battery_capacity": 14}
+		}}
+	],
+	"kit": ["strike", "shred", "heavy_strike", "brace"],
+	"enemies": ["charger_medium", "plated_medium", "scaler_medium"],
+	"player_policy": "greedy",
+	"enemy_policy": "intent"
+}

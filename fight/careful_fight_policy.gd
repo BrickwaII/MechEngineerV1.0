@@ -25,7 +25,9 @@ const BRACE := "brace"
 ## How far ahead the turn order is read for a setup.
 const ORDER_LOOKAHEAD := 8
 
-var _greedy := SimpleFightPolicy.new()
+## The fallback when no rule applies (rule 7). SmartFightPolicy swaps in
+## GreedyFightPolicy.
+var _greedy: FightPolicy = SimpleFightPolicy.new()
 
 
 func choose(fight: Fight, actor: Combatant, rng: RandomNumberGenerator) -> FightAction:
