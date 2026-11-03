@@ -329,6 +329,20 @@ func _tools() -> void:
 	var cal := OddsCalibration.run(2, 2, 1)
 	_write("tools/odds_calibration.txt", cal.format_markdown() + "\n")
 	_write("tools/fight_scenario.txt", dump(ScenarioFiles.load_scenario("res://data/scenarios/duo_vs_turret.json")) + "\n")
+	# The S9 sandbox, fight by fight: each policy's full combat log on a few
+	# seeds, so its rules (kit, archetypes, opening gauges) are pinned.
+	var sandbox := ScenarioFiles.load_scenario("res://data/scenarios/sandbox_3v3.json")
+	for policy in ["greedy", "smart", "random"]:
+		sandbox.player_policy = policy
+		var resolved := sandbox.resolve()
+		var out := PackedStringArray()
+		for seed_value in range(1, 4):
+			var fight := resolved.start(seed_value).run_to_end().fight
+			out.append("seed %d" % seed_value)
+			out.append(fight.log_text())
+			out.append_array(FightLog.lines(fight.events))
+			out.append(fight.summary().text())
+		_write("tools/sandbox_%s.txt" % policy, "\n".join(out) + "\n")
 
 
 # --- Runs through RunFlow -----------------------------------------------------

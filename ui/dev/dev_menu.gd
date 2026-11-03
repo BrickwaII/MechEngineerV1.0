@@ -12,6 +12,7 @@ const SCREENS := [
 	["Variant switchboard (also F4 in a run)", "res://ui/dev/switchboard_screen.tscn"],
 	["Robot and enemy builder", "res://ui/dev/bot_builder.tscn"],
 	["Scenario builder and batch runs", "res://ui/dev/scenario_builder.tscn"],
+	["Sandbox fight (battle screen, F6 action share)", "res://ui/dev/scenario_battle.tscn"],
 	["Debug overlay demo", "res://ui/dev/debug_overlay_demo.tscn"],
 	["Battle debugger on the sandbox fight (also F6 in a run's battles)", "res://ui/dev/battle_debugger/battle_debugger_demo.tscn"],
 	["Enemy faction lineup", "res://ui/dev/enemy_lineup.tscn"],

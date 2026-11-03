@@ -1,5 +1,6 @@
 {
-	"_comment": "Stand-in for the deep dive's sandbox fight until S9 builds it (TODO(decision: sandbox-scenario)): three bots, each with the minimal kit (Strike, Shred, Heavy Strike, Brace; Wait is always there), against one of each S5 archetype. The simulation harness (tools/batch_sim.gd --policies) plays it by default. S9 may replace this file.",
+	"_comment": "The deep dive's sandbox fight (combat rework S9; its test plan, items 1 to 3): three bots, each with the five-verb kit Basic (strike), Shred, Heavy Shot (heavy_strike), Brace and Wait (always there), against one Charger, one Plated and one Scaler. No meta layer, no leveling. The simulation harness plays it by default (tools/batch_sim.gd --policies, data/scenarios/_harness.json); the scenario builder loads it and plays it on the battle screen (Play on battle screen), and the dev menu opens it directly (Sandbox fight).",
+	"_seed_comment": "The enemies are listed, so the seed would only pick enemies and every seed would be the same fight (questions row 67). opening_gauge_spread_percent gives each of the six units a seeded head start of 0 to that percent of a turn, so the seed changes who acts first and when the Charger's Ram lands, while the units, stats and kits stay the deep dive's test fight. TODO(decision: sandbox-seed-variation)",
 	"name": "Sandbox 3v3",
 	"kind": "attack",
 	"territory_id": "scenario",
@@ -19,6 +20,7 @@
 		}}
 	],
 	"kit": ["strike", "shred", "heavy_strike", "brace"],
+	"opening_gauge_spread_percent": 50,
 	"enemies": ["charger_medium", "plated_medium", "scaler_medium"],
 	"player_policy": "greedy",
 	"enemy_policy": "intent"

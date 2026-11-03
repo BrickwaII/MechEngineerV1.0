@@ -1,10 +1,13 @@
 extends Control
-## Scenario builder: pick saved bots and enemies, set the defense level and
-## policies, save the scenario as JSON, and run it headless with the batch
-## simulator from this screen.
+## Scenario builder: pick saved bots and enemies, set the defense level,
+## policies, kit and opening gauge spread, save the scenario as JSON, run it
+## headless with the batch simulator from this screen, or play it by hand on
+## the battle screen (ScenarioBattle). The sandbox (data/scenarios/
+## sandbox_3v3.json) is in the Load list.
 
 const Ui := preload("res://ui/dev/dev_ui.gd")
 const Palette := preload("res://ui/dev/dev_palette.gd")
+const SCENE_PATH := "res://ui/dev/scenario_builder.tscn"
 
 ## Folders. Empty means: take them from data/scenarios/_dev_tools.json.
 var bot_dir := ""
@@ -22,6 +25,8 @@ var _kind_picker: OptionButton
 var _level_spin: SpinBox
 var _player_policy: OptionButton
 var _enemy_policy: OptionButton
+var _kit_edit: LineEdit
+var _spread_spin: SpinBox
 var _squad_source: OptionButton
 var _squad_list: ItemList
 var _draft_seed: SpinBox
@@ -90,6 +95,10 @@ func scenario_from_form() -> FightScenario:
 	s.enemy_entries = _enemy_entries.duplicate(true)
 	s.player_policy = FightScenario.POLICIES[_player_policy.selected]
 	s.enemy_policy = FightScenario.POLICIES[_enemy_policy.selected]
+	for id in _kit_edit.text.split(",", false):
+		if not id.strip_edges().is_empty():
+			s.kit.append(id.strip_edges())
+	s.opening_gauge_spread_percent = int(_spread_spin.value)
 	return s
 
 
@@ -99,6 +108,8 @@ func show_scenario(s: FightScenario) -> void:
 	_level_spin.set_value_no_signal(s.defense_level)
 	_player_policy.select(maxi(0, FightScenario.POLICIES.find(s.player_policy)))
 	_enemy_policy.select(maxi(0, FightScenario.POLICIES.find(s.enemy_policy)))
+	_kit_edit.text = ", ".join(s.kit)
+	_spread_spin.set_value_no_signal(s.opening_gauge_spread_percent)
 	_squad_entries = s.squad_entries.duplicate(true)
 	_enemy_entries = s.enemy_entries.duplicate(true)
 	_show_entries()
@@ -141,6 +152,17 @@ func run_batch() -> BatchReport:
 	else:
 		_set_status("Cannot run, see the report", true)
 	return report
+
+
+## Plays the form's scenario by hand on the battle screen, from the first
+## seed; Back returns here. Returns the battle, or null when it cannot be played.
+func play_on_battle_screen() -> ScenarioBattle:
+	var s := scenario_from_form()
+	var problems := s.resolve().problems
+	if not problems.is_empty():
+		_set_status("Cannot play: " + "; ".join(problems), true)
+		return null
+	return ScenarioBattle.open(get_tree(), s, int(_seed_spin.value), SCENE_PATH)
 
 
 func set_run_options(runs: int, base_seed: int, write_log: bool) -> void:
@@ -194,8 +216,16 @@ func _build() -> void:
 	_level_spin = Ui.spin(FightRequest.MIN_DEFENSE_LEVEL, FightRequest.MAX_DEFENSE_LEVEL, 1)
 	_player_policy = _policy_picker()
 	_enemy_policy = _policy_picker()
+	_kit_edit = LineEdit.new()
+	_kit_edit.placeholder_text = "own skills"
+	_kit_edit.tooltip_text = "Combat action ids every squad member fights with, comma separated (Wait is always there). Empty: each bot's own skills."
+	_kit_edit.custom_minimum_size.x = 220
+	# FightScenario.NO_OPENING_SPREAD (-1) keeps the combat tuning's.
+	_spread_spin = Ui.spin(FightScenario.NO_OPENING_SPREAD, 99, FightScenario.NO_OPENING_SPREAD)
+	_spread_spin.tooltip_text = "Opening gauge spread: each unit starts with a seeded gauge of 0 to this percent of a turn, so listed enemies still vary by seed. -1: the combat tuning's (0)."
 	for pair in [["Name", _name_edit], ["Kind", _kind_picker], ["Defense level", _level_spin],
-			["Squad policy", _player_policy], ["Enemy policy", _enemy_policy]]:
+			["Squad policy", _player_policy], ["Enemy policy", _enemy_policy], ["Kit", _kit_edit],
+			["Opening spread %", _spread_spin]]:
 		grid.add_child(Ui.label(pair[0]))
 		grid.add_child(pair[1])
 	setup.add_child(grid)
@@ -235,7 +265,8 @@ func _build() -> void:
 	_log_check.text = "Append to stats log"
 	_log_check.button_pressed = true
 	run.add_child(Ui.row([Ui.label("Runs"), _runs_spin, Ui.label("First seed"), _seed_spin]))
-	run.add_child(Ui.row([_log_check, Ui.button("Run batch", func() -> void: run_batch())]))
+	run.add_child(Ui.row([_log_check, Ui.button("Run batch", func() -> void: run_batch()),
+		Ui.button("Play on battle screen", func() -> void: play_on_battle_screen())]))
 	_output = TextEdit.new()
 	_output.editable = false
 	_output.size_flags_vertical = Control.SIZE_EXPAND_FILL
