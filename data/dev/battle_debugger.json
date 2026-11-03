@@ -1,0 +1,20 @@
+{
+	"_comment": "The battle debug simulator (combat rework S9b): tools/battle_debug/, ui/dev/battle_debugger/. Dev builds only (the editor, or an export with the battle_debugger feature tag).",
+	"_simulate_comment": "Simulate: fights per policy, and the policies compared (FightScenario names), on seeds from the fight's own seed up. draw_enemies false fields the fight's current enemies (as edited) every seed; true draws them from the enemy table per seed (TODO(decision: debugger-sim-enemies)).",
+	"simulate_runs": 100,
+	"simulate_policies": ["greedy", "smart"],
+	"draw_enemies": false,
+	"_files_comment": "Where Save to data writes each kind of change, and where Export tuning diff puts its files.",
+	"data_files": {
+		"actions": "res://data/combat/actions.json",
+		"intent_weights": "res://data/combat/intent/intent_weights.json"
+	},
+	"export_dir": "user://dev/tuning_diffs",
+	"_snapshots_comment": "Rewind keeps one snapshot per decision, up to max_snapshots (the oldest go first).",
+	"max_snapshots": 2000,
+	"_ui_comment": "The debugger panel: its width, and how many change-log lines and timeline entries it lists.",
+	"panel_width": 420,
+	"log_lines_shown": 12,
+	"timeline_shown": 10,
+	"toggle_key": "F6"
+}

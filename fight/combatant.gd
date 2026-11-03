@@ -130,6 +130,20 @@ func _init(
 	energy_milli = max_energy_milli * tuning.starting_energy_percent / 100
 
 
+## Rebuilds the unit's skills from `tuning` (its own names and levels kept):
+## for dev tools that change an action's definition mid-fight (the battle
+## debugger, S9b). Fights never call it.
+func refresh_skills(tuning: CombatTuning) -> void:
+	_tuning = tuning
+	var fresh: Dictionary[String, CombatSkill] = {}
+	for skill_id in skill_ids:
+		if tuning.skill(skill_id) == null:
+			continue
+		var o: Dictionary = skill_overrides.get(skill_id, {})
+		fresh[skill_id] = tuning.skill_at(skill_id, int(o.get("level", 1)), String(o.get("name", "")))
+	_skills = fresh
+
+
 ## Replaces the unit's stats (archetype growth) and what is worked out from
 ## them: charge, battery and recharge. Hp and energy held stay as they are.
 func set_stats(p_stats: UnitStats) -> void:

@@ -106,3 +106,53 @@ func validate() -> Array[String]:
 		if not _roles[id] in [ROLE_ATTACK, ROLE_HEAL]:
 			problems.append("skill %s has unknown role %s" % [id, _roles[id]])
 	return problems
+
+
+## The keys of one weight's numbers as the data file has them: "base", then
+## each SCALE_KEYS lean.
+static func value_keys() -> Array[String]:
+	var out: Array[String] = ["base"]
+	out.append_array(SCALE_KEYS)
+	return out
+
+
+## Weight `name`'s number under `key` (a value_keys() entry), as in the data
+## file: its base, or its lean on one spectrum. 0 when not set.
+func value(name: String, key: String) -> float:
+	var entry: Dictionary = _weights.get(name, {})
+	if entry.is_empty():
+		return 0.0
+	if key == "base":
+		return float(entry.base)
+	var scale := SCALE_KEYS.find(key)
+	return float(entry.leans[scale]) if scale >= 0 else 0.0
+
+
+## Sets weight `name`'s number under `key` (a value_keys() entry), adding
+## the weight when it is missing. For dev tools that tune live (the battle
+## debugger, S9b); fights never change their weights.
+func set_value(name: String, key: String, v: float) -> void:
+	if not _weights.has(name):
+		var zeros: Array[float] = []
+		for _scale in SCALE_KEYS:
+			zeros.append(0.0)
+		_weights[name] = {"base": 0.0, "leans": zeros}
+	if key == "base":
+		_weights[name].base = v
+		return
+	var scale := SCALE_KEYS.find(key)
+	if scale >= 0:
+		var leans: Array[float] = _weights[name].leans
+		leans[scale] = v
+
+
+## A copy that set_value() may change without touching this one.
+func copy() -> IntentWeights:
+	var w := IntentWeights.new()
+	for name: String in _weights:
+		var leans: Array[float] = []
+		leans.assign(_weights[name].leans)
+		w._weights[name] = {"base": float(_weights[name].base), "leans": leans}
+	w._roles = _roles.duplicate()
+	w.lean_floor = lean_floor
+	return w

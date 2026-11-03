@@ -539,6 +539,17 @@ func add_log(text: String) -> void:
 	_log(text)
 
 
+## Brings the fight back in line after something outside it changed its
+## state between decisions (the battle debugger's edits, S9b): a pending unit
+## that is down or gone loses its turn, the end is checked, and archetype
+## intents are re-planned without INTENT_CHANGED events. Fights never call it.
+func settle_outside_change() -> void:
+	if pending_actor != null and (not pending_actor.is_alive() or not combatants.has(pending_actor)):
+		pending_actor = null
+	_check_end()
+	_refresh_intents({}, true)
+
+
 ## The planner archetype intents are planned with (intent_planner, made on
 ## first use).
 func planner() -> IntentPlanner:

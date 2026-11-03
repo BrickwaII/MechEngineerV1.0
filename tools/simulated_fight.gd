@@ -26,8 +26,14 @@ func _init(
 	p_enemy_policy: FightPolicy = null,
 	tuning: CombatTuning = null,
 	enemy_table: EnemyTable = null,
+	intent_planner: IntentPlanner = null,
 ) -> void:
 	fight = Fight.new(request, seed_value, tuning, enemy_table)
+	# An edited planner (the battle debugger's AI weights) plans the archetype
+	# enemies' intents from the start, as the live fight's does.
+	if intent_planner != null:
+		fight.intent_planner = intent_planner
+		fight.settle_outside_change()
 	player_policy = p_player_policy
 	enemy_policy = p_enemy_policy if p_enemy_policy != null else _fallback
 	_rng = HeadlessFightRunner.policy_rng(seed_value)
