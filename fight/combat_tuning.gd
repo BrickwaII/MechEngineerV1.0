@@ -32,8 +32,9 @@ var grid_cost_per_defense_level: float
 var grid_cost_per_energy_spent: float
 ## Skill ids a squad member whose summary lists no skills has, in menu order.
 var player_skills: Array[String] = []
-## The skill every squad member keeps so it is never stuck: added when none of
-## its own skills is a free single-target attack. "" adds none.
+## The single-target attack every squad member keeps: added, first, when its
+## own skills do not include it. It costs energy like every action but Wait
+## (decided Nov 2), so a unit that cannot afford it waits. "" adds none.
 var basic_attack: String
 ## Bot skill effect_id (data/bot_data/skills.json) -> combat skill id.
 var bot_skill_effects: Dictionary[String, String] = {}
@@ -124,7 +125,7 @@ func validate() -> Array[String]:
 	elif not skills.has(basic_attack):
 		problems.append("basic attack %s is not defined" % basic_attack)
 	elif not is_basic_attack(skills[basic_attack]):
-		problems.append("basic attack %s must be a free single-target damage skill" % basic_attack)
+		problems.append("basic attack %s must be a single-target damage skill" % basic_attack)
 	for effect_id in bot_skill_effects:
 		if not skills.has(bot_skill_effects[effect_id]):
 			problems.append("bot effect %s maps to undefined skill %s" % [effect_id, bot_skill_effects[effect_id]])
@@ -149,9 +150,10 @@ func with_variants(p_variants: FightVariants) -> CombatTuning:
 	return t
 
 
-## True for a skill that can always be used: free, and hits one opponent.
+## True for a skill fit to be the basic attack: it damages one opponent. Its
+## cost is its own (every action but Wait costs energy, decided Nov 2).
 static func is_basic_attack(s: CombatSkill) -> bool:
-	return s.is_damage() and s.target == CombatSkill.TARGET_OPPONENT and s.energy_cost == 0
+	return s.is_damage() and s.target == CombatSkill.TARGET_OPPONENT
 
 
 ## The skill `effect_id`'s bot skill fights with, or "" when none is defined.
@@ -159,8 +161,9 @@ func combat_skill_for_effect(effect_id: String) -> String:
 	return bot_skill_effects.get(effect_id, "")
 
 
-## Skill `id` as this tuning's switches have it: the strike-cost switch may
-## change the basic attack's cost (EnergyRules). Null for an unknown id.
+## Skill `id` as this tuning's switches have it: the strike-cost switch's
+## retired free option makes the basic attack cost 0 (EnergyRules). Null for
+## an unknown id.
 func skill(id: String) -> CombatSkill:
 	var s: CombatSkill = skills.get(id)
 	if s == null:

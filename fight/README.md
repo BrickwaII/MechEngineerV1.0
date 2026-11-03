@@ -66,7 +66,8 @@ Combat core (M2), pure logic with no scenes:
   them for a fight. `WaitRules` (d-wait, d-wait-length), `ElasticityRules`
   (d-elasticity), `HpCarryover` (hp-carryover), `SpeedRules` (speed-range:
   turn charge and the slow units' damage bonus), `EnergyRules` (strike-cost:
-  Strike's cost and recharge) and `DifficultyRules` (difficulty-curve: tier
+  the recharge that goes with Strike's cost, which lives in actions.json, and
+  the retired free Strike kept for comparisons) and `DifficultyRules` (difficulty-curve: tier
   per act and level, enemy counts, act and tier scaling) implement the options;
   d-personality-map picks a drift rule set and tag-weight and
   skill-progression their options in `PostFightTuning`.

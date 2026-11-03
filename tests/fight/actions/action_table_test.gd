@@ -16,6 +16,10 @@ const PRE_REWORK := {
 	"patch_up": ["Patch Up", 3, 100, "heal", "ally"],
 	"shield": ["Shield Ally", 3, 40, "guard", "ally"],
 }
+## Costs changed in the data on purpose since S1. Strike: the strike-cost
+## decision (S2) moved its cost of 1, which fights already charged through
+## the switch, into actions.json.
+const DECIDED_COSTS := {"strike": 1}
 
 
 ## Actions added after S1, on content no pre-rework skill had (S3: Shred).
@@ -56,7 +60,7 @@ func test_every_pre_rework_skill_migrated_with_the_same_numbers() -> void:
 		var a: CombatSkill = table.actions[id]
 		assert_str(a.id).is_equal(id)
 		assert_str(a.display_name).is_equal(want[0])
-		assert_int(a.energy_cost).is_equal(want[1])
+		assert_int(a.energy_cost).is_equal(DECIDED_COSTS.get(id, want[1]))
 		assert_int(a.power_percent).is_equal(want[2])
 		assert_str(a.effect).is_equal(want[3])
 		assert_str(a.target).is_equal(want[4])

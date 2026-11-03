@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
-## strike-cost: Strike costs energy and recharge slows, so a bot chooses
-## between Strike, a bigger skill and waiting; free is the old rule.
-## TODO(decision: strike-cost).
+## strike-cost: decided Nov 2, Strike costs energy (its cost in
+## data/combat/actions.json) like every action but Wait, and recharge slows,
+## so a bot chooses between Strike, a bigger skill and waiting. free is the
+## retired rule, kept for comparisons.
 
 const H := preload("res://tests/fight/fight_test_helpers.gd")
 const V := preload("res://tests/fight/variants/variant_test_helpers.gd")
@@ -14,18 +15,42 @@ func test_free_is_the_old_rule() -> void:
 	assert_int(EnergyRules.recharge_floor_milli(t)).is_equal(t.recharge_floor_milli_per_tick)
 
 
-func test_costs_puts_the_cost_on_strike_only() -> void:
+func test_strike_costs_what_the_data_says() -> void:
 	var t := V.tuning_with(FightVariants.STRIKE_COST, FightVariants.STRIKE_COSTS)
-	var cost := t.variants.param_int(FightVariants.STRIKE_COST, "energy_cost")
+	# The decided cost lives in the data, not in the switch.
+	var cost := t.skills["strike"].energy_cost
 	assert_int(cost).is_greater(0)
+	assert_bool(t.variants.params(FightVariants.STRIKE_COST).has("energy_cost")).is_false()
 	assert_int(t.skill("strike").energy_cost).is_equal(cost)
 	assert_int(t.skill("heavy_strike").energy_cost).is_equal(t.skills["heavy_strike"].energy_cost)
-	# The data stays as written; the switch applies on the way out.
-	assert_int(t.skills["strike"].energy_cost).is_equal(0)
 	# A unit's own (ranked) Strike costs the same, so the skill card shows it.
 	assert_int(t.skill_at("strike", 4).energy_cost).is_equal(cost)
 	var card: SkillCard = auto_free(SkillCard.make(t.skill("strike").display_name, t.skill("strike").energy_cost, ""))
 	assert_str(card.cost_label.text).is_equal(str(cost))
+
+
+func test_every_action_costs_energy() -> void:
+	var t := V.tuning_with(FightVariants.STRIKE_COST, FightVariants.STRIKE_COSTS)
+	for id in t.skills:
+		assert_int(t.skill(id).energy_cost).override_failure_message(id).is_greater(0)
+
+
+func test_the_free_option_changes_only_the_basic_attack() -> void:
+	var t := V.tuning_with(FightVariants.STRIKE_COST, FightVariants.STRIKE_FREE)
+	assert_int(t.skills["strike"].energy_cost).is_greater(0)
+	assert_int(t.skill("strike").energy_cost).is_equal(0)
+	assert_int(t.skill_at("strike", 4).energy_cost).is_equal(0)
+	assert_int(t.skill("heavy_strike").energy_cost).is_equal(t.skills["heavy_strike"].energy_cost)
+
+
+func test_waiting_is_free_when_strike_is_not_affordable() -> void:
+	var t := V.tuning_with(FightVariants.STRIKE_COST, FightVariants.STRIKE_COSTS)
+	var fight := V.slow_foe_fight(t)
+	var ally := fight.advance()
+	ally.energy_milli = 0
+	assert_str(fight.check_action(FightAction.wait_for("strike"))).is_empty()
+	assert_str(fight.submit(FightAction.wait_for("strike"))).is_empty()
+	assert_int(ally.energy_spent_milli).is_equal(0)
 
 
 func test_costs_uses_its_own_recharge() -> void:
