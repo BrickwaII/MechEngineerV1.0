@@ -10,6 +10,11 @@ extends RefCounted
 ## A Staggered unit (StaggerRules) gets no decision: when its turn comes,
 ## advance() spends it recovering and runs on to the next unit.
 ##
+## Enemy archetypes (ArchetypeRules, S5): the fight keeps each archetype
+## enemy's intent pattern step, its committed wind-up hit and its growth, and
+## announces its intent whenever it changes (FightEvent INTENT_CHANGED, the
+## last event of an action or recovery).
+##
 ## Deterministic: the same request, seed and decisions give the same fight.
 ## The seed only picks which enemies appear; nothing else is random.
 
@@ -35,6 +40,11 @@ var decision_tags: Array[ActionTag] = []
 var log_lines: PackedStringArray = []
 ## The FightEvents of the latest action, in order. See FightEvent.
 var last_events: Array[FightEvent] = []
+
+## Plans archetype enemies' intents (ArchetypeRules), which the fight
+## announces with INTENT_CHANGED events. Null until the fight first needs one,
+## then IntentPlanner's defaults; set it to plan with other weights.
+var intent_planner: IntentPlanner
 
 ## Raised for every FightEvent as an action resolves, for the presentation.
 ## Listening changes nothing in the fight.
@@ -69,7 +79,10 @@ func _init(p_request: FightRequest, p_seed: int, p_tuning: CombatTuning = null, 
 		if c.max_plating > 0:
 			_log("    plating %d%s" % [
 				c.max_plating, ", weak to %s" % c.plating_weakness if not c.plating_weakness.is_empty() else ""])
+		if c.archetype != null:
+			_log("    archetype %s" % c.archetype.display_name)
 	_check_end()
+	_refresh_intents({}, true)
 
 
 ## Runs time until a unit is ready and returns it; the fight then waits for
@@ -84,6 +97,7 @@ func advance() -> Combatant:
 	pending_actor = timeline.advance_to_next_ready()
 	while pending_actor != null and pending_actor.staggered:
 		_recover(pending_actor)
+		_refresh_intents({pending_actor.id: "recovered"})
 		pending_actor = timeline.advance_to_next_ready()
 	return pending_actor
 
@@ -149,11 +163,16 @@ func submit(action: FightAction) -> String:
 		_resolve_skill(actor, action)
 		# Last, once every effect has landed: the action's recovery.
 		TimelineOps.recover(self, actor, actor.skill(action.skill_id))
+	var wound_up := actor.committed == null
+	ArchetypeRules.after_decision(self, actor, action)
+	wound_up = wound_up and actor.committed != null
+	ArchetypeRules.count_telegraph(self, actor)
 	tag.finish(self)
 	decision_tags.append(tag)
 	if not tag.labels.is_empty():
 		log_lines.append("  tags: %s" % ", ".join(tag.labels))
 	_check_end()
+	_refresh_intents({actor.id: "winds up"} if wound_up else {})
 	return ""
 
 
@@ -354,14 +373,16 @@ func _strip_plating(actor: Combatant, target: Combatant, skill: CombatSkill) -> 
 		_stagger(actor, target, skill)
 
 
-## Broken plating: the unit's wind-up is cancelled, it is knocked back, and it
-## takes bonus damage until its next turn, which it spends recovering.
-## TODO(decision: stagger-intent): the lost turn stands in for "cancel the
-## intent" until S5 makes intents committed.
+## Broken plating: the unit's wind-up and committed hit are cancelled and its
+## intent pattern starts over (ArchetypeRules.on_stagger), it is knocked
+## back, and it takes bonus damage until its next turn, which it spends
+## recovering. TODO(decision: stagger-intent): cancel, lose the turn, then
+## re-plan (an INTENT_CHANGED on the Stagger and another on recovering).
 func _stagger(actor: Combatant, target: Combatant, skill: CombatSkill) -> void:
 	target.staggered = true
 	var was_waiting := target.is_waiting()
 	target.cancel_wait()
+	ArchetypeRules.on_stagger(target)
 	var lost := timeline.knockback(target, tuning.stagger.knockback_gauge(target.stats, timeline.threshold, tuning))
 	var staggered := _event(FightEvent.Kind.STAGGER, actor, target, skill)
 	staggered.amount = lost
@@ -479,6 +500,78 @@ func raise_event(event: FightEvent) -> void:
 	_raise(event)
 
 
+## Adds a line to the fight log, for rule modules outside Fight.
+func add_log(text: String) -> void:
+	_log(text)
+
+
+## The planner archetype intents are planned with (intent_planner, made on
+## first use).
+func planner() -> IntentPlanner:
+	if intent_planner == null:
+		intent_planner = IntentPlanner.new()
+	return intent_planner
+
+
+## Re-plans every archetype enemy and announces each intent that changed with
+## an INTENT_CHANGED event (none when `silent`, for the opening plan).
+## `reasons` maps unit ids to why they changed; others get one worked out
+## here. Enemies without an archetype are left to their policies, as before.
+func _refresh_intents(reasons: Dictionary, silent := false) -> void:
+	if _over:
+		return
+	for unit in combatants:
+		if unit.archetype == null:
+			continue
+		var why: String = reasons.get(unit.id, "")
+		var fresh: UnitIntent = null
+		if unit.is_alive():
+			if ArchetypeRules.retarget(self, unit, planner()) and why.is_empty():
+				why = "target down"
+			fresh = planner().plan(self, unit)
+		var old := unit.intent
+		unit.intent = fresh
+		if silent or not unit.is_alive() or (old == null and fresh == null) or (old != null and old.same_as(fresh)):
+			continue
+		if why.is_empty():
+			why = _intent_change_reason(unit, old)
+		var e := _event(FightEvent.Kind.INTENT_CHANGED, unit, combatant(fresh.target_id()) if fresh != null else null,
+			unit.skill(fresh.skill_id()) if fresh != null else null)
+		e.amount = fresh.amount if fresh != null else 0
+		e.old_intent = old
+		e.new_intent = fresh
+		e.reason = why
+		_raise(e)
+		_log("%s's intent: %s (%s)" % [unit.display_name, _intent_text(fresh), why])
+
+
+func _intent_change_reason(unit: Combatant, old: UnitIntent) -> String:
+	if unit.staggered:
+		return "staggered"
+	if old != null:
+		var target := combatant(old.target_id())
+		if target != null and not target.is_alive():
+			return "target down"
+	return "fight state changed"
+
+
+func _intent_text(intent: UnitIntent) -> String:
+	if intent == null:
+		return "none"
+	var target := combatant(intent.target_id())
+	var at := " at %s" % target.display_name if target != null else ""
+	var unit := combatant(intent.unit_id)
+	var skill_name := intent.skill_id()
+	if unit != null and unit.skill(skill_name) != null:
+		skill_name = unit.skill(skill_name).display_name
+	match intent.kind:
+		UnitIntent.Kind.WAIT:
+			return "%s %s%s" % ["wind up" if intent.wind_up else "wait for", skill_name, at]
+		UnitIntent.Kind.HEAL:
+			return "%s%s" % [skill_name, " on %s" % target.display_name if target != null else ""]
+	return "%s%s" % [skill_name, at]
+
+
 ## A new event for the current action; hp fields read the target as it is now.
 func _event(kind: FightEvent.Kind, actor: Combatant, target: Combatant, skill: CombatSkill) -> FightEvent:
 	var e := FightEvent.new(kind, action_count, actor.id, target.id if target != null else "", skill.id if skill != null else "")
@@ -529,6 +622,7 @@ func _build_roster(rng: RandomNumberGenerator) -> void:
 			shown_name,
 			Combatant.Side.ENEMY, order, stats, stats.hp, enemy_table.skills_of(enemy_id), tuning)
 		var archetype := enemy_table.archetype_for(enemy_id)
+		unit.archetype = archetype
 		if archetype != null and archetype.is_plated():
 			unit.plating = archetype.plating
 			unit.max_plating = archetype.plating

@@ -6,11 +6,12 @@ extends GdUnitTestSuite
 ## legal action (a seeded draw), so waits, heals, guards and sweeps all come up.
 
 const T := preload("res://tests/fight/intent/intent_test_helpers.gd")
+const A := preload("res://tests/fight/archetypes/archetype_test_helpers.gd")
 const SEEDS := 12
 const MAX_DECISIONS := 120
 
 var _events: Array[FightEvent] = []
-var _checked := {"player": 0, "enemy": 0, "ko": 0, "heal": 0, "guard": 0, "order_shift": 0, "status": 0, "multi_hit": 0}
+var _checked := {"player": 0, "enemy": 0, "ko": 0, "heal": 0, "guard": 0, "order_shift": 0, "status": 0, "multi_hit": 0, "intent_changed": 0, "growth": 0, "stagger": 0}
 
 
 func test_previews_equal_resolutions_over_many_seeded_fights() -> void:
@@ -26,6 +27,12 @@ func test_previews_equal_resolutions_over_many_seeded_fights() -> void:
 	# (its payoff), so Exposed is applied, used up and worn off.
 	for seed_value in range(1, 21):
 		_play(_shred_fight(), seed_value * 7)
+	# Enemy archetypes (S5): a Charger's wind-up and committed Ram, Plated's
+	# Stagger, a Scaler's growth, and the intents the fight announces.
+	for seed_value in range(1, 11):
+		_play(A.charger_fight(), seed_value * 13)
+		_play(A.plated_fight(), seed_value * 17)
+		_play(A.scaler_fight(), seed_value * 19)
 	assert_int(_checked.player).is_greater(500)
 	assert_int(_checked.enemy).is_greater(500)
 	assert_int(_checked.ko).is_greater(20)
@@ -33,6 +40,9 @@ func test_previews_equal_resolutions_over_many_seeded_fights() -> void:
 	assert_int(_checked.guard).is_greater(10)
 	assert_int(_checked.status).is_greater(20)
 	assert_int(_checked.multi_hit).is_greater(20)
+	assert_int(_checked.intent_changed).is_greater(20)
+	assert_int(_checked.growth).is_greater(20)
+	assert_int(_checked.stagger).is_greater(10)
 
 
 ## Two allies and two enemies, every one holding Strike, Shred and Heavy
@@ -69,6 +79,13 @@ func _play(fight: Fight, rng_seed: int, planner: IntentPlanner = null) -> void:
 
 func _on_event(e: FightEvent) -> void:
 	_events.append(e)
+	match e.kind:
+		FightEvent.Kind.INTENT_CHANGED:
+			_checked.intent_changed += 1
+		FightEvent.Kind.GROWTH:
+			_checked.growth += 1
+		FightEvent.Kind.STAGGER:
+			_checked.stagger += 1
 
 
 func _player_turn(fight: Fight, preview: FightPreview, planner: IntentPlanner, rng: RandomNumberGenerator) -> void:

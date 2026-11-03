@@ -6,9 +6,10 @@ extends RefCounted
 ## A plated enemy (EnemyArchetype.plating) loses pips_per_hit pips to every
 ## hit it takes, or pips_per_matching_hit to a hit whose damage type matches
 ## its archetype's plating_weakness. At zero it is Staggered:
-## - its wait (a telegraphed wind-up) is cancelled and its next turn is spent
-##   recovering instead of acting (TODO(decision: stagger-intent): S5 makes
-##   intents committed and may turn this into "cancel and re-plan");
+## - its wait (a telegraphed wind-up) and any committed hit are cancelled, its
+##   intent pattern starts over (ArchetypeRules), and its next turn is spent
+##   recovering instead of acting; it re-plans as it recovers
+##   (TODO(decision: stagger-intent));
 ## - it is knocked back knockback_percent of one turn threshold on the
 ##   timeline (Timeline.knockback), less the d-elasticity "stagger_recovery"
 ##   cut;

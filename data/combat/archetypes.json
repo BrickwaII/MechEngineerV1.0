@@ -1,4 +1,9 @@
 {
-	"_comment": "Enemy archetypes (fight/enemy_archetype.gd). An enemy in enemy_tables.json may name one with \"archetype\". Definitions only until S4 and S5 of the combat rework; S5 adds the Charger, Plated and Scaler. plating: pips at fight start (0 unplated). intent_pattern: steps repeated one per turn: plan (the intent planner picks), wind_up (wait, telegraphing the next step) or an action id; empty is plan every turn. scaling_percent_per_action: stat -> percent of the base stat gained each time the enemy acts (attack, defense, speed, elasticity, battery_capacity).",
-	"archetypes": {}
+	"_comment": "Enemy archetypes (fight/enemy_archetype.gd). An enemy in enemy_tables.json may name one with \"archetype\". Fights read them (fight/archetype_rules.gd, S4 and S5). plating: pips at fight start (0 unplated). intent_pattern: steps repeated one per turn: plan (the intent planner picks), wind_up (a free wait that commits the next step's hit and target) or an action id; empty is plan every turn. scaling_percent_per_action: stat -> percent of the base stat gained each time the enemy acts (attack, defense, speed, elasticity, battery_capacity).",
+	"_s5_comment": "S5: the Charger asks 'can you survive or stop its big hit?' (strike, then a telegraphed wind-up, then Ram; three pips of plating, so one more hit and a multi-hit Stagger it before it fires; Brace soaks the Ram). Plated asks 'can you break it?' (four pips: multi-hits break it, then the Stagger bonus pays off a heavy hit). The Scaler asks 'can you kill it before it snowballs?' (attack +20% of its base each time it acts). wind_up_opponent_actions: opponent decisions that must resolve between a wind-up and its hit (default 1, the deep dive's fairness rule).",
+	"archetypes": {
+		"charger": {"name": "Charger", "plating": 3, "intent_pattern": ["strike", "wind_up", "ram"], "wind_up_opponent_actions": 1},
+		"plated": {"name": "Plated", "plating": 4},
+		"scaler": {"name": "Scaler", "scaling_percent_per_action": {"attack": 20}}
+	}
 }
