@@ -32,6 +32,24 @@ godot --headless --path . -s res://tools/batch_sim.gd -- \
 Options: `--runs N`, `--seed N` (fight i uses seed + i), `--log PATH` or `--log none`.
 Defaults live in `data/scenarios/_dev_tools.json`.
 
+## Battle Mode simulator
+
+Plays whole Battle Mode runs headless (`fight/battle_mode/`): fight after
+fight against the rising curve in `data/battle_mode/battle_mode.json`, with
+the squad's growth carried forward, and prints the end-of-run summary (turns,
+HP lost, energy spent and wasted, action-use share, combos, Staggers) and one
+line per fight. The numbers are the ones a played run shows.
+
+```sh
+godot --headless --path . -s res://tools/battle_mode_sim.gd -- --fights 10 --seed 7 --policy simple
+```
+
+Options: `--length gauntlet|endless`, `--fights N` (0: until the run ends),
+`--seed N`, `--runs N` (seeds seed, seed+1, ...), `--squad ID` (a preset) or
+`--squad draft:SEED`, `--policy` and `--enemy` (simple, patient, intent,
+random), `--csv DIR` or `--csv none`. Each run appends to `fights.csv` and
+`runs.csv` in `user://battle_mode/` by default, for S8's harness and S10.
+
 ## Variant comparison
 
 Plays the same seeded fights under every option of one switchboard decision
@@ -107,6 +125,7 @@ dealt, energy spent and hp left.
 | `variant_comparison.gd`, `compare_variants.gd` | Every option of one decision on the same seeded fights |
 | `faction_win_rates.gd`, `check_factions.gd` | Win rates per enemy faction, act tier and defense level |
 | `loss_report.gd`, `check_losses.gd` | Losses per act and loss-limit hits, blind vs careful autoplay |
+| `battle_mode_sim.gd` | Whole Battle Mode runs headless, with the fun metrics and CSV |
 | `balance_curve.gd`, `balance_sim.gd` | Win rates per act and alert tier against the difficulty targets |
 | `odds_calibration.gd`, `odds_calibration_cli.gd` | The map's simulated odds labels next to real auto-fight outcomes, per defense level |
 | `bot_library.gd`, `bot_json.gd` | Saved bots (one BotSquadStorage file each) and inline bots |

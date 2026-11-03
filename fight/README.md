@@ -87,6 +87,12 @@ Combat core (M2), pure logic with no scenes:
 - `FightAftermath`: what a run does to its bots when a fight ends (PostFight,
   then HP by hp-carryover), shared by the game's RunFightService and the
   headless replay (tools/run_replay.gd) so both apply the same rules.
+- `battle_mode/`: Battle Mode (S9c), fight after fight with growth carried
+  forward and no map. `BattleModeRun` draws each encounter from the curve in
+  data/battle_mode/ (`BattleEncounterPicker`, fought through
+  `BattleEnemyTable`), applies `FightAftermath` after each fight, and records
+  the fun metrics (`BattleFightRecorder`: turns, HP lost, energy spent and
+  wasted, action-use share, combos, Staggers). See its README.
 - `odds/`: honest map odds. `OddsEstimator` plays N seeded headless
   auto-fights (AutoFightService's policies) of the squad against the
   territory's own enemy draw and returns a win rate and its label;
