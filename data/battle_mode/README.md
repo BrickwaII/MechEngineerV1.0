@@ -8,7 +8,11 @@ every number is a first guess for S10 to tune.
 - `lengths`: `gauntlet` (10 fights, bosses at 5 and 10) and `endless` (until
   the squad falls, a boss every 5th fight).
 - `squads`: preset squads, each a draft seed and the draft positions fielded
-  (the same bots the draft screen shows for that seed).
+  (the same bots the draft screen shows for that seed). A `kit` (combat
+  action ids) replaces the fielded bots' drafted skills. The first preset is
+  the default: **Rework kit**, Vanguard's bots with Shred, Heavy Strike
+  (Overcharge Shot) and Brace, so the rework's verbs reach the metrics
+  (`TODO(decision: battle-mode-default-squad)`).
 - `curve`: one row per stage, by fight number. Difficulty grows by the number
   of questions a fight asks (the deep dive's "Fun and fair"): `types` (distinct
   enemy kinds), `factions`, `fast` (kinds at or above `fast_speed`), then

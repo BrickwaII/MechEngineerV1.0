@@ -98,7 +98,7 @@ func test_problems_are_reported() -> void:
 	assert_array(problems).contains([
 		"scenario has no name", "defense level 9 is outside 0 to 5", "cannot load squad file user://nope.tres",
 		"inline bot 'x' has no stats object", "inline bot 'y' has unknown skill 'Laser'", "scenario fields no squad",
-		"unknown enemy 'dragon'", "unknown policy 'clever' (use simple, random, intent, patient)"])
+		"unknown enemy 'dragon'", "unknown policy 'clever' (use simple, random, intent, patient, careful)"])
 
 
 func test_the_intent_policy_plays_enemies_by_their_intents() -> void:

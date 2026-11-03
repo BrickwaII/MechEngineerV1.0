@@ -41,6 +41,7 @@
 		"arc_sweep": "damage_all",
 		"brace": "guard_self",
 		"patch_up": "heal_single",
-		"shield": "guard_ally"
+		"shield": "guard_ally",
+		"shred": "setup_shred"
 	}
 }

@@ -36,6 +36,10 @@ func test_draft_squads_work() -> void:
 	assert_int(SIM.main(PackedStringArray(["--fights", "1", "--squad", "draft:7", "--csv", "none"]))).is_equal(0)
 
 
+func test_the_careful_policy_and_rework_kit_play() -> void:
+	assert_int(SIM.main(PackedStringArray(["--fights", "2", "--squad", "rework", "--policy", "careful", "--csv", "none"]))).is_equal(0)
+
+
 func test_bad_options_fail() -> void:
 	assert_int(SIM.main(PackedStringArray(["--length", "forever", "--csv", "none"]))).is_equal(1)
 	assert_int(SIM.main(PackedStringArray(["--policy", "psychic", "--csv", "none"]))).is_equal(1)

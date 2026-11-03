@@ -35,6 +35,9 @@ class SquadPreset:
 	var description := ""
 	var draft_seed := 0
 	var picks: Array[int] = []
+	## Combat action ids every fielded bot holds instead of its drafted
+	## skills; empty keeps the draft's skills.
+	var kit: Array[String] = []
 
 
 ## One step of the difficulty curve. Applies from `from_fight` on.
@@ -132,6 +135,8 @@ static func from_dict(d: Dictionary) -> BattleModeTuning:
 		p.draft_seed = int(e.get("draft_seed", 0))
 		for i: Variant in e.get("picks", []):
 			p.picks.append(int(i))
+		for k: Variant in e.get("kit", []):
+			p.kit.append(str(k))
 		t.squads.append(p)
 	for tier: Variant in r.list(d, "tiers"):
 		t.tiers.append(str(tier))
@@ -222,9 +227,10 @@ func tier_up(tier: String, steps := 1) -> String:
 	return tiers[mini(tiers.size() - 1, i + steps)]
 
 
-## Problems in the tuning, checked against `enemies` (an EnemyTable); empty
-## when every number and name is usable.
-func validate(enemies: EnemyTable) -> Array[String]:
+## Problems in the tuning, checked against `enemies` (an EnemyTable) and
+## `combat` (the kits' actions, when given); empty when every number and name
+## is usable.
+func validate(enemies: EnemyTable, combat: CombatTuning = null) -> Array[String]:
 	var problems: Array[String] = load_errors.duplicate()
 	if lengths.is_empty():
 		problems.append("battle_mode has no lengths")
@@ -243,6 +249,12 @@ func validate(enemies: EnemyTable) -> Array[String]:
 		preset_ids[p.id] = true
 		if p.picks.is_empty():
 			problems.append("preset squad %s fields nobody" % p.id)
+		if combat != null:
+			for action_id in p.kit:
+				if combat.skill(action_id) == null:
+					problems.append("preset squad %s's kit names unknown action %s" % [p.id, action_id])
+				elif BattleModeTuning.effect_for(combat, action_id).is_empty():
+					problems.append("preset squad %s's kit action %s has no bot skill effect (bot_skill_effects)" % [p.id, action_id])
 	if tiers.is_empty():
 		problems.append("battle_mode has no tiers")
 	if curve.is_empty():
@@ -277,3 +289,12 @@ func validate(enemies: EnemyTable) -> Array[String]:
 			if not enemies.enemies.has(id):
 				problems.append("boss %s is not in the enemy table" % id)
 	return problems
+
+
+## The bot skill effect id that fights with combat action `action_id`
+## (CombatTuning.bot_skill_effects), or "" for none.
+static func effect_for(combat: CombatTuning, action_id: String) -> String:
+	for effect: String in combat.bot_skill_effects:
+		if combat.bot_skill_effects[effect] == action_id:
+			return effect
+	return ""

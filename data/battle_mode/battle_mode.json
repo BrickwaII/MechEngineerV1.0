@@ -5,8 +5,9 @@
 		"gauntlet": {"name": "Gauntlet", "description": "Ten fights. Bosses at fight 5 and fight 10.", "fights": 10, "boss_fights": [5, 10], "boss_every": 0},
 		"endless": {"name": "Endless", "description": "Fight until the squad falls. A boss every fifth fight.", "fights": 0, "boss_fights": [], "boss_every": 5}
 	},
-	"_squads_comment": "Preset squads: a draft seed (BotFactory, the same draft the New Run screen shows for that seed) and the draft positions (0-based) fielded.",
+	"_squads_comment": "Preset squads: a draft seed (BotFactory, the same draft the New Run screen shows for that seed) and the draft positions (0-based) fielded. kit (optional): combat action ids every fielded bot holds instead of its drafted skills (Strike and Wait are always there). The first preset is the default. TODO(decision: battle-mode-default-squad): the Rework kit, so the rework's verbs show up in the metrics.",
 	"squads": [
+		{"id": "rework", "name": "Rework kit", "description": "Shred, Heavy Strike and Brace.", "draft_seed": 31, "picks": [3, 4, 2], "kit": ["shred", "heavy_strike", "brace"]},
 		{"id": "vanguard", "name": "Vanguard", "description": "Two heavy hitters and a sturdy frame.", "draft_seed": 31, "picks": [3, 4, 2]},
 		{"id": "skirmish", "name": "Skirmish", "description": "Fast bots that act often.", "draft_seed": 5, "picks": [0, 1, 4]},
 		{"id": "bulwark", "name": "Bulwark", "description": "High HP and Defense, slow to act.", "draft_seed": 19, "picks": [4, 1, 2]}

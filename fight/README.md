@@ -106,6 +106,11 @@ Combat core (M2), pure logic with no scenes:
 - `FightAftermath`: what a run does to its bots when a fight ends (PostFight,
   then HP by hp-carryover), shared by the game's RunFightService and the
   headless replay (tools/run_replay.gd) so both apply the same rules.
+- `CarefulFightPolicy`: a squad policy that uses the rework's verbs (answer
+  a wind-up with Shred or Brace, Heavy Strike an Exposed or Staggered enemy,
+  Shred plating, Shred when an ally's payoff comes before the Exposed wears
+  off, Wait for Heavy Strike when Strike barely scratches). A stand-in until
+  S8's Smart policy; `SimpleFightPolicy` stays the greedy baseline.
 - `battle_mode/`: Battle Mode (S9c), fight after fight with growth carried
   forward and no map. `BattleModeRun` draws each encounter from the curve in
   data/battle_mode/ (`BattleEncounterPicker`, fought through
