@@ -24,6 +24,10 @@ var tiers: Array[String] = []
 var tier_by_act: Dictionary = {}
 ## Factions a region may get under the mixed rule.
 var mixed_pool: Array[String] = []
+## Unit types every faction fields, after its own, as {unit, from_level}: the
+## enemy archetypes (Charger, Plated, Scaler; S5), which ask their question
+## whatever the faction. Their enemies (<unit>_<tier>) name no faction.
+var shared_units: Array = []
 ## Act id -> {region id -> faction id}.
 var regions_by_act: Dictionary = {}
 ## Region id -> act id.
@@ -57,6 +61,7 @@ static func from_dict(d: Dictionary) -> FactionTable:
 	t.tier_by_act = d.get("tier_by_act", {})
 	for f: Variant in d.get("mixed_pool", []):
 		t.mixed_pool.append(str(f))
+	t.shared_units = d.get("shared_units", [])
 	var regions: Dictionary = d.get("regions", {})
 	for act: String in regions:
 		var by_region := {}
@@ -123,10 +128,13 @@ func tier_for(act_id: String, level: int) -> String:
 	return str(by_level[clampi(level, 0, by_level.size() - 1)])
 
 
-## The enemy ids `faction` can field at `level` in `tier`, in data order.
+## The enemy ids `faction` can field at `level` in `tier`, in data order:
+## its own units, then the shared ones.
 func pool(faction: String, level: int, tier: String) -> Array[String]:
 	var out: Array[String] = []
-	for u: Dictionary in factions.get(faction, {}).get("units", []):
+	if not factions.has(faction):
+		return out
+	for u: Dictionary in factions[faction].get("units", []) + shared_units:
 		if int(u.get("from_level", 0)) <= level:
 			out.append(enemy_id(str(u.unit), tier))
 	return out
@@ -161,6 +169,13 @@ func validate(table: EnemyTable) -> Array[String]:
 					problems.append("faction %s: no enemy %s" % [faction, id])
 				elif str(table.enemies[id].get("faction", "")) != faction:
 					problems.append("enemy %s is not marked faction %s" % [id, faction])
+	for u: Dictionary in shared_units:
+		for tier in tiers:
+			var id := enemy_id(str(u.unit), tier)
+			if not table.enemies.has(id):
+				problems.append("shared unit: no enemy %s" % id)
+			elif not str(table.enemies[id].get("faction", "")).is_empty():
+				problems.append("shared enemy %s may not name a faction" % id)
 	for act: String in tier_by_act:
 		var by_level: Array = tier_by_act[act]
 		if by_level.size() != levels:
