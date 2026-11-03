@@ -76,6 +76,10 @@ var _toggle_key := KEY_F7
 var _filling := false
 ## The screen's right offset before the panel took room; INF until read.
 var _screen_right := INF
+## The root's content size, scale and WindowFit.held before the view was
+## widened; empty while not widened.
+var _saved_view: Dictionary = {}
+var _widening := false
 
 
 ## Builds a session on `p_screen`'s fight and adds the panel to the screen,
@@ -141,7 +145,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
 	offset_left = -settings.panel_width
 	custom_minimum_size.x = settings.panel_width
-	get_viewport().size_changed.connect(_make_room)
+	get_viewport().size_changed.connect(_on_window_resized)
 	_build()
 	session.changed.connect(_on_session_changed)
 	screen.handler.changed.connect(_on_screen_moved)
@@ -164,37 +168,64 @@ func toggle() -> void:
 	visible = not visible
 
 
+func _on_window_resized() -> void:
+	if not _widening and visible:
+		_make_room()
+
+
 func _on_visibility_changed() -> void:
 	screen.inspect_enabled = visible
 	screen.hold_enemy_turns = visible and paused
 	_make_room()
 
 
-## While shown, the battle screen itself is made narrower (its right edge
-## moves in by the panel's width), so it runs its own fit pass and lays out
-## as it would in a window that wide: every unit, the dock and the strip
-## stay whole and clickable. The panel is top-level, on the window's right
-## edge. The screen never goes below settings.min_screen_width (the
-## narrowest window the fit tests cover): in a smaller window the panel
-## narrows, down to min_panel_width, and past that covers the screen's edge.
+## While shown, the window's view is widened by the panel's width (its
+## canvas drawn a little smaller: WindowFit's scale, or an emulated view's
+## size), and the battle screen keeps exactly the width it had: it lays out
+## as it would with no panel, and the panel sits in the extra room on the
+## right. Hiding the panel puts the view back. A window resize while shown
+## refits the window first, then widens again.
 func _make_room() -> void:
 	if _screen_right == INF:
 		_screen_right = screen.offset_right
-	var width := panel_width()
-	offset_left = -width
-	custom_minimum_size.x = width
-	screen.offset_right = _screen_right - (mini(width, maxi(0, _window_width() - settings.min_screen_width))
-		if visible else 0)
+	_widen_view(visible)
+	offset_left = -panel_width()
+	custom_minimum_size.x = panel_width()
+	screen.offset_right = _screen_right - (panel_width() if visible else 0)
 
 
-## The panel's width in the current window (see _make_room()).
 func panel_width() -> int:
-	var room := _window_width() - settings.min_screen_width
-	return clampi(room, settings.min_panel_width, settings.panel_width)
+	return settings.panel_width
 
 
-func _window_width() -> int:
-	return int(get_viewport_rect().size.x) if is_inside_tree() else settings.panel_width + settings.min_screen_width
+## Widens the view by the panel's width (`on`), or puts it back.
+func _widen_view(on: bool) -> void:
+	var root: Window = (get_viewport() as Window) if is_inside_tree() else null
+	if root == null or _widening:
+		return
+	_widening = true
+	if not _saved_view.is_empty():
+		root.content_scale_size = _saved_view.size
+		root.content_scale_factor = _saved_view.factor
+		WindowFit.held = _saved_view.held
+		if not WindowFit.held:
+			WindowFit.apply(root, GameSettings.shared().ui_scale, GameSettings.shared().scale_mode)
+		_saved_view = {}
+	if on:
+		_saved_view = {"size": root.content_scale_size, "factor": root.content_scale_factor, "held": WindowFit.held}
+		var view := root.get_visible_rect().size
+		# WindowFit leaves the root alone while the debugger has it widened.
+		WindowFit.held = true
+		if root.content_scale_aspect == Window.CONTENT_SCALE_ASPECT_IGNORE:
+			# An emulated view (ScreenFit.emulate): the view is the content size.
+			root.content_scale_size = Vector2i(root.content_scale_size.x + panel_width(), root.content_scale_size.y)
+		elif view.x > 0.0:
+			root.content_scale_factor = root.content_scale_factor * view.x / (view.x + panel_width())
+	_widening = false
+
+
+func _exit_tree() -> void:
+	_widen_view(false)
 
 
 # --- Actions the buttons call (tests call them too) --------------------------
@@ -473,7 +504,7 @@ func _build() -> void:
 	pause_button = Ui.button("Resume", func() -> void: set_paused(not paused))
 	outer.add_child(Ui.row([pause_button, Ui.button("Step", step), Ui.button("Back 1", rewind_one),
 		Ui.button("Restart", restart)]))
-	rewind_list = OptionButton.new()
+	rewind_list = _list()
 	rewind_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	outer.add_child(Ui.row([rewind_list, Ui.button("Rewind", func() -> void:
 		if rewind_list.selected >= 0:
@@ -506,6 +537,16 @@ func _scroll(title: String, body: Control) -> ScrollContainer:
 
 
 ## `child` in a box that scrolls sideways when it is wider than the panel.
+## A drop-down sized by the panel, not by its longest item.
+static func _list() -> OptionButton:
+	var list := OptionButton.new()
+	list.fit_to_longest_item = false
+	list.clip_text = true
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.custom_minimum_size.x = 80
+	return list
+
+
 ## `label` unwrapped in a monospace font (tables and diffs line up).
 static func _mono(label: Label) -> Label:
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -533,13 +574,13 @@ static func _hscroll(child: Control) -> ScrollContainer:
 
 func _build_unit_tab() -> VBoxContainer:
 	var box := VBoxContainer.new()
-	unit_list = OptionButton.new()
+	unit_list = _list()
 	unit_list.item_selected.connect(func(i: int) -> void:
 		unit_id = String(unit_list.get_item_metadata(i))
 		refresh())
 	box.add_child(unit_list)
 	var grid := GridContainer.new()
-	grid.columns = 4
+	grid.columns = 2
 	box.add_child(grid)
 	for field in BattleDebugSession.UNIT_FIELDS:
 		var editor: Control
@@ -556,7 +597,7 @@ func _build_unit_tab() -> VBoxContainer:
 		unit_editors[field] = editor
 	box.add_child(Ui.label("Personality", Palette.ACCENT))
 	var pgrid := GridContainer.new()
-	pgrid.columns = 4
+	pgrid.columns = 2
 	box.add_child(pgrid)
 	for field in BattleDebugSession.PERSONALITY_FIELDS:
 		var spin := SpinBox.new()
@@ -571,7 +612,7 @@ func _build_unit_tab() -> VBoxContainer:
 	box.add_child(Ui.label("Statuses", Palette.ACCENT))
 	status_box = VBoxContainer.new()
 	box.add_child(status_box)
-	status_pick = OptionButton.new()
+	status_pick = _list()
 	for sid in session.tuning.statuses.ids():
 		status_pick.add_item(sid)
 	box.add_child(Ui.row([status_pick, Ui.button("Apply", func() -> void:
@@ -579,14 +620,14 @@ func _build_unit_tab() -> VBoxContainer:
 			_report(session.apply_status(unit_id, status_pick.get_item_text(status_pick.selected))))]))
 	box.add_child(Ui.label("Timeline and intent", Palette.ACCENT))
 	box.add_child(Ui.row([Ui.button("Act now", func() -> void: _report(session.give_turn(unit_id)))]))
-	force_skill = OptionButton.new()
-	force_target = OptionButton.new()
+	force_skill = _list()
+	force_target = _list()
 	box.add_child(Ui.row([force_skill, force_target]))
 	forced_label = Ui.label("", Palette.TEXT_DIM)
 	box.add_child(Ui.row([Ui.button("Force next", _force_next),
 		Ui.button("Clear", func() -> void: session.clear_forced(unit_id)), forced_label]))
 	box.add_child(Ui.label("Roster", Palette.ACCENT))
-	enemy_pick = OptionButton.new()
+	enemy_pick = _list()
 	var enemy_ids: Array = session.fight.enemy_table.enemies.keys()
 	enemy_ids.sort()
 	for id: String in enemy_ids:
@@ -609,7 +650,7 @@ func _force_next() -> void:
 
 func _build_action_tab() -> VBoxContainer:
 	var box := VBoxContainer.new()
-	action_list = OptionButton.new()
+	action_list = _list()
 	action_list.item_selected.connect(func(i: int) -> void:
 		action_id = String(action_list.get_item_metadata(i))
 		refresh())
@@ -621,7 +662,7 @@ func _build_action_tab() -> VBoxContainer:
 	for field: String in BattleDebugSession.ACTION_FIELDS:
 		var editor: Control
 		if field == "effect" or field == "target":
-			var list := OptionButton.new()
+			var list := _list()
 			for option in (CombatSkill.EFFECTS if field == "effect" else CombatSkill.TARGETS):
 				list.add_item(option)
 			list.item_selected.connect(func(i: int) -> void: edit_action(field, list.get_item_text(i)))

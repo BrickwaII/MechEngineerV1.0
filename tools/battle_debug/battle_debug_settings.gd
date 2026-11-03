@@ -16,11 +16,6 @@ var data_files: Dictionary = {}
 var export_dir := ""
 var max_snapshots := 2000
 var panel_width := 460
-## The battle screen beside the panel is never narrower than this (the
-## narrowest window the fit tests cover); the panel never narrower than
-## min_panel_width.
-var min_screen_width := 1280
-var min_panel_width := 320
 var log_lines_shown := 12
 var timeline_shown := 10
 var toggle_key := "F7"
@@ -43,8 +38,6 @@ static func from_dict(d: Dictionary) -> BattleDebugSettings:
 	s.export_dir = String(d.get("export_dir", "user://dev/tuning_diffs"))
 	s.max_snapshots = int(d.get("max_snapshots", 2000))
 	s.panel_width = int(d.get("panel_width", 460))
-	s.min_screen_width = int(d.get("min_screen_width", 1280))
-	s.min_panel_width = int(d.get("min_panel_width", 320))
 	s.log_lines_shown = int(d.get("log_lines_shown", 12))
 	s.timeline_shown = int(d.get("timeline_shown", 10))
 	s.toggle_key = String(d.get("toggle_key", "F7"))
