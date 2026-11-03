@@ -1,8 +1,9 @@
 {
 	"_comment": "The one-time What's new card on the main menu (ui/main/whats_new_card.gd). Change id for each update; the card shows once per id. Hand-edited.",
-	"id": "ui-big-screens-3",
-	"title": "What's new: a cleaner interface",
+	"id": "battle-mode-1",
+	"title": "What's new: Battle Mode",
 	"lines": [
+		{"icon": "fights_won", "text": "Battle Mode on the main menu: fight after fight with no map. Your bots grow; the enemies ask more each fight. A Gauntlet of 10 or Endless."},
 		{"icon": "more", "text": "Every card has a ⋮ (or right-click) with everything about it."},
 		{"icon": "odds", "text": "The map has lenses: Defense, Pressure, Resources and Odds."},
 		{"icon": "action_attack", "text": "In fights, pick a skill to see what it does to every target, with the math."},

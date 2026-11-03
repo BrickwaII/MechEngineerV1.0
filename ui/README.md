@@ -229,7 +229,7 @@ line in the "What's new" card, which links to F8 feedback.
 ### 17. Identity: entry tiles, guide, what's new, size, acts
 
 - The main menu starts you off with big `EntryTile`s with art (Continue, New
-  Run, Demo, How to play); Load sits under them.
+  Run, Demo, Battle Mode, How to play); Load sits under them.
 - **How to play** (`HowToPlay`, text in `data/ui/how_to_play.json`) is a
   short illustrated guide: a tab per topic, each line an icon and a sentence
   whose keywords link to the glossary.
