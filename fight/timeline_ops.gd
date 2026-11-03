@@ -30,9 +30,14 @@ static func turn_gauge(percent_of_turn: int, tuning: CombatTuning) -> int:
 	return maxi(0, percent_of_turn) * tuning.turn_threshold() / maxi(1, tuning.action_threshold)
 
 
-## Gauge `skill` costs after acting, on top of the turn threshold.
+## Gauge `skill` costs after acting, on top of the turn threshold. 0 under
+## the action-recovery switch's old option (none).
 static func recovery_gauge(skill: CombatSkill, tuning: CombatTuning) -> int:
-	return turn_gauge(skill.recovery, tuning) if skill != null else 0
+	if skill == null:
+		return 0
+	if tuning.variants != null and tuning.variants.is_chosen(FightVariants.ACTION_RECOVERY, FightVariants.RECOVERY_NONE):
+		return 0
+	return turn_gauge(skill.recovery, tuning)
 
 
 ## Pushes `unit` back by `gauge`. Returns the gauge moved.
