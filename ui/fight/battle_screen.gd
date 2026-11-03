@@ -334,7 +334,9 @@ func on_wait_hovered(inside: bool) -> void:
 ## The skill a Wait banks toward: the handler's (the aimed skill, else the
 ## cheapest the bot cannot afford yet), else its costliest skill it can ever
 ## afford, so Wait is always there (it is free and always allowed). "" when
-## it is not the squad's turn.
+## it is not the squad's turn. TODO(decision: wait-target): with everything
+## affordable the wait banks toward the costliest skill (it ends on the
+## first tick, as the fight's snap rule says).
 func banked_skill() -> String:
 	var own := handler.default_wait_skill()
 	if not own.is_empty() or not handler.is_player_turn():

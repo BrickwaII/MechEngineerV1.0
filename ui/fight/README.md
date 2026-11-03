@@ -172,3 +172,35 @@ The rework's fight state, read from the fight (never changed by the screen):
   screenshots/rework_plating.png, rework_exposed.png, rework_brace.png,
   rework_wind_up.png, rework_stagger.png, from Battle Mode's Rework kit
   against a Charger, a Plated and a Scaler.
+
+## Choice outlook (S7)
+
+What a choice would lead to, before it is made, from `ChoiceReadout` (no
+scene, tested headless; every number is worked out on `FightCopy`s, never
+the fight):
+
+- **Where the bot lands**: the AFTER bar shows the order the choice leaves,
+  played forward with the real rules (`FightPreview.project_turns()`:
+  recovery, waits, wind-ups and Staggers count), with the bot's landing chip
+  lit and marked »; the outlook says "Next turn: 6th, in 19 ticks. Recovery
+  30%." TODO(decision: recovery-projection): later turns assume every unit,
+  the squad's other bots included, plays its current intent.
+- **Conditional combos** in the outlook panel (`OutlookPanel`, the field's
+  empty middle, so the dock never grows): a payoff without its setup ("11
+  now. 24 if Bolt puts Exposed on first (acts 4th)."), a payoff with it
+  ("Combo: 24 against Exposed (11 without)."), a setup and the hit that
+  cashes it in ("Then Spark's Overcharge Shot: 12, 27 with Exposed (Spark
+  acts 2nd)." or "Exposed wears off as ... acts"), and plating ("Plating 4 →
+  2.", "Breaks its Plating: Stagger! ... and drops its Ram.").
+- **Peek**: pointing at a dock tile shows its card (cost, damage before
+  Defense, landing) before it is picked.
+- **Wait** is always there and free: "Free +N" under the button (the Energy
+  it banks by the bot's next turn), and on hover its card: Energy now +
+  banked = at its next turn, the recharge rate while waiting, where it lands.
+  With every skill affordable it banks toward the costliest
+  (TODO(decision: wait-target)).
+- tests/fight/preview/preview_matches_resolution_test.gd holds the landing
+  slot, tick and Energy, the setup's hit and the payoff's damage to what the
+  fight resolves.
+- Screenshots (`demo/capture_rework.gd`): rework_focus_landing.png,
+  rework_combo_setup.png, rework_wait.png.
