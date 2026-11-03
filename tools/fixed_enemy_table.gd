@@ -2,7 +2,8 @@ class_name FixedEnemyTable
 extends EnemyTable
 ## An enemy table that fields the same enemies every fight, in a set order,
 ## whatever the seed. Levels and rewards come from the table it copies, so the
-## defense level still sets rewards and grid cost.
+## defense level still sets rewards and grid cost. Enemy archetypes come from
+## the table it copies too.
 
 ## Enemy ids fielded each fight, in roster order.
 var fixed_ids: Array[String] = []
@@ -15,6 +16,7 @@ static func from_table(base: EnemyTable, ids: Array[String], extra_enemies: Dict
 	t.enemies = base.enemies.duplicate(true)
 	t.enemies.merge(extra_enemies, true)
 	t.levels = base.levels.duplicate(true)
+	t.archetypes = base.archetypes
 	t.fixed_ids = ids.duplicate()
 	return t
 

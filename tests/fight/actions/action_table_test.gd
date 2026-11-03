@@ -22,8 +22,9 @@ const PRE_REWORK := {
 const DECIDED_COSTS := {"strike": 1}
 
 
-## Actions added after S1, on content no pre-rework skill had (S3: Shred).
-const ADDED: Array[String] = ["shred"]
+## Actions added after S1, on content no pre-rework skill had (S3: Shred; S5:
+## Ram, the Charger's big hit).
+const ADDED: Array[String] = ["shred", "ram"]
 
 
 func _rework_fields_are_defaults(a: CombatSkill) -> void:

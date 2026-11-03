@@ -1,7 +1,8 @@
 extends GdUnitTestSuite
 ## Enemy archetypes (the plan's EnemyArchetypeDef) load from
 ## data/combat/archetypes.json and validate, and enemy table entries may name
-## one (combat rework S1). No fight reads an archetype yet.
+## one (combat rework S1). S5 ships the Charger, Plated and Scaler; fights
+## read them (tests/fight/archetypes/).
 
 
 func _charger() -> Dictionary:
@@ -13,6 +14,14 @@ func test_the_shipped_archetypes_load_and_validate() -> void:
 	var table := EnemyArchetypeTable.load_default()
 	assert_object(table).is_not_null()
 	assert_array(table.validate()).is_empty()
+	for id in ["charger", "plated", "scaler"]:
+		assert_bool(table.has(id)).is_true()
+	var charger := table.get_archetype("charger")
+	assert_array(charger.intent_pattern).contains_exactly(["strike", "wind_up", "ram"])
+	assert_int(charger.wind_up_opponent_actions).is_greater_equal(1)
+	assert_bool(charger.is_plated()).is_true()
+	assert_int(table.get_archetype("plated").plating).is_greater(charger.plating)
+	assert_bool(table.get_archetype("scaler").scales()).is_true()
 
 
 func test_no_shipped_enemy_names_an_archetype_yet() -> void:
@@ -55,6 +64,7 @@ func test_validate_rejects_bad_fields() -> void:
 	assert_array(_problems({"intent_pattern": ["wind_up", "wind_up"]})).has_size(1)
 	assert_array(_problems({"scaling_percent_per_action": {"hp": 10}})).has_size(1)
 	assert_array(_problems({"scaling_percent_per_action": {"attack": 0}})).has_size(1)
+	assert_array(_problems({"wind_up_opponent_actions": -1})).has_size(1)
 
 
 func test_the_table_checks_intent_steps_against_the_tuning_actions() -> void:

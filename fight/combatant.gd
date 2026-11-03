@@ -70,6 +70,27 @@ var plating_weakness := ""
 ## it spends recovering. Hits on it deal StaggerRules.damage_bonus_percent more.
 ## Intent planners read it: a Staggered unit has no intent.
 var staggered := false
+## The enemy archetype the unit was built from (Charger, Plated, Scaler), or
+## null. Its intent pattern, wind-up and growth rules: ArchetypeRules.
+var archetype: EnemyArchetype
+## Index of the archetype's intent_pattern step the unit takes next.
+var pattern_step := 0
+## Archetype units only: the intent the fight last announced for the unit
+## (FightEvent INTENT_CHANGED), or null for none. Never changed in place.
+var intent: UnitIntent
+## The hit a wind-up telegraphed (an ATTACK intent), kept until the unit
+## lands it or is Staggered; only its target may change, when the target goes
+## down. Null when the unit is committed to nothing.
+var committed: UnitIntent
+## Opponent decisions still to resolve before this unit's wind-up wait may
+## end (EnemyArchetype.wind_up_opponent_actions). 0 when not winding up.
+var telegraph_wait := 0
+## The unit's stats before archetype growth (the Scaler); `stats` is replaced,
+## never changed in place, as it grows, so preview copies sharing the old
+## stats are untouched.
+var base_stats: UnitStats
+## Times the unit has grown (EnemyArchetype.scaling_percent_per_action).
+var growth := 0
 
 var _tuning: CombatTuning
 ## Skill id -> this unit's CombatSkill, built from the tuning and the overrides.
@@ -95,6 +116,7 @@ func _init(
 	side = p_side
 	order = p_order
 	stats = p_stats
+	base_stats = p_stats
 	max_hp = maxi(p_stats.hp, p_hp)
 	hp = p_hp
 	skill_ids = p_skill_ids.duplicate()
@@ -104,13 +126,24 @@ func _init(
 			continue
 		var o: Dictionary = skill_overrides.get(skill_id, {})
 		_skills[skill_id] = tuning.skill_at(skill_id, int(o.get("level", 1)), String(o.get("name", "")))
-	charge_per_tick = SpeedRules.charge_per_tick(p_stats.speed, tuning)
-	max_energy_milli = maxi(0, p_stats.battery_capacity) * MILLI
+	_derive_from_stats()
 	energy_milli = max_energy_milli * tuning.starting_energy_percent / 100
+
+
+## Replaces the unit's stats (archetype growth) and what is worked out from
+## them: charge, battery and recharge. Hp and energy held stay as they are.
+func set_stats(p_stats: UnitStats) -> void:
+	stats = p_stats
+	_derive_from_stats()
+
+
+func _derive_from_stats() -> void:
+	charge_per_tick = SpeedRules.charge_per_tick(stats.speed, _tuning)
+	max_energy_milli = maxi(0, stats.battery_capacity) * MILLI
 	recharge_milli = maxi(
-		EnergyRules.recharge_floor_milli(tuning),
-		maxi(0, p_stats.battery_capacity) * EnergyRules.recharge_milli_per_battery(tuning))
-	wait_recharge_milli = WaitRules.wait_recharge_milli(recharge_milli, tuning)
+		EnergyRules.recharge_floor_milli(_tuning),
+		maxi(0, stats.battery_capacity) * EnergyRules.recharge_milli_per_battery(_tuning))
+	wait_recharge_milli = WaitRules.wait_recharge_milli(recharge_milli, _tuning)
 
 
 func is_alive() -> bool:
@@ -183,6 +216,9 @@ func is_ready(threshold: int) -> bool:
 	if not is_alive():
 		return false
 	if is_waiting():
+		# A wind-up holds until its telegraph has been answered.
+		if telegraph_wait > 0:
+			return false
 		if wait_length > 0:
 			return wait_ticks >= wait_length
 		return wait_ticks >= 1 and energy_milli >= wait_target_milli
@@ -214,6 +250,7 @@ func cancel_wait() -> void:
 	wait_target_milli = NOT_WAITING
 	wait_ticks = 0
 	wait_length = 0
+	telegraph_wait = 0
 
 
 ## Called after the unit acts: spend one threshold of gauge, keep the overflow,
@@ -225,9 +262,12 @@ func finish_action(threshold: int) -> void:
 	wait_target_milli = NOT_WAITING
 	wait_ticks = 0
 	wait_length = 0
+	telegraph_wait = 0
 
 
-## A copy of the timing, guard, status and plating state, for previews. Shares stats and skills.
+## A copy of the timing, guard, status, plating and archetype state, for
+## previews. Shares stats (replaced, never changed in place), skills and the
+## archetype.
 func clone_for_preview() -> Combatant:
 	var no_skills: Array[String] = []
 	var c := Combatant.new(id, display_name, side, order, stats, hp, no_skills, _tuning, skill_overrides)
@@ -243,6 +283,13 @@ func clone_for_preview() -> Combatant:
 	c.max_plating = max_plating
 	c.plating_weakness = plating_weakness
 	c.staggered = staggered
+	c.archetype = archetype
+	c.pattern_step = pattern_step
+	c.intent = intent
+	c.committed = committed
+	c.telegraph_wait = telegraph_wait
+	c.base_stats = base_stats
+	c.growth = growth
 	c.gauge = gauge
 	c.held_delay = held_delay
 	c.energy_milli = energy_milli

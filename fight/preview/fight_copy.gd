@@ -1,13 +1,15 @@
 class_name FightCopy
 extends RefCounted
 ## A throwaway copy of a fight for trying a choice out. Shares the request,
-## tuning, enemy table and each unit's stats (none of which a fight changes);
+## tuning, enemy table, intent planner and each unit's stats (none of which
+## a fight changes in place);
 ## everything that changes while a fight runs is copied.
 
 
 ## A copy of `fight` mid-fight. Do not copy a fight that is over.
 static func of(fight: Fight) -> Fight:
 	var copy := Fight.new(fight.request, fight.fight_seed, fight.tuning, fight.enemy_table)
+	copy.intent_planner = fight.intent_planner
 	var units: Array[Combatant] = []
 	for c in fight.combatants:
 		var u := c.clone_for_preview()

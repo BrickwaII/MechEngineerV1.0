@@ -47,9 +47,20 @@ Combat core (M2), pure logic with no scenes:
     `status_changes`. Guard stays `Combatant.guard_percent`; wait state is not
     a status.
   - `EnemyArchetype` (the plan's EnemyArchetypeDef) + `EnemyArchetypeTable`
-    (data/combat/archetypes.json, empty until S5): plating, intent_pattern,
-    scaling_percent_per_action. An enemy-table entry may name one with
-    `"archetype"`; `EnemyTable.validate()` checks the name.
+    (data/combat/archetypes.json: Charger, Plated, Scaler since S5): plating,
+    intent_pattern, scaling_percent_per_action, wind_up_opponent_actions. An
+    enemy-table entry may name one with `"archetype"`; `EnemyTable.validate()`
+    checks the name.
+  - `ArchetypeRules` (S5): what an archetype does in a fight. The state is on
+    `Combatant` (`archetype`, `pattern_step`, `committed`, `telegraph_wait`,
+    `base_stats`, `growth`, `intent`), copied by `clone_for_preview()`.
+    `IntentPlanner.rank()` narrows an archetype unit's options to its pattern
+    step; a wind_up step's wait commits the hit it telegraphs (the Charger's
+    Ram), held until an opponent has acted; a Stagger cancels it and restarts
+    the pattern; a Scaler grows each decision (GROWTH event). After every
+    decision and recovery `Fight` re-plans archetype enemies with
+    `Fight.planner()` and raises INTENT_CHANGED (old and new intent, reason)
+    for each that changed. Enemies without an archetype are unchanged.
 - `SquadSkills`: a squad member fights with its own skills. Each bot skill's
   effect_id picks a combat skill (`bot_skill_effects` in combat_tuning.json);
   the bot's name and level carry over. With named ranks (skill-progression =
