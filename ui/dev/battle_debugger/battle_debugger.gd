@@ -74,6 +74,8 @@ var save_dialog: ConfirmationDialog
 var _toggle_key := KEY_F7
 ## True while the panel writes values into its editors (no edits sent).
 var _filling := false
+## The battle field's right offset before the panel took room; INF until read.
+var _field_right := INF
 
 
 ## Builds a session on `p_screen`'s fight and adds the panel to the screen,
@@ -128,7 +130,7 @@ func _ready() -> void:
 	theme = Ui.theme()
 	_toggle_key = OS.find_keycode_from_string(settings.toggle_key)
 	var style := StyleBoxFlat.new()
-	style.bg_color = Palette.OVERLAY
+	style.bg_color = Palette.PANEL
 	style.border_color = Palette.RULE
 	style.set_border_width_all(1)
 	style.set_content_margin_all(8)
@@ -161,6 +163,20 @@ func toggle() -> void:
 func _on_visibility_changed() -> void:
 	screen.inspect_enabled = visible
 	screen.hold_enemy_turns = visible and paused
+	_make_room()
+
+
+## While shown, the battle field, dock and overlays move left of the panel,
+## so every unit and the dock stay visible and clickable.
+func _make_room() -> void:
+	var root := screen.field_root
+	if root == null:
+		return
+	if _field_right == INF:
+		_field_right = root.offset_right
+	root.offset_right = _field_right - (settings.panel_width if visible else 0)
+	screen._fit_field()
+	screen.refresh()
 
 
 # --- Actions the buttons call (tests call them too) --------------------------
@@ -366,9 +382,13 @@ func _fill_changes() -> void:
 		if not save_checks.has(ch.seq):
 			var box := CheckBox.new()
 			box.button_pressed = true
+			# A long change line is cut at the panel's edge; its tooltip has it whole.
+			box.clip_text = true
+			box.custom_minimum_size.x = 1
 			save_box.add_child(box)
 			save_checks[ch.seq] = box
 		(save_checks[ch.seq] as CheckBox).text = ch.text()
+		(save_checks[ch.seq] as CheckBox).tooltip_text = ch.text()
 
 
 func _checked_seqs() -> Array[int]:
@@ -440,7 +460,7 @@ func _build() -> void:
 	outer.add_child(Ui.row([rewind_list, Ui.button("Rewind", func() -> void:
 		if rewind_list.selected >= 0:
 			rewind_to(rewind_list.get_item_id(rewind_list.selected)))]))
-	status_label = Ui.label("", Palette.WARNING, 12)
+	status_label = Ui.label("", Palette.WARNING)
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	outer.add_child(status_label)
 	tabs = TabContainer.new()
@@ -467,6 +487,32 @@ func _scroll(title: String, body: Control) -> ScrollContainer:
 	return s
 
 
+## `child` in a box that scrolls sideways when it is wider than the panel.
+## `label` unwrapped in a monospace font (tables and diffs line up).
+static func _mono(label: Label) -> Label:
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	var font := SystemFont.new()
+	font.font_names = PackedStringArray(["DejaVu Sans Mono", "Menlo", "Consolas", "monospace"])
+	label.add_theme_font_override("font", font)
+	return label
+
+
+## `label` wrapped to the panel's width.
+static func _wrapped(label: Label) -> Label:
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size.x = 1
+	return label
+
+
+static func _hscroll(child: Control) -> ScrollContainer:
+	var s := ScrollContainer.new()
+	s.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	s.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	s.add_child(child)
+	return s
+
+
 func _build_unit_tab() -> VBoxContainer:
 	var box := VBoxContainer.new()
 	unit_list = OptionButton.new()
@@ -487,7 +533,7 @@ func _build_unit_tab() -> VBoxContainer:
 			var spin := Ui.spin(INT_MIN, INT_MAX)
 			spin.value_changed.connect(func(v: float) -> void: edit_unit(field, int(v)))
 			editor = spin
-		grid.add_child(Ui.label(field, Palette.TEXT_DIM, 12))
+		grid.add_child(Ui.label(field, Palette.TEXT_DIM))
 		grid.add_child(editor)
 		unit_editors[field] = editor
 	box.add_child(Ui.label("Personality", Palette.ACCENT))
@@ -501,7 +547,7 @@ func _build_unit_tab() -> VBoxContainer:
 		spin.step = 1.0 if field == "generation" else 0.05
 		spin.custom_minimum_size.x = 96
 		spin.value_changed.connect(func(v: float) -> void: edit_personality(field, v))
-		pgrid.add_child(Ui.label(field, Palette.TEXT_DIM, 12))
+		pgrid.add_child(Ui.label(field, Palette.TEXT_DIM))
 		pgrid.add_child(spin)
 		personality_editors[field] = spin
 	box.add_child(Ui.label("Statuses", Palette.ACCENT))
@@ -518,7 +564,7 @@ func _build_unit_tab() -> VBoxContainer:
 	force_skill = OptionButton.new()
 	force_target = OptionButton.new()
 	box.add_child(Ui.row([force_skill, force_target]))
-	forced_label = Ui.label("", Palette.TEXT_DIM, 12)
+	forced_label = Ui.label("", Palette.TEXT_DIM)
 	box.add_child(Ui.row([Ui.button("Force next", _force_next),
 		Ui.button("Clear", func() -> void: session.clear_forced(unit_id)), forced_label]))
 	box.add_child(Ui.label("Roster", Palette.ACCENT))
@@ -572,25 +618,25 @@ func _build_action_tab() -> VBoxContainer:
 			var spin := Ui.spin(0, INT_MAX)
 			spin.value_changed.connect(func(v: float) -> void: edit_action(field, int(v)))
 			editor = spin
-		grid.add_child(Ui.label(field, Palette.TEXT_DIM, 12))
+		grid.add_child(Ui.label(field, Palette.TEXT_DIM))
 		grid.add_child(editor)
 		action_editors[field] = editor
-	box.add_child(Ui.label("Applies to every unit holding it, at once. Alt-click a tile to pick it.", Palette.TEXT_DIM, 12))
+	box.add_child(_wrapped(Ui.label("Applies to every unit holding it, at once. Alt-click a tile to pick it.", Palette.TEXT_DIM)))
 	return box
 
 
 func _build_ai_tab() -> VBoxContainer:
 	var box := VBoxContainer.new()
-	box.add_child(Ui.label("Intent weights (base, and lean per spectrum)", Palette.TEXT_DIM, 12))
+	box.add_child(_wrapped(Ui.label("Intent weights (base, and lean per spectrum)", Palette.TEXT_DIM)))
 	var keys := IntentWeights.value_keys()
 	var grid := GridContainer.new()
 	grid.columns = keys.size() + 1
 	box.add_child(grid)
 	grid.add_child(Ui.label(""))
 	for key in keys:
-		grid.add_child(Ui.label(key.get_slice("_", 0), Palette.TEXT_DIM, 11))
+		grid.add_child(Ui.label(key.get_slice("_", 0), Palette.TEXT_DIM))
 	for weight in IntentWeights.NAMES:
-		grid.add_child(Ui.label(weight, Palette.TEXT_DIM, 12))
+		grid.add_child(Ui.label(weight, Palette.TEXT_DIM))
 		for key in keys:
 			var spin := SpinBox.new()
 			spin.min_value = -100
@@ -608,23 +654,23 @@ func _build_simulate_tab() -> VBoxContainer:
 	sim_runs = Ui.spin(1, 10000, settings.simulate_runs)
 	box.add_child(Ui.row([Ui.label("Fights per policy"), sim_runs,
 		Ui.button("Simulate %d" % settings.simulate_runs, func() -> void: simulate())]))
-	box.add_child(Ui.label("Policies: %s. Fresh fights on the set-up as edited." % ", ".join(settings.simulate_policies),
-		Palette.TEXT_DIM, 12))
-	sim_label = Ui.label("", Palette.TEXT, 12)
-	sim_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(sim_label)
+	box.add_child(_wrapped(Ui.label("Policies: %s. Fresh fights on the set-up as edited." % ", ".join(
+		settings.simulate_policies), Palette.TEXT_DIM)))
+	sim_label = _mono(Ui.label("", Palette.TEXT))
+	# The harness table is wider than the panel: it scrolls sideways.
+	box.add_child(_hscroll(sim_label))
 	box.add_child(Ui.label("This fight, live", Palette.ACCENT))
 	share_panel = ActionSharePanel.new()
 	# Shown in this tab, not toggled by its own key.
 	share_panel.toggle_key = KEY_NONE
-	box.add_child(share_panel)
+	box.add_child(_hscroll(share_panel))
 	share_panel.fight = session.fight
 	return box
 
 
 func _build_changes_tab() -> VBoxContainer:
 	var box := VBoxContainer.new()
-	changes_label = Ui.label("", Palette.TEXT, 12)
+	changes_label = Ui.label("", Palette.TEXT)
 	changes_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(changes_label)
 	box.add_child(Ui.label("Data changes to save", Palette.ACCENT))
@@ -632,7 +678,7 @@ func _build_changes_tab() -> VBoxContainer:
 	box.add_child(save_box)
 	box.add_child(Ui.row([Ui.button("Save to data...", func() -> void: show_save_diff()),
 		Ui.button("Export tuning diff", func() -> void: export_diff())]))
-	diff_label = Ui.label("", Palette.TEXT_DIM, 12)
-	diff_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(diff_label)
+	# Diff lines are whole data-file lines: they scroll sideways, unwrapped.
+	diff_label = _mono(Ui.label("", Palette.TEXT_DIM))
+	box.add_child(_hscroll(diff_label))
 	return box
