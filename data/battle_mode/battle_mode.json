@@ -1,0 +1,40 @@
+{
+	"_comment": "Battle Mode (S9c): fight after fight with no map, read by fight/battle_mode/battle_mode_tuning.gd. Every number is a first guess for S10 to tune. See data/battle_mode/README.md.",
+	"_lengths_comment": "How long a run lasts. fights: 0 is endless (until the squad falls). boss_fights: fight numbers that are boss fights; boss_every: also every Nth fight (0 none).",
+	"lengths": {
+		"gauntlet": {"name": "Gauntlet", "description": "Ten fights. Bosses at fight 5 and fight 10.", "fights": 10, "boss_fights": [5, 10], "boss_every": 0},
+		"endless": {"name": "Endless", "description": "Fight until the squad falls. A boss every fifth fight.", "fights": 0, "boss_fights": [], "boss_every": 5}
+	},
+	"_squads_comment": "Preset squads: a draft seed (BotFactory, the same draft the New Run screen shows for that seed) and the draft positions (0-based) fielded.",
+	"squads": [
+		{"id": "vanguard", "name": "Vanguard", "description": "Two heavy hitters and a sturdy frame.", "draft_seed": 31, "picks": [3, 4, 2]},
+		{"id": "skirmish", "name": "Skirmish", "description": "Fast bots that act often.", "draft_seed": 5, "picks": [0, 1, 4]},
+		{"id": "bulwark", "name": "Bulwark", "description": "High HP and Defense, slow to act.", "draft_seed": 19, "picks": [4, 1, 2]}
+	],
+	"_tiers_comment": "Enemy tiers from weakest to strongest; an elite fight shifts each listed tier up one step.",
+	"tiers": ["beginner", "medium", "advanced"],
+	"_fast_speed_comment": "An enemy at or above this Speed counts as fast for a curve row's 'fast'.",
+	"fast_speed": 9,
+	"_elite_every_comment": "Every Nth fight that is not a boss fight is an elite fight (0: none).",
+	"elite_every": 3,
+	"_archetypes_from_fight_comment": "Enemies that name an archetype (Charger, Plated, Scaler, ...) join every pool from this fight on, whatever their faction.",
+	"archetypes_from_fight": 3,
+	"_curve_comment": "Each row applies from fight from_fight until the next row. count: enemies fielded. types: distinct enemy kinds among them (more questions at once). factions: distinct factions they come from ('generic' is the roster with no faction). tiers: the tiers drawn from. fast: how many of the kinds must be fast. hp/attack/defense_percent: stat scaling, kept close to the squad's growth. speed_bonus: added to every enemy's Speed. defense_level: the FightRequest level (sets nothing in Battle Mode but the grid cost line).",
+	"curve": [
+		{"from_fight": 1, "count": 2, "types": 1, "factions": 1, "tiers": ["beginner"], "fast": 0, "hp_percent": 100, "attack_percent": 100, "defense_percent": 100, "speed_bonus": 0, "defense_level": 0},
+		{"from_fight": 2, "count": 3, "types": 2, "factions": 1, "tiers": ["beginner"], "fast": 0, "hp_percent": 100, "attack_percent": 100, "defense_percent": 100, "speed_bonus": 0, "defense_level": 1},
+		{"from_fight": 4, "count": 3, "types": 2, "factions": 1, "tiers": ["beginner", "medium"], "fast": 1, "hp_percent": 100, "attack_percent": 100, "defense_percent": 100, "speed_bonus": 0, "defense_level": 2},
+		{"from_fight": 6, "count": 3, "types": 3, "factions": 2, "tiers": ["beginner", "medium"], "fast": 1, "hp_percent": 100, "attack_percent": 100, "defense_percent": 100, "speed_bonus": 0, "defense_level": 2},
+		{"from_fight": 8, "count": 3, "types": 3, "factions": 2, "tiers": ["medium"], "fast": 1, "hp_percent": 105, "attack_percent": 100, "defense_percent": 100, "speed_bonus": 0, "defense_level": 3},
+		{"from_fight": 11, "count": 4, "types": 3, "factions": 2, "tiers": ["medium", "advanced"], "fast": 2, "hp_percent": 110, "attack_percent": 105, "defense_percent": 105, "speed_bonus": 0, "defense_level": 4},
+		{"from_fight": 14, "count": 4, "types": 4, "factions": 3, "tiers": ["advanced"], "fast": 2, "hp_percent": 120, "attack_percent": 110, "defense_percent": 110, "speed_bonus": 1, "defense_level": 5}
+	],
+	"_endless_growth_comment": "Past the last row: every 'every' fights, add these to its numbers (count and types up to their max, speed_bonus up to its max).",
+	"endless_growth": {"every": 3, "hp_percent": 10, "attack_percent": 5, "defense_percent": 5, "count": 1, "count_max": 6, "types": 1, "types_max": 5, "speed_bonus": 1, "speed_bonus_max": 3},
+	"_elite_comment": "An elite fight: tiers one step up, extra_types more kinds (within the row's count), and these stats (percent of the row's).",
+	"elite": {"extra_types": 1, "hp_percent": 110, "attack_percent": 100, "defense_percent": 100},
+	"_boss_comment": "A boss fight: the next boss in order (the list repeats), its stats at these percents of the row's scaling, with 'escorts' enemies drawn as a normal fight of the row.",
+	"boss": {"order": ["precinct_overseer", "continental_defense_grid", "last_command"], "escorts": 1, "hp_percent": 55, "attack_percent": 80, "defense_percent": 80},
+	"_metrics_comment": "dominant_share_percent: an action above this share of a fight's squad decisions is flagged (the plan's 'no action above about 50%'). csv_folder: where played and simulated runs append fights.csv and runs.csv (not the save or settings).",
+	"metrics": {"dominant_share_percent": 50, "csv_folder": "user://battle_mode"}
+}
