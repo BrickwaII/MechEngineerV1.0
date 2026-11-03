@@ -15,9 +15,14 @@ extends Control
 ## DEMO opens the demo picker (ui/demo/): ready-made scenarios of each act
 ## that are never saved. A demo leaves back to the picker; the picker's MAIN
 ## MENU comes back here.
+##
+## BATTLE MODE opens Battle Mode (ui/battle_mode/): fight after fight with no
+## map, never saved. Leaving it comes back here.
 
 const RUN_SCENE := preload("res://ui/run/run_flow.tscn")
-const MENU_WIDTH := 1040.0
+const MENU_WIDTH := 1088.0
+## Five entry tiles share the row, so each is narrower than the kit's tile.
+const TILE_WIDTH := 200.0
 const BUTTON_SIZE := Vector2(320, 52)
 const LIST_SIZE := Vector2(860, 520)
 const ROW_BUTTON_SIZE := Vector2(110, 36)
@@ -39,6 +44,11 @@ var demo_picker: DemoPicker
 var demo_flow: DemoRunFlow
 ## Set on a demo run before it starts; tests use it.
 var configure_demo: Callable
+## Battle Mode while it shows, else null.
+var battle_mode: BattleModeFlow
+## Set on Battle Mode before it starts; tests use it.
+var configure_battle_mode: Callable
+var battle_mode_button: Button
 ## Shows the one-time What's new card when it is due (tests turn it off).
 var show_whats_new := true
 var _modal: DetailModal
@@ -274,6 +284,35 @@ func close_demo() -> void:
 		MusicDirector.current.play_context(MusicDirector.MENU)
 
 
+# --- Battle Mode -----------------------------------------------------------------------
+
+## Opens Battle Mode in place of the menu.
+func show_battle_mode() -> void:
+	close_battle_mode()
+	battle_mode = BattleModeFlow.new()
+	battle_mode.name = "BattleModeFlow"
+	if configure_battle_mode.is_valid():
+		configure_battle_mode.call(battle_mode)
+	battle_mode.exit_requested.connect(close_battle_mode)
+	for child in [menu, load_list, legacy_panel]:
+		child.visible = false
+	add_child(battle_mode)
+
+
+## Closes Battle Mode and shows the menu again.
+func close_battle_mode() -> void:
+	if battle_mode == null:
+		return
+	remove_child(battle_mode)
+	battle_mode.queue_free()
+	battle_mode = null
+	get_tree().paused = false
+	menu.visible = true
+	refresh()
+	if MusicDirector.current != null:
+		MusicDirector.current.play_context(MusicDirector.MENU)
+
+
 ## Shows a finished run's run-over screen, read-only, over the load list.
 func view_finished_run(dir: String) -> void:
 	run_over = RunOverScreen.new()
@@ -342,10 +381,17 @@ func _build() -> void:
 	demo_button = demo_tile
 	demo_button.name = "DemoButton"
 	tiles.add_child(demo_tile)
+	battle_mode_button = EntryTile.make("Battle Mode", "Fight after fight. No map.", EntryTile.icon_art("fights_won"))
+	battle_mode_button.name = "BattleModeButton"
+	battle_mode_button.pressed.connect(show_battle_mode)
+	UiTooltip.attach(battle_mode_button, "Battle Mode", "Battle after battle with a squad that grows, against rising enemies. No map, no countdown. Nothing is saved.", "", "fights_won")
+	tiles.add_child(battle_mode_button)
 	how_to_play_button = EntryTile.make("How to play", "The run, the map and fights.", EntryTile.icon_art("guide"))
 	how_to_play_button.name = "HowToPlayButton"
 	how_to_play_button.pressed.connect(show_how_to_play)
 	tiles.add_child(how_to_play_button)
+	for tile in tiles.get_children():
+		(tile as Control).custom_minimum_size.x = TILE_WIDTH
 	var below := UiStyle.row("m")
 	below.alignment = BoxContainer.ALIGNMENT_CENTER
 	menu.add_child(below)
