@@ -316,16 +316,16 @@ func _flip_intent_chip(old_text: String) -> void:
 	FeelTween.to(intent_chip, "scale", Vector2.ONE, "ui")
 	if old_text.is_empty():
 		return
+	# A child of the number itself (a Label lays out no children), so it
+	# rises from where the old number stood and stays on the card.
 	var ghost := Label.new()
 	ghost.name = "IntentGhost"
 	ghost.text = old_text
-	ghost.top_level = true
 	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ghost.add_theme_color_override("font_color", FeelData.color("changed"))
-	add_child(ghost)
-	ghost.global_position = intent_chip.value_label.global_position
+	intent_chip.value_label.add_child(ghost)
 	var lift := float(BattleArt.number("intent_flip_lift_px", 14))
-	FeelTween.to(ghost, "global_position", ghost.global_position - Vector2(0, lift), "ui_slow")
+	FeelTween.to(ghost, "position:y", -lift, "ui_slow")
 	var fade := FeelTween.to(ghost, "modulate:a", 0.0, "ui_slow")
 	fade.tween_callback(ghost.queue_free)
 
