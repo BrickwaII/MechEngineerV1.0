@@ -146,3 +146,29 @@ Laid out after Slay the Spire and Into the Breach:
 - **Arrows**: badges take the first point along their arrow that covers no
   card and no other badge; hovering a unit fades every arrow that does not
   touch it.
+
+## Combat rework readouts (S7)
+
+The rework's fight state, read from the fight (never changed by the screen):
+
+- **Cards** (`UnitPanel.rework_statuses()`, `StatusRow`): Brace as its own
+  flag ("Brace 8"), Exposed with its bonus ("Exposed +50%", from
+  data/combat/statuses.json), plating as drawn pips (whole filled, broken
+  hollow; the numbers on hover), Staggered with its bonus, and a committed
+  wind-up ("Wind-up Ram"). Every flag's keyword has a glossary entry
+  (Exposed, Brace, Plating, Stagger, Recovery, Wind-up, Combo).
+- **Intent chip**: a wind-up, and the hit it committed to, show the wind-up
+  icon with the hit's damage. A chip that changes animates: the old number
+  lifts off and fades in the "changed" color, the new chip pops in
+  (data/ui/battle_presentation.json `intent_flip_*`).
+- **Timeline marks** (`TimelineMarks`): beside a chip's portrait, small
+  icons for what ends or lands on that slot: Exposed or Brace wearing off as
+  the unit acts, a Staggered unit's lost turn, a wind-up's hit landing. The
+  chip's tooltip names each one. A wound-up enemy is on the order where its
+  hit lands (`Timeline.preview()` counts each action toward its wait).
+- **Skill cards**: "Deal 5 ×2. Apply Exposed.", "+50% vs Exposed.",
+  "Recovery 30%."
+- Screenshots: `demo/capture_rework.gd` (needs a display) writes
+  screenshots/rework_plating.png, rework_exposed.png, rework_brace.png,
+  rework_wind_up.png, rework_stagger.png, from Battle Mode's Rework kit
+  against a Charger, a Plated and a Scaler.
