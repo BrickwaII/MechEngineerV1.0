@@ -20,9 +20,18 @@ extends RefCounted
 ## lost turn); DELAY, ADVANCE and KNOCKBACK whenever a rule moves a unit. For
 ## these, target_id is the unit moved, actor_id the unit that moved it ("" for
 ## none) and amount the gauge moved.
+##
+## Enemy archetypes (S5, ArchetypeRules): GROWTH when a Scaler grows, once its
+## action has landed (actor and target the unit, amount its growth count).
+## INTENT_CHANGED, last in an action (or after a RECOVER), for each archetype
+## enemy whose intent changed: actor_id is the unit, target_id and skill_id
+## the new intent's ("" for none), old_intent and new_intent the intents
+## (null for none) and reason why it changed. A wind-up, a Stagger, a recovery
+## and a target going down all raise one.
 
 enum Kind { SKILL, HIT, HEAL, GUARD, WAIT, DOWN, STATUS_APPLIED, STATUS_CONSUMED, STATUS_EXPIRED,
-	PLATING, STAGGER, RECOVER, BRACE, BRACE_END, RECOVERY, DELAY, ADVANCE, KNOCKBACK }
+	PLATING, STAGGER, RECOVER, BRACE, BRACE_END, RECOVERY, DELAY, ADVANCE, KNOCKBACK, GROWTH,
+	INTENT_CHANGED }
 
 var kind: Kind
 ## Fight.action_count of the action that raised it (1 for the first action).
@@ -37,7 +46,8 @@ var skill_level := 1
 ## SKILL: energy points spent. STATUS_*: the status's stacks. PLATING: pips
 ## stripped. STAGGER: gauge knocked back. RECOVER: plating pips restored.
 ## BRACE: damage it will absorb. BRACE_END: absorb left unused. RECOVERY,
-## DELAY, ADVANCE, KNOCKBACK: gauge moved.
+## DELAY, ADVANCE, KNOCKBACK: gauge moved. GROWTH: the unit's growth count.
+## INTENT_CHANGED: the new intent's amount (0 for none).
 var amount := 0
 ## PLATING, STAGGER and RECOVER: the target's plating pips after the event.
 var plating_after := 0
@@ -61,6 +71,12 @@ var energy_after := 0
 ## Timeline moves only: the moved unit's gauge before and after.
 var gauge_before := 0
 var gauge_after := 0
+## INTENT_CHANGED only: the unit's intent before and after (null for none),
+## and why it changed ("winds up", "staggered", "recovered", "target down",
+## "fight state changed").
+var old_intent: UnitIntent
+var new_intent: UnitIntent
+var reason := ""
 
 
 func _init(p_kind := Kind.SKILL, p_action_index := 0, p_actor_id := "", p_target_id := "", p_skill_id := "") -> void:
@@ -80,6 +96,8 @@ func is_status() -> bool:
 
 
 func _to_string() -> String:
+	if kind == Kind.INTENT_CHANGED:
+		return "%s %s: %s -> %s (%s)" % [Kind.keys()[kind], actor_id, old_intent, new_intent, reason]
 	if is_status():
 		return "%s %s -> %s %s %s x%d" % [Kind.keys()[kind], actor_id, target_id, skill_id, status_id, amount]
 	return "%s %s -> %s %s %d (hp %d -> %d)" % [

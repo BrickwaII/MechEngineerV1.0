@@ -188,10 +188,13 @@ func test_recovery_raises_an_event_and_spends_the_turn_without_a_decision() -> v
 	var next := fight.advance()
 	assert_object(next).is_same(fight.combatant("ally"))
 	assert_int(fight.action_count).is_equal(count)
-	assert_int(events.size()).is_equal(1)
+	# RECOVER, then (S5) the archetype enemy announces its new intent.
+	assert_int(events.size()).is_equal(2)
 	assert_int(events[0].kind).is_equal(FightEvent.Kind.RECOVER)
 	assert_int(events[0].amount).is_equal(1)
 	assert_int(events[0].plating_after).is_equal(1)
+	assert_int(events[1].kind).is_equal(FightEvent.Kind.INTENT_CHANGED)
+	assert_str(events[1].reason).is_equal("recovered")
 	assert_bool(foe.staggered).is_false()
 	assert_int(foe.gauge).is_less(fight.timeline.threshold)
 

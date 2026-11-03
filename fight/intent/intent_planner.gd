@@ -17,7 +17,13 @@ extends RefCounted
 ## target's guard (Shield Ally) and Brace the way the fight resolves them.
 ## Guard and Brace skills are not planned: no enemy uses one yet. A Staggered unit has no
 ## options, so no intent: the Stagger cancelled it and its next turn is spent
-## recovering (TODO(decision: stagger-intent); S5 makes intents committed).
+## recovering (TODO(decision: stagger-intent)).
+##
+## Archetype enemies (EnemyArchetype, S5) follow their intent pattern: each
+## step narrows the options (pattern_options()), and a wind-up commits the hit
+## it telegraphs (committed_intent()) until the unit lands it or is Staggered.
+## The fight announces their intents as they change (FightEvent
+## INTENT_CHANGED; ArchetypeRules).
 ##
 ## How each scale leans the choice, with the default weights:
 ## - aggressive raises damage and kill, defensive raises the cost of energy;
@@ -58,8 +64,24 @@ func plan(fight: Fight, unit: Combatant) -> UnitIntent:
 
 
 ## Every option for `unit`, best first. Equal scores keep option order.
+## An archetype unit's options follow its intent pattern's current step
+## (pattern_options()); a committed intent (a wind-up's hit) is its only
+## option.
 func rank(fight: Fight, unit: Combatant) -> Array[UnitIntent]:
-	var options := options_for(fight, unit)
+	var committed := committed_intent(unit)
+	if committed != null:
+		var only: Array[UnitIntent] = [committed]
+		return only
+	return _ranked(pattern_options(unit, options_for(fight, unit)))
+
+
+## Every option for `unit`, best first, ignoring its archetype's pattern and
+## commitment.
+func rank_unpatterned(fight: Fight, unit: Combatant) -> Array[UnitIntent]:
+	return _ranked(options_for(fight, unit))
+
+
+static func _ranked(options: Array[UnitIntent]) -> Array[UnitIntent]:
 	var order := range(options.size())
 	order.sort_custom(func(a: int, b: int) -> bool:
 		if options[a].score != options[b].score:
@@ -69,6 +91,46 @@ func rank(fight: Fight, unit: Combatant) -> Array[UnitIntent]:
 	for i: int in order:
 		out.append(options[i])
 	return out
+
+
+## The intent `unit` is committed to (Combatant.committed: the hit its
+## wind-up telegraphed), or null when it may choose. While it cannot afford
+## the hit (and is not already waiting for it), the intent is to wait for it.
+static func committed_intent(unit: Combatant) -> UnitIntent:
+	var hit := unit.committed
+	if hit == null or unit.staggered or not unit.is_alive():
+		return null
+	var skill := unit.skill(hit.skill_id())
+	if skill == null or unit.is_waiting() or unit.can_afford(skill):
+		return hit
+	var action := FightAction.wait_for(skill.id)
+	action.target_id = hit.target_id()
+	return UnitIntent.new(unit.id, UnitIntent.Kind.WAIT, action, hit.amount, hit.score)
+
+
+## `options` narrowed to what `unit`'s archetype pattern step allows
+## (EnemyArchetype): plan keeps them all; an action step keeps that action's
+## options (using it, or waiting for it); wind_up turns the options of the
+## action it telegraphs into wind-ups (waits that commit the hit). A step
+## that leaves nothing (the unit lacks the action) keeps them all.
+static func pattern_options(unit: Combatant, options: Array[UnitIntent]) -> Array[UnitIntent]:
+	var a := unit.archetype
+	if a == null or options.is_empty():
+		return options
+	var step := a.step_at(unit.pattern_step)
+	if step == EnemyArchetype.STEP_PLAN:
+		return options
+	var out: Array[UnitIntent] = []
+	if step == EnemyArchetype.STEP_WIND_UP:
+		var telegraphed := a.action_after(unit.pattern_step)
+		for o in options:
+			if o.kind != UnitIntent.Kind.HEAL and (telegraphed.is_empty() or o.skill_id() == telegraphed):
+				out.append(o.as_wind_up())
+	else:
+		for o in options:
+			if o.skill_id() == step:
+				out.append(o)
+	return out if not out.is_empty() else options
 
 
 ## Every option for `unit`, scored, in option order.

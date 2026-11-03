@@ -22,8 +22,9 @@ const PRE_REWORK := {
 const DECIDED_COSTS := {"strike": 1}
 
 
-## Actions added after S1, on content no pre-rework skill had (S3: Shred).
-const ADDED: Array[String] = ["shred"]
+## Actions added after S1, on content no pre-rework skill had (S3: Shred; S5:
+## Ram, the Charger's big hit).
+const ADDED: Array[String] = ["shred", "ram"]
 
 ## Recovery given to the migrated actions on purpose (S2), in percent of a turn.
 const RECOVERY := {"heavy_strike": 30, "overload": 50, "arc_sweep": 20}
