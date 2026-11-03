@@ -21,5 +21,8 @@ static func of(fight: Fight) -> Fight:
 	copy.pending_actor = copy.combatant(fight.pending_actor.id) if fight.pending_actor != null else null
 	copy.action_count = fight.action_count
 	copy.action_tags = fight.action_tags.duplicate()
+	# The log so far (shared events: nothing changes an event once its action
+	# has resolved), so the copy's summary() counts the whole fight.
+	copy.events = fight.events.duplicate()
 	copy.log_lines = PackedStringArray()
 	return copy

@@ -36,6 +36,8 @@ enum Kind { SKILL, HIT, HEAL, GUARD, WAIT, DOWN, STATUS_APPLIED, STATUS_CONSUMED
 var kind: Kind
 ## Fight.action_count of the action that raised it (1 for the first action).
 var action_index := 0
+## The fight's timeline tick when it was raised.
+var tick := 0
 var actor_id := ""
 ## The unit the event lands on. For SKILL and WAIT, the chosen target (WAIT: "").
 var target_id := ""
@@ -77,6 +79,13 @@ var gauge_after := 0
 var old_intent: UnitIntent
 var new_intent: UnitIntent
 var reason := ""
+## SKILL and WAIT only: the decision as submitted (a copy), which replays it.
+## Null for every other kind.
+var action: FightAction
+## SKILL and WAIT only: the decision's action tags (ActionTag.TAGS), set once
+## the whole action has resolved. Listeners of Fight.event_raised see them
+## still empty.
+var tags: Array[String] = []
 
 
 func _init(p_kind := Kind.SKILL, p_action_index := 0, p_actor_id := "", p_target_id := "", p_skill_id := "") -> void:
@@ -93,6 +102,43 @@ func is_damage() -> bool:
 
 func is_status() -> bool:
 	return kind in [Kind.STATUS_APPLIED, Kind.STATUS_CONSUMED, Kind.STATUS_EXPIRED]
+
+
+## True for the one event per decision: SKILL or WAIT, carrying the action.
+func is_decision() -> bool:
+	return action != null
+
+
+## A HIT that cashed in a setup: a status bonus (Exposed) or a payoff bonus.
+## A hit's Stagger bonus does not count. TODO(decision: s6-combo-count).
+func is_combo() -> bool:
+	return kind == Kind.HIT and (status_bonus_percent > 0 or payoff_bonus_percent > 0)
+
+
+func kind_name() -> String:
+	return Kind.keys()[kind]
+
+
+## Every field, for comparing logs and writing them out. Intents and the
+## action appear as text ("" for none).
+func to_dict() -> Dictionary:
+	return {
+		"kind": kind_name(), "action_index": action_index, "tick": tick, "actor": actor_id,
+		"target": target_id, "skill": skill_id, "level": skill_level, "amount": amount,
+		"plating_after": plating_after, "blocked_percent": blocked_percent, "absorbed": absorbed,
+		"status_bonus_percent": status_bonus_percent, "payoff_bonus_percent": payoff_bonus_percent,
+		"status": status_id, "hp": [hp_before, hp_after, max_hp], "energy": [energy_before, energy_after],
+		"gauge": [gauge_before, gauge_after], "old_intent": str(old_intent) if old_intent != null else "",
+		"new_intent": str(new_intent) if new_intent != null else "", "reason": reason,
+		"action": _action_text(), "tags": tags.duplicate(),
+	}
+
+
+## The decision `action` as text: every field it replays from.
+func _action_text() -> String:
+	if action == null:
+		return ""
+	return "%s %s -> %s (%d)" % [FightAction.Kind.keys()[action.kind], action.skill_id, action.target_id, action.wait_ticks]
 
 
 func _to_string() -> String:
