@@ -6,6 +6,8 @@
 		"rival_ai": {"name": "Rival AI", "short_name": "Rival AI", "color": "#ff6b5e", "icon": "res://assets/enemies/rival_ai/icon_rival_ai.png", "description": "A rival AI's combat units, plus a rogue splinter AI's swarms.", "units": [{"unit": "rival_hunter", "from_level": 0}, {"unit": "splinter_swarm", "from_level": 1}, {"unit": "rival_walker", "from_level": 3}]},
 		"aliens": {"name": "Aliens", "short_name": "Aliens", "color": "#e05ad0", "icon": "res://assets/enemies/aliens/icon_aliens.png", "description": "Wildcard alien units.", "units": [{"unit": "alien_stalker", "from_level": 0}, {"unit": "alien_spitter", "from_level": 1}]}
 	},
+	"_shared_units_comment": "Unit types every faction fields after its own, from defense level from_level: the enemy archetypes (combat rework S5). Their enemies are <unit>_<tier> in enemy_tables.json with no faction.",
+	"shared_units": [{"unit": "plated", "from_level": 2}, {"unit": "charger", "from_level": 3}, {"unit": "scaler", "from_level": 4}],
 	"tiers": ["beginner", "medium", "advanced"],
 	"tier_by_act": {
 		"act1": ["beginner", "beginner", "beginner", "medium", "advanced", "advanced"],

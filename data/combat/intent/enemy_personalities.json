@@ -37,6 +37,15 @@
 		"alien_spitter_advanced": {"generation": 3, "aggressive_defensive": 0.2, "solitary_supportive": 0.7, "reactive_methodical": -0.3},
 		"precinct_overseer": {"generation": 3, "aggressive_defensive": -0.7, "solitary_supportive": -0.4, "reactive_methodical": 0.6},
 		"continental_defense_grid": {"generation": 3, "aggressive_defensive": 0.1, "solitary_supportive": 0.6, "reactive_methodical": 0.7},
-		"last_command": {"generation": 3, "aggressive_defensive": -0.9, "solitary_supportive": -0.6, "reactive_methodical": -0.5}
+		"last_command": {"generation": 3, "aggressive_defensive": -0.9, "solitary_supportive": -0.6, "reactive_methodical": -0.5},
+		"charger_beginner": {"generation": 1, "aggressive_defensive": -0.8, "solitary_supportive": -0.4, "reactive_methodical": 0.2},
+		"charger_medium": {"generation": 2, "aggressive_defensive": -0.8, "solitary_supportive": -0.4, "reactive_methodical": 0.2},
+		"charger_advanced": {"generation": 3, "aggressive_defensive": -0.8, "solitary_supportive": -0.4, "reactive_methodical": 0.2},
+		"plated_beginner": {"generation": 1, "aggressive_defensive": 0.6, "solitary_supportive": 0.2, "reactive_methodical": 0.6},
+		"plated_medium": {"generation": 2, "aggressive_defensive": 0.6, "solitary_supportive": 0.2, "reactive_methodical": 0.6},
+		"plated_advanced": {"generation": 3, "aggressive_defensive": 0.6, "solitary_supportive": 0.2, "reactive_methodical": 0.6},
+		"scaler_beginner": {"generation": 1, "aggressive_defensive": -0.6, "solitary_supportive": -0.6, "reactive_methodical": -0.4},
+		"scaler_medium": {"generation": 2, "aggressive_defensive": -0.6, "solitary_supportive": -0.6, "reactive_methodical": -0.4},
+		"scaler_advanced": {"generation": 3, "aggressive_defensive": -0.6, "solitary_supportive": -0.6, "reactive_methodical": -0.4}
 	}
 }

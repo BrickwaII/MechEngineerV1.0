@@ -24,10 +24,32 @@ func test_the_shipped_archetypes_load_and_validate() -> void:
 	assert_bool(table.get_archetype("scaler").scales()).is_true()
 
 
-func test_no_shipped_enemy_names_an_archetype_yet() -> void:
+## S5 (archetype-pools): every shipped archetype has an enemy in each tier,
+## shared by every faction and drawn by the generic pools.
+func test_every_archetype_fields_enemies_in_every_faction_and_the_generic_pools() -> void:
+	var enemies := EnemyTable.load_default()
+	var factions := FactionTable.load_default()
+	var generic := {}
+	for level: int in enemies.levels:
+		for id: String in enemies.levels[level].pool:
+			generic[enemies.archetype_of(id)] = true
+	for archetype in ["charger", "plated", "scaler"]:
+		assert_bool(generic.has(archetype)).override_failure_message(archetype).is_true()
+		for tier in factions.tiers:
+			var id := "%s_%s" % [archetype, tier]
+			assert_str(enemies.archetype_of(id)).is_equal(archetype)
+			assert_object(enemies.archetype_for(id)).is_not_null()
+		for faction: String in factions.factions:
+			assert_array(factions.pool(faction, FightRequest.MAX_DEFENSE_LEVEL, "medium")) \
+				.contains(["%s_medium" % archetype])
+	assert_array(enemies.validate(CombatTuning.load_default())).is_empty()
+
+
+func test_only_archetype_enemies_name_an_archetype() -> void:
 	var enemies := EnemyTable.load_default()
 	for id: String in enemies.enemies:
-		assert_str(enemies.archetype_of(id)).is_empty()
+		var archetype := enemies.archetype_of(id)
+		assert_bool(archetype.is_empty() or id.begins_with(archetype + "_")).override_failure_message(id).is_true()
 
 
 func test_from_dict_reads_every_field() -> void:
@@ -77,7 +99,8 @@ func test_the_table_checks_intent_steps_against_the_tuning_actions() -> void:
 
 
 func test_an_enemy_may_name_a_known_archetype_only() -> void:
-	var archetypes := EnemyArchetypeTable.from_dict({"archetypes": {"charger": _charger()}})
+	var archetypes := EnemyArchetypeTable.load_default()
+	archetypes.archetypes["charger"] = EnemyArchetype.from_dict("charger", _charger())
 	var enemies := EnemyTable.load_default()
 	var tuning := CombatTuning.load_default()
 	var id: String = enemies.enemies.keys()[0]
