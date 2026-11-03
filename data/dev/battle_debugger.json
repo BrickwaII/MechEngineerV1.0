@@ -12,9 +12,9 @@
 	"export_dir": "user://dev/tuning_diffs",
 	"_snapshots_comment": "Rewind keeps one snapshot per decision, up to max_snapshots (the oldest go first).",
 	"max_snapshots": 2000,
-	"_ui_comment": "The debugger panel: its width, and how many change-log lines and timeline entries it lists.",
-	"panel_width": 420,
+	"_ui_comment": "The debugger panel: its width, and how many change-log lines and timeline entries it lists. While it is open the window's view is widened by panel_width (drawn a little smaller), so the battle screen keeps its full width beside it.",
+	"panel_width": 460,
 	"log_lines_shown": 12,
 	"timeline_shown": 10,
-	"toggle_key": "F6"
+	"toggle_key": "F7"
 }

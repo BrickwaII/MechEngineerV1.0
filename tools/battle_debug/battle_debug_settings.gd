@@ -15,10 +15,10 @@ var draw_enemies := false
 var data_files: Dictionary = {}
 var export_dir := ""
 var max_snapshots := 2000
-var panel_width := 420
+var panel_width := 460
 var log_lines_shown := 12
 var timeline_shown := 10
-var toggle_key := "F6"
+var toggle_key := "F7"
 
 
 static func load_default() -> BattleDebugSettings:
@@ -37,10 +37,10 @@ static func from_dict(d: Dictionary) -> BattleDebugSettings:
 		s.data_files[key] = String(files[key])
 	s.export_dir = String(d.get("export_dir", "user://dev/tuning_diffs"))
 	s.max_snapshots = int(d.get("max_snapshots", 2000))
-	s.panel_width = int(d.get("panel_width", 420))
+	s.panel_width = int(d.get("panel_width", 460))
 	s.log_lines_shown = int(d.get("log_lines_shown", 12))
 	s.timeline_shown = int(d.get("timeline_shown", 10))
-	s.toggle_key = String(d.get("toggle_key", "F6"))
+	s.toggle_key = String(d.get("toggle_key", "F7"))
 	return s
 
 

@@ -80,6 +80,10 @@ const BOSS_BAR_STRETCH := 6.0
 signal fight_finished(result: FightResult)
 ## Every command sent, after it was applied: `problem` is "" or why it was refused.
 signal command_sent(command: FightCommand, problem: String)
+## The battle debugger (S9b, dev builds): Alt-click on a unit card or an
+## action tile asks to inspect it, while inspect_enabled.
+signal unit_inspect_requested(unit_id: String)
+signal action_inspect_requested(skill_id: String)
 
 var tuning: FightScreenTuning
 var handler: FightCommandHandler
@@ -184,6 +188,10 @@ var _pending_events: Array[FightEvent] = []
 var _energy_after_turn: Dictionary[String, int] = {}
 var _announced_actor := ""
 var _outcome_started := false
+## The battle debugger's pause: enemy turns wait while it is true.
+var hold_enemy_turns := false
+## True while the battle debugger listens for Alt-clicks.
+var inspect_enabled := false
 
 
 ## Builds the fight. `p_tuning` defaults to data/ui/fight_screen.json; the
@@ -228,7 +236,7 @@ func _process(delta: float) -> void:
 	if presenter != null and presenter.is_busy():
 		_enemy_clock = 0.0
 		return
-	if not handler.is_enemy_turn():
+	if not handler.is_enemy_turn() or hold_enemy_turns:
 		_enemy_clock = 0.0
 		return
 	_enemy_clock += delta
@@ -257,6 +265,9 @@ func _gui_input(event: InputEvent) -> void:
 ## right-click cancels a skill being aimed; with nothing to cancel it opens
 ## the unit's detail card (as its ⋮ does).
 func on_unit_clicked(unit_id: String, button_index: MouseButton) -> void:
+	if inspect_enabled and Input.is_key_pressed(KEY_ALT):
+		unit_inspect_requested.emit(unit_id)
+		return
 	if button_index == MOUSE_BUTTON_RIGHT:
 		if not _has_choice_to_cancel() and unit_panels.has(unit_id):
 			open_unit_detail(unit_id)
@@ -306,6 +317,9 @@ func open_unit_detail(unit_id: String) -> DetailModal:
 
 
 func on_skill_pressed(skill_id: String) -> void:
+	if inspect_enabled and Input.is_key_pressed(KEY_ALT):
+		action_inspect_requested.emit(skill_id)
+		return
 	peek_skill_id = ""
 	send(FightCommand.select_skill(skill_id))
 
@@ -671,6 +685,69 @@ func _bank_text(can_act: bool) -> String:
 	var rate := WaitRules.wait_recharge_milli(actor.recharge_milli, fight.tuning)
 	return "Banks +%d Energy by its next turn (recharge ×%s)." % [
 		int(land.energy_at_turn) - actor.energy(), _times(rate, actor.recharge_milli)]
+
+
+## After the battle debugger changed the fight from outside (an edit, a
+## rewind, a restart, a step it played): drops animations still to play,
+## re-selects the unit to act, re-reads intents and redraws. The unit cards
+## are built again when the roster changed.
+func debug_resync() -> void:
+	if presenter != null:
+		presenter.queue.clear()
+		presenter.current = null
+		presenter.shown_hp_by_id.clear()
+		presenter.shown_energy_by_id.clear()
+	_pending_events.clear()
+	_announced_actor = ""
+	peek_skill_id = ""
+	handler.selected_skill_id = ""
+	var actor := fight.advance()
+	if actor != null and actor.side == Combatant.Side.PLAYER:
+		handler.selected_bot_id = actor.id
+	elif fight.combatant(handler.selected_bot_id) == null:
+		handler.selected_bot_id = ""
+	if not fight.is_over():
+		handler._over_sent = false
+		_outcome_started = false
+		_finished_sent = false
+		if outcome_banner != null:
+			outcome_banner.visible = false
+	telegraph.tracker.refresh(fight)
+	_planned_at = fight.action_count
+	var ids := fight.combatants.map(func(c: Combatant) -> String: return c.id)
+	ids.sort()
+	var shown := unit_panels.keys()
+	shown.sort()
+	if ids != shown:
+		rebuild_field()
+	for c in fight.combatants:
+		_energy_after_turn[c.id] = c.energy()
+	refresh()
+	if fight.is_over():
+		_on_fight_over(fight.result())
+
+
+## Builds the unit cards again, for a roster the battle debugger changed.
+func rebuild_field() -> void:
+	if _field == null:
+		return
+	var root := _field.get_parent()
+	var at := _field.get_index()
+	var old := _field
+	arrows.set_arrows([] as Array[Dictionary], "")
+	arrows.views = {}
+	root.remove_child(old)
+	old.queue_free()
+	unit_panels.clear()
+	_build_field(root)
+	root.move_child(_field, at)
+	# The arrows draw from the cards: point them at the new ones. (The
+	# presenter shares unit_panels itself.)
+	var views := {}
+	for id: String in unit_panels:
+		views[id] = unit_panels[id].view
+	arrows.views = views
+	_fit_field()
 
 
 func _on_event_raised(event: FightEvent) -> void:

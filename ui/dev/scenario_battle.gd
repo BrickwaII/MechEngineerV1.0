@@ -94,6 +94,8 @@ func _on_screen_opened(screen: BattleScreen) -> void:
 	screen.show_home_button(func() -> void: go_back())
 	share_panel.fight = screen.fight
 	overlay.fight = screen.fight
+	# F7: the battle debugger (S9b) on this fight.
+	BattleDebugger.install(screen)
 
 
 func _on_finished(result: FightResult) -> void:
