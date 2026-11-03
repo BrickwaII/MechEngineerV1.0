@@ -28,14 +28,15 @@
 	"player_skills": ["strike", "heavy_strike", "overload"],
 	"_basic_attack_comment": "Every squad member keeps this single-target attack: it is added, first, when the bot's own skills do not include it. It costs energy like every action but Wait (decided Nov 2; its cost is in actions.json); a unit that cannot afford it waits, which is always free. The strike-cost switch (data/variants/variants.json) sets the recharge that goes with it, and its retired free option makes it cost 0 again for comparisons.",
 	"basic_attack": "strike",
-	"_bot_skill_effects_comment": "Bot skill effect_id (data/bot_data/skills.json) -> the combat skill it fights with. The bot's name and level for the skill carry over; cost, power, effect and target come from actions.json.",
+	"_bot_skill_effects_comment": "Bot skill effect_id (data/bot_data/skills.json) -> the combat skill it fights with. setup_shred (Shred) is not in the draft catalog (questions row 19); only Battle Mode's Rework kit preset holds it. The bot's name and level for the skill carry over; cost, power, effect and target come from actions.json.",
 	"bot_skill_effects": {
 		"damage_single": "strike",
 		"damage_single_heavy": "heavy_strike",
 		"damage_all": "arc_sweep",
 		"guard_self": "brace",
 		"heal_single": "patch_up",
-		"guard_ally": "shield"
+		"guard_ally": "shield",
+		"setup_shred": "shred"
 	},
 	"skill_levels": {
 		"power_percent_per_level": 10

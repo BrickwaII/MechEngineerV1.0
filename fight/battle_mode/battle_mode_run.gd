@@ -62,9 +62,11 @@ static func create(p_squad: BotSquad, length_id: String, p_seed: int, p_variants
 
 
 ## The squad of a preset in data/battle_mode/battle_mode.json, from its draft
-## seed (the same bots the draft screen shows for that seed). Null if unknown.
+## seed (the same bots the draft screen shows for that seed). A preset with a
+## kit gives every fielded bot those actions instead of its drafted skills.
+## Null if unknown.
 static func preset_squad(preset_id: String, p_tuning: BattleModeTuning = null,
-		bot_tuning: BotTuning = null) -> BotSquad:
+		bot_tuning: BotTuning = null, combat: CombatTuning = null) -> BotSquad:
 	var t := p_tuning if p_tuning != null else BattleModeTuning.load_default()
 	var preset := t.squad_preset(preset_id)
 	if preset == null:
@@ -77,7 +79,29 @@ static func preset_squad(preset_id: String, p_tuning: BattleModeTuning = null,
 		if i >= 0 and i < draft.size() and bots.size() < bt.squad_size:
 			bots.append(draft[i])
 			ids.append(draft[i].id)
+	if not preset.kit.is_empty():
+		var ct := combat if combat != null else CombatTuning.load_default()
+		for bot in bots:
+			bot.skills = kit_skills(preset.kit, ct)
 	return BotSquad.new(bots, ids, bt.squad_size)
+
+
+## Bot skills for combat action ids: each action's bot effect, the bot
+## catalog's name for it when it has one (heavy_strike: Overcharge Shot), else
+## the action's own name, and its energy cost. Actions with no bot effect are
+## left out.
+static func kit_skills(action_ids: Array[String], combat: CombatTuning) -> Array[Skill]:
+	var catalog := {}
+	for s in BotTuning.load_default().skills:
+		catalog[s.effect_id] = s.display_name
+	var out: Array[Skill] = []
+	for id in action_ids:
+		var effect := BattleModeTuning.effect_for(combat, id)
+		var action := combat.skill(id)
+		if effect.is_empty() or action == null:
+			continue
+		out.append(Skill.new(str(catalog.get(effect, action.display_name)), effect, action.energy_cost))
+	return out
 
 
 ## 1-based number of the next (or current) fight.

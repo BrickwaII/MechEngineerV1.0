@@ -149,3 +149,43 @@ func test_actions_are_named_as_the_squads_skills() -> void:
 	assert_str(run.action_name("wait")).is_equal("Wait")
 	# No bot holds it: the action's own name.
 	assert_str(run.action_name("arc_sweep")).is_equal(run.combat_tuning.skill("arc_sweep").display_name)
+
+
+func test_the_rework_kit_fights_with_the_new_verbs() -> void:
+	var combat := CombatTuning.load_default()
+	var squad := BattleModeRun.preset_squad("rework")
+	for bot in squad.get_fielded():
+		var ids := SquadSkills.ids_for(bot.to_summary(), combat)
+		assert_array(ids).is_equal(["strike", "shred", "heavy_strike", "brace"])
+	# Same bots as Vanguard: only the kit differs.
+	var vanguard := BattleModeRun.preset_squad("vanguard")
+	for i in squad.get_fielded().size():
+		assert_str(squad.get_fielded()[i].display_name).is_equal(vanguard.get_fielded()[i].display_name)
+	assert_str(squad.get_fielded()[0].skills[1].display_name).is_equal("Overcharge Shot")
+
+
+## The first real read of the rework: the careful policy finds combos and
+## Staggers with the kit; the greedy one never sets one up.
+func test_the_careful_policy_lands_combos_and_staggers_with_the_kit() -> void:
+	var careful := BattleModeRun.create(BattleModeRun.preset_squad("rework"), "gauntlet", 7, FightVariants.defaults())
+	var c := careful.play_to_end(CarefulFightPolicy.new(), null, 5)
+	assert_int(c.total("combos")).is_greater(0)
+	assert_int(c.total("staggers")).is_greater(0)
+	assert_int(int(c.action_uses().get("shred", 0))).is_greater(0)
+	var greedy := BattleModeRun.create(BattleModeRun.preset_squad("rework"), "gauntlet", 7, FightVariants.defaults())
+	var g := greedy.play_to_end(SimpleFightPolicy.new(), null, 5)
+	assert_int(int(g.action_uses().get("shred", 0))).is_equal(0)
+	assert_int(g.total("setups")).is_equal(0)
+
+
+func test_archetype_enemies_appear_from_their_fight() -> void:
+	var run := BattleModeRun.create(BattleModeRun.preset_squad("rework"), "endless", 7, FightVariants.defaults())
+	var seen := false
+	for n in 12:
+		var e := run.next_encounter()
+		for id in e.enemy_ids:
+			if not str(run.enemy_table.enemies[id].get("archetype", "")).is_empty():
+				seen = true
+				assert_int(e.fight_number).is_greater_equal(run.tuning.archetypes_from_fight)
+		run.records.append(BattleFightRecord.new())
+	assert_bool(seen).is_true()

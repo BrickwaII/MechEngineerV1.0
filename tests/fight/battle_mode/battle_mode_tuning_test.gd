@@ -6,7 +6,7 @@ const B := preload("res://tests/fight/battle_mode/battle_mode_test_helpers.gd")
 
 func test_shipped_file_is_valid() -> void:
 	var t := BattleModeTuning.load_default()
-	assert_array(t.validate(EnemyTable.load_default())).is_empty()
+	assert_array(t.validate(EnemyTable.load_default(), CombatTuning.load_default())).is_empty()
 	assert_bool(t.lengths.has("gauntlet")).is_true()
 	assert_bool(t.lengths.has("endless")).is_true()
 	assert_bool(t.length("endless").is_endless()).is_true()
@@ -71,3 +71,15 @@ func test_validate_reports_bad_rows_and_bosses() -> void:
 func test_validate_reports_missing_keys() -> void:
 	var t := BattleModeTuning.from_dict({})
 	assert_bool(t.validate(null).any(func(p: String) -> bool: return "missing 'lengths'" in p)).is_true()
+
+
+func test_the_rework_kit_is_the_default_preset() -> void:
+	# TODO(decision: battle-mode-default-squad)
+	assert_str(BattleModeTuning.load_default().squads[0].id).is_equal("rework")
+
+
+func test_validate_reports_kit_actions_it_cannot_use() -> void:
+	var t := B.tuning([{}], {"squads": [{"id": "k", "draft_seed": 1, "picks": [0], "kit": ["nothing", "overload"]}]})
+	var problems := t.validate(B.table(), CombatTuning.load_default())
+	assert_bool(problems.any(func(p: String) -> bool: return "unknown action nothing" in p)).is_true()
+	assert_bool(problems.any(func(p: String) -> bool: return "overload has no bot skill effect" in p)).is_true()

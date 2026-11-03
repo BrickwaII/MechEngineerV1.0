@@ -33,6 +33,8 @@ func _ready() -> void:
 		bot_tuning = BotTuning.load_default()
 	if length_id.is_empty() and not tuning.lengths.is_empty():
 		length_id = tuning.lengths.keys()[0]
+	# The first preset is the default. TODO(decision: battle-mode-default-squad):
+	# the Rework kit, so the rework's verbs show up in the metrics.
 	if squad_id.is_empty():
 		squad_id = tuning.squads[0].id if not tuning.squads.is_empty() else DRAFT
 	_build()
