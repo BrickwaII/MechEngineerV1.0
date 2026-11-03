@@ -7,7 +7,15 @@ const DEMO := "res://ui/dev/battle_debugger/battle_debugger_demo.tscn"
 const VIEWS: Array[Vector2] = [Vector2(1920, 1080), Vector2(1600, 900), Vector2(1280, 820)]
 
 
+## The root window's size before a test resized it (Vector2i.ZERO: not resized).
+var _window_size := Vector2i.ZERO
+
+
 func after_test() -> void:
+	# Put the window back as it was, so later suites see the root unchanged.
+	if _window_size != Vector2i.ZERO:
+		get_tree().root.size = _window_size
+		_window_size = Vector2i.ZERO
 	ScreenFit.restore(get_tree().root)
 
 
@@ -70,6 +78,7 @@ func test_hiding_the_panel_gives_the_screen_its_width_back() -> void:
 ## the screen keeps that view's width and the panel gets room beside it.
 func test_a_fitted_1920_window_keeps_the_screen_whole() -> void:
 	var root := get_tree().root
+	_window_size = root.size
 	root.size = Vector2i(1920, 1080)
 	if root.size != Vector2i(1920, 1080):
 		return  # this display cannot size the window
