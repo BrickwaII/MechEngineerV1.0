@@ -6,7 +6,7 @@ const B := preload("res://tests/fight/battle_mode/battle_mode_test_helpers.gd")
 
 func test_shipped_file_is_valid() -> void:
 	var t := BattleModeTuning.load_default()
-	assert_array(t.validate(EnemyTable.load_default())).is_empty()
+	assert_array(t.validate(EnemyTable.load_default(), CombatTuning.load_default())).is_empty()
 	assert_bool(t.lengths.has("gauntlet")).is_true()
 	assert_bool(t.lengths.has("endless")).is_true()
 	assert_bool(t.length("endless").is_endless()).is_true()
@@ -71,3 +71,43 @@ func test_validate_reports_bad_rows_and_bosses() -> void:
 func test_validate_reports_missing_keys() -> void:
 	var t := BattleModeTuning.from_dict({})
 	assert_bool(t.validate(null).any(func(p: String) -> bool: return "missing 'lengths'" in p)).is_true()
+
+
+func test_the_rework_kit_is_the_default_preset() -> void:
+	# TODO(decision: battle-mode-default-squad)
+	assert_str(BattleModeTuning.load_default().squads[0].id).is_equal("rework")
+
+
+func test_validate_reports_kits_and_extra_enemies_it_cannot_use() -> void:
+	var t := B.tuning([{}], {
+		"squads": [{"id": "k", "draft_seed": 1, "picks": [0], "kit": ["nothing", "overload"]}],
+		"extra_enemies": {"odd": {"name": "Odd", "skills": ["nope"], "archetype": "ghost"}},
+	})
+	var table := B.table()
+	table.archetypes = EnemyArchetypeTable.load_default()
+	var problems := t.validate(table, CombatTuning.load_default())
+	assert_bool(problems.any(func(p: String) -> bool: return "unknown action nothing" in p)).is_true()
+	assert_bool(problems.any(func(p: String) -> bool: return "overload has no bot skill effect" in p)).is_true()
+	assert_bool(problems.any(func(p: String) -> bool: return "odd is missing 'hp'" in p)).is_true()
+	assert_bool(problems.any(func(p: String) -> bool: return "unknown skill nope" in p)).is_true()
+	assert_bool(problems.any(func(p: String) -> bool: return "unknown archetype ghost" in p)).is_true()
+
+
+func test_extra_enemies_join_the_table_and_shipped_ones_win() -> void:
+	var t := B.tuning([{}], {"extra_enemies": {
+		"bm_new": B.enemy("New", "beginner", "", 5, 10, 3, {"archetype": "plated"}),
+		"red_a": B.enemy("Impostor", "beginner"),
+	}})
+	var base := B.table()
+	var table := t.enemy_table_with_extras(base)
+	assert_bool(table.enemies.has("bm_new")).is_true()
+	assert_str(table.name_of("red_a")).is_equal("Red A")
+	assert_bool(base.enemies.has("bm_new")).is_false()
+
+
+func test_the_shipped_extras_name_shipped_archetypes() -> void:
+	var t := BattleModeTuning.load_default()
+	var archetypes := EnemyArchetypeTable.load_default()
+	assert_bool(t.extra_enemies.is_empty()).is_false()
+	for id: String in t.extra_enemies:
+		assert_bool(archetypes.has(str(t.extra_enemies[id].archetype))).is_true()

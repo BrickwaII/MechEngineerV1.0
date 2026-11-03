@@ -13,7 +13,7 @@ extends RefCounted
 ##   "rust_hound"  or  {"enemy": "rust_hound", "count": 2}  from the enemy table
 ##   {"squad_file": ...} / {"bot": {...}}                   a saved or inline bot as an enemy
 
-const POLICIES := ["simple", "random", "intent", "patient"]
+const POLICIES := ["simple", "random", "intent", "patient", "careful"]
 const KINDS := ["attack", "defend"]
 
 var scenario_name := ""
@@ -96,6 +96,8 @@ static func make_policy(policy_name: String, problems: Array[String]) -> FightPo
 			return IntentFightPolicy.new()
 		"patient":
 			return PatientFightPolicy.new()
+		"careful":
+			return CarefulFightPolicy.new()
 	problems.append("unknown policy '%s' (use %s)" % [policy_name, ", ".join(POLICIES)])
 	return SimpleFightPolicy.new()
 

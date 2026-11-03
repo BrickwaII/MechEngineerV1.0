@@ -5,8 +5,9 @@
 		"gauntlet": {"name": "Gauntlet", "description": "Ten fights. Bosses at fight 5 and fight 10.", "fights": 10, "boss_fights": [5, 10], "boss_every": 0},
 		"endless": {"name": "Endless", "description": "Fight until the squad falls. A boss every fifth fight.", "fights": 0, "boss_fights": [], "boss_every": 5}
 	},
-	"_squads_comment": "Preset squads: a draft seed (BotFactory, the same draft the New Run screen shows for that seed) and the draft positions (0-based) fielded.",
+	"_squads_comment": "Preset squads: a draft seed (BotFactory, the same draft the New Run screen shows for that seed) and the draft positions (0-based) fielded. kit (optional): combat action ids every fielded bot holds instead of its drafted skills (Strike and Wait are always there). The first preset is the default. TODO(decision: battle-mode-default-squad): the Rework kit, so the rework's verbs show up in the metrics.",
 	"squads": [
+		{"id": "rework", "name": "Rework kit", "description": "Shred, Heavy Strike and Brace.", "draft_seed": 31, "picks": [3, 4, 2], "kit": ["shred", "heavy_strike", "brace"]},
 		{"id": "vanguard", "name": "Vanguard", "description": "Two heavy hitters and a sturdy frame.", "draft_seed": 31, "picks": [3, 4, 2]},
 		{"id": "skirmish", "name": "Skirmish", "description": "Fast bots that act often.", "draft_seed": 5, "picks": [0, 1, 4]},
 		{"id": "bulwark", "name": "Bulwark", "description": "High HP and Defense, slow to act.", "draft_seed": 19, "picks": [4, 1, 2]}
@@ -19,6 +20,12 @@
 	"elite_every": 3,
 	"_archetypes_from_fight_comment": "Enemies that name an archetype (Charger, Plated, Scaler, ...) join every pool from this fight on, whatever their faction.",
 	"archetypes_from_fight": 3,
+	"_extra_enemies_comment": "Stand-in archetype enemies (data/combat/archetypes.json) for Battle Mode only, shaped like enemy_tables.json enemies, until shipped enemies use the archetypes. An enemy table entry with the same id wins. Numbers follow the S5 archetype tests. TODO(decision: battle-mode-archetype-enemies).",
+	"extra_enemies": {
+		"bm_scaler": {"name": "Scaler", "hp": 34, "attack": 7, "defense": 2, "speed": 6, "elasticity": 0, "battery_capacity": 8, "skills": ["strike"], "tier": "beginner", "archetype": "scaler"},
+		"bm_plated": {"name": "Plated Walker", "hp": 70, "attack": 8, "defense": 5, "speed": 5, "elasticity": 0, "battery_capacity": 10, "skills": ["strike", "heavy_strike"], "tier": "medium", "archetype": "plated"},
+		"bm_charger": {"name": "Charger", "hp": 60, "attack": 9, "defense": 3, "speed": 6, "elasticity": 0, "battery_capacity": 10, "skills": ["strike", "ram"], "tier": "medium", "archetype": "charger"}
+	},
 	"_curve_comment": "Each row applies from fight from_fight until the next row. count: enemies fielded. types: distinct enemy kinds among them (more questions at once). factions: distinct factions they come from ('generic' is the roster with no faction). tiers: the tiers drawn from. fast: how many of the kinds must be fast. hp/attack/defense_percent: stat scaling, kept close to the squad's growth. speed_bonus: added to every enemy's Speed. defense_level: the FightRequest level (sets nothing in Battle Mode but the grid cost line).",
 	"curve": [
 		{"from_fight": 1, "count": 2, "types": 1, "factions": 1, "tiers": ["beginner"], "fast": 0, "hp_percent": 100, "attack_percent": 100, "defense_percent": 100, "speed_bonus": 0, "defense_level": 0},

@@ -14,7 +14,8 @@ extends SceneTree
 ##   --runs N        play N runs with seeds seed, seed+1, ... (default 1)
 ##   --squad ID      a preset squad id, or "draft:SEED" for the first squad of a draft
 ##                   (default: the first preset)
-##   --policy NAME   who plays the squad: simple, patient, intent, random (default simple)
+##   --policy NAME   who plays the squad: simple (greedy), careful (uses Shred, the
+##                   payoff, Brace, Wait), patient, intent, random (default simple)
 ##   --enemy NAME    who plays the enemies (default intent, as on screen)
 ##   --csv DIR       append fights.csv and runs.csv here; "none" to skip
 ##                   (default data's csv_folder, user://battle_mode)

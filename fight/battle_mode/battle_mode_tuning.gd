@@ -35,6 +35,9 @@ class SquadPreset:
 	var description := ""
 	var draft_seed := 0
 	var picks: Array[int] = []
+	## Combat action ids every fielded bot holds instead of its drafted
+	## skills; empty keeps the draft's skills.
+	var kit: Array[String] = []
 
 
 ## One step of the difficulty curve. Applies from `from_fight` on.
@@ -82,6 +85,9 @@ var curve: Array[Row] = []
 var endless_growth: Dictionary = {}
 ## elite: extra_types, hp_percent, attack_percent, defense_percent.
 var elite: Dictionary = {}
+## Stand-in enemies (id -> an enemy_tables.json entry) added to the shipped
+## table for Battle Mode; a shipped enemy with the same id wins.
+var extra_enemies: Dictionary = {}
 var boss_order: Array[String] = []
 var boss_escorts := 0
 ## boss hp_percent, attack_percent, defense_percent.
@@ -132,6 +138,8 @@ static func from_dict(d: Dictionary) -> BattleModeTuning:
 		p.draft_seed = int(e.get("draft_seed", 0))
 		for i: Variant in e.get("picks", []):
 			p.picks.append(int(i))
+		for k: Variant in e.get("kit", []):
+			p.kit.append(str(k))
 		t.squads.append(p)
 	for tier: Variant in r.list(d, "tiers"):
 		t.tiers.append(str(tier))
@@ -142,6 +150,8 @@ static func from_dict(d: Dictionary) -> BattleModeTuning:
 		if e is Dictionary:
 			t.curve.append(_row(e))
 	t.curve.sort_custom(func(a: Row, b: Row) -> bool: return a.from_fight < b.from_fight)
+	var extras: Variant = d.get("extra_enemies", {})
+	t.extra_enemies = extras if extras is Dictionary else {}
 	var growth: Variant = r.lookup(d, "endless_growth")
 	t.endless_growth = growth if growth is Dictionary else {}
 	var elite_d: Variant = r.lookup(d, "elite")
@@ -222,9 +232,24 @@ func tier_up(tier: String, steps := 1) -> String:
 	return tiers[mini(tiers.size() - 1, i + steps)]
 
 
-## Problems in the tuning, checked against `enemies` (an EnemyTable); empty
-## when every number and name is usable.
-func validate(enemies: EnemyTable) -> Array[String]:
+## The shipped `base` table with extra_enemies added (a copy; a shipped
+## enemy with the same id wins).
+func enemy_table_with_extras(base: EnemyTable) -> EnemyTable:
+	if extra_enemies.is_empty():
+		return base
+	var t := EnemyTable.new()
+	t.enemies = extra_enemies.duplicate(true)
+	t.enemies.merge(base.enemies, true)
+	t.levels = base.levels
+	t.factions = base.factions
+	t.archetypes = base.archetypes
+	return t
+
+
+## Problems in the tuning, checked against `enemies` (an EnemyTable) and
+## `combat` (kits and extra enemies' skills, when given); empty when every
+## number and name is usable.
+func validate(enemies: EnemyTable, combat: CombatTuning = null) -> Array[String]:
 	var problems: Array[String] = load_errors.duplicate()
 	if lengths.is_empty():
 		problems.append("battle_mode has no lengths")
@@ -243,6 +268,27 @@ func validate(enemies: EnemyTable) -> Array[String]:
 		preset_ids[p.id] = true
 		if p.picks.is_empty():
 			problems.append("preset squad %s fields nobody" % p.id)
+		if combat != null:
+			for action_id in p.kit:
+				if combat.skill(action_id) == null:
+					problems.append("preset squad %s's kit names unknown action %s" % [p.id, action_id])
+				elif BattleModeTuning.effect_for(combat, action_id).is_empty():
+					problems.append("preset squad %s's kit action %s has no bot skill effect (bot_skill_effects)" % [p.id, action_id])
+	for id: String in extra_enemies:
+		var e: Variant = extra_enemies[id]
+		if not e is Dictionary:
+			problems.append("extra enemy %s is not an object" % id)
+			continue
+		for key in ["name", "hp", "attack", "defense", "speed", "battery_capacity", "skills"]:
+			if not (e as Dictionary).has(key):
+				problems.append("extra enemy %s is missing '%s'" % [id, key])
+		if combat != null:
+			for skill: Variant in e.get("skills", []):
+				if combat.skill(str(skill)) == null:
+					problems.append("extra enemy %s has unknown skill %s" % [id, skill])
+		var archetype := str(e.get("archetype", ""))
+		if not archetype.is_empty() and enemies != null and enemies.archetypes != null and not enemies.archetypes.has(archetype):
+			problems.append("extra enemy %s names unknown archetype %s" % [id, archetype])
 	if tiers.is_empty():
 		problems.append("battle_mode has no tiers")
 	if curve.is_empty():
@@ -277,3 +323,12 @@ func validate(enemies: EnemyTable) -> Array[String]:
 			if not enemies.enemies.has(id):
 				problems.append("boss %s is not in the enemy table" % id)
 	return problems
+
+
+## The bot skill effect id that fights with combat action `action_id`
+## (CombatTuning.bot_skill_effects), or "" for none.
+static func effect_for(combat: CombatTuning, action_id: String) -> String:
+	for effect: String in combat.bot_skill_effects:
+		if combat.bot_skill_effects[effect] == action_id:
+			return effect
+	return ""

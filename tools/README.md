@@ -47,7 +47,9 @@ godot --headless --path . -s res://tools/battle_mode_sim.gd -- --fights 10 --see
 Options: `--length gauntlet|endless`, `--fights N` (0: until the run ends),
 `--seed N`, `--runs N` (seeds seed, seed+1, ...), `--squad ID` (a preset) or
 `--squad draft:SEED`, `--policy` and `--enemy` (simple, patient, intent,
-random), `--csv DIR` or `--csv none`. Each run appends to `fights.csv` and
+random, careful), `--csv DIR` or `--csv none`. `careful`
+(`fight/careful_fight_policy.gd`) plays the rework's verbs; `simple` stays the
+greedy baseline. `--squad rework` (the default) is the sandbox kit. Each run appends to `fights.csv` and
 `runs.csv` in `user://battle_mode/` by default, for S8's harness and S10.
 
 ## Variant comparison
