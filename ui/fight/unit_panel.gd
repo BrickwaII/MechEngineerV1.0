@@ -31,7 +31,8 @@ const CARD_WIDTH := 352
 ## Stat id -> its icon id in data/ui/icons.json, in chip order.
 const STAT_ICON_IDS := {"atk": "atk", "def": "def", "spd": "spd", "bat": "battery"}
 ## Intent kind -> its icon id in data/ui/icons.json.
-const INTENT_ICON_IDS := {"attack": "intent_attack", "heal": "intent_heal", "wait": "intent_charge", "guard": "intent_guard"}
+const INTENT_ICON_IDS := {"attack": "intent_attack", "heal": "intent_heal", "wait": "intent_charge", "guard": "intent_guard",
+	"wind_up": "intent_wind_up"}
 
 signal clicked(unit_id: String, button_index: MouseButton)
 signal hovered(unit_id: String, inside: bool)
@@ -89,6 +90,14 @@ var intent_chip: IconStat
 var intent_row: HBoxContainer
 ## The enemy's intent in words, for the detail card.
 var intent_text := ""
+## Times the intent chip animated a change (old value out, new one in); for
+## tests.
+var intent_flips := 0
+## The intent chip's icon and number as last shown, "" before the first.
+var _chip_key := ""
+## The fight's tuning, for the status numbers (Exposed's bonus, the Stagger
+## bonus). Unset: the shipped tuning.
+var combat_tuning: CombatTuning
 
 ## The name's font size before fitting, read once it is in the tree.
 var _name_size := -1
@@ -287,7 +296,38 @@ func show_intent_chip(kind: String, amount: String) -> void:
 		intent_chip.icon_rect.texture = UiIcons.texture(icon_id)
 	intent_chip.value_label.add_theme_color_override("font_color", FeelData.color("changed") if intent_changed else UiIcons.color(icon_id))
 	intent_chip.set_tip_text(intent_text if not intent_text.is_empty() else UiIcons.text(icon_id))
+	var old_text := intent_chip.value_label.text if intent_chip.value_label != null else ""
 	intent_chip.set_value(amount if not amount.is_empty() else null)
+	var key := "%s|%s" % [icon_id, amount]
+	if not _chip_key.is_empty() and key != _chip_key:
+		_flip_intent_chip(old_text)
+	_chip_key = key
+
+
+## An intent that changes is seen changing, not silently swapped: the old
+## number lifts off and fades, struck in the "changed" color, and the new
+## chip pops in.
+func _flip_intent_chip(old_text: String) -> void:
+	intent_flips += 1
+	if not is_inside_tree() or GameSettings.shared().skips_animations():
+		return
+	intent_chip.pivot_offset = intent_chip.size / 2.0
+	intent_chip.scale = Vector2.ONE * float(BattleArt.number("intent_flip_scale", 1.4))
+	FeelTween.to(intent_chip, "scale", Vector2.ONE, "ui")
+	if old_text.is_empty():
+		return
+	var ghost := Label.new()
+	ghost.name = "IntentGhost"
+	ghost.text = old_text
+	ghost.top_level = true
+	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ghost.add_theme_color_override("font_color", FeelData.color("changed"))
+	add_child(ghost)
+	ghost.global_position = intent_chip.value_label.global_position
+	var lift := float(BattleArt.number("intent_flip_lift_px", 14))
+	FeelTween.to(ghost, "global_position", ghost.global_position - Vector2(0, lift), "ui_slow")
+	var fade := FeelTween.to(ghost, "modulate:a", 0.0, "ui_slow")
+	fade.tween_callback(ghost.queue_free)
 
 
 ## Holds what the previewed choice would do to this unit in words ("" for
@@ -352,10 +392,9 @@ func _update_statuses() -> void:
 	else:
 		if _unit.guard_percent > 0:
 			s["guard"] = "GUARD %d%%" % _unit.guard_percent
-		if _unit.brace_absorb > 0:
-			s["guard"] = ("%s BRACE %d" % [s["guard"], _unit.brace_absorb]) if s.has("guard") \
-				else "BRACE %d" % _unit.brace_absorb
-		if _unit.is_waiting():
+		s.merge(rework_statuses(_unit, _tuning()))
+		# A wind-up's wait is the WIND-UP flag; no Charging beside it.
+		if _unit.is_waiting() and _unit.committed == null:
 			if _unit.wait_length > 0:
 				s["waiting"] = "WAIT %d" % (_unit.wait_length - _unit.wait_ticks)
 			else:
@@ -368,6 +407,38 @@ func _update_statuses() -> void:
 		if intent_changed or intent_would_change:
 			s["intent_changed"] = "CHANGED" if intent_changed else "WOULD CHANGE"
 	status_row.show_statuses(s)
+
+
+## The combat rework's statuses on `unit` as StatusRow words: Brace, Exposed
+## (and any other status the fight's StatusTable defines), plating pips,
+## Stagger and a committed wind-up. Read from the unit, so a FightCopy's unit
+## gives what a choice would leave.
+static func rework_statuses(unit: Combatant, tuning: CombatTuning) -> Dictionary:
+	var s := {}
+	if unit.brace_absorb > 0:
+		s["brace"] = "BRACE %d" % unit.brace_absorb
+	for inst in unit.statuses:
+		var def := tuning.statuses.get_status(inst.status_id) if tuning.statuses != null else null
+		var word := (def.display_name if def != null else inst.status_id).to_upper()
+		if def != null and def.effect == StatusDef.EFFECT_DAMAGE_TAKEN_PERCENT:
+			word += " +%d%%" % (def.amount * inst.stacks)
+		elif inst.stacks > 1:
+			word += " x%d" % inst.stacks
+		s[inst.status_id] = word
+	if unit.max_plating > 0 and unit.is_alive():
+		s["plating"] = "PLATING %d/%d" % [unit.plating, unit.max_plating]
+	if unit.staggered:
+		s["staggered"] = "STAGGERED +%d%%" % (tuning.stagger.damage_bonus_percent if tuning.stagger != null else 0)
+	if unit.committed != null:
+		var hit := unit.skill(unit.committed.skill_id())
+		s["wind_up"] = "WIND-UP %s" % (hit.display_name if hit != null else unit.committed.skill_id())
+	return s
+
+
+func _tuning() -> CombatTuning:
+	if combat_tuning == null:
+		combat_tuning = CombatTuning.load_default()
+	return combat_tuning
 
 
 ## True when `unit` cannot afford its cheapest skill that costs energy.

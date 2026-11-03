@@ -374,7 +374,10 @@ func refresh() -> void:
 	_refresh_preview_box(action)
 	var order := BattleReadout.order_with_choice(upcoming, shown_preview)
 	var order_changes := not order.is_empty() and not BattleReadout.same_order(order, upcoming)
-	timeline_bar.refresh(order if order_changes else upcoming, order_changes)
+	var marks := TimelineMarks.of(fight, upcoming, telegraph.tracker.current)
+	if order_changes and shown_preview.fight_after != null:
+		marks = TimelineMarks.of(shown_preview.fight_after, order, shown_preview.intents_after)
+	timeline_bar.refresh(order if order_changes else upcoming, order_changes, marks)
 	timeline_bar.set_highlight(hovered_id if fight.combatant(hovered_id) != null else "")
 	_refresh_commands()
 	_refresh_boss_bar()
@@ -417,7 +420,10 @@ func _refresh_intent_chips(arrow_dicts: Array[Dictionary]) -> void:
 		if not panel.is_enemy:
 			continue
 		var badge: ArrowBadge = badges.get(id)
-		panel.show_intent_chip(panel.intent_kind if badge == null else badge.kind, "" if badge == null else badge.text())
+		var kind := panel.intent_kind if badge == null else badge.kind
+		if panel.intent_kind == "wind_up" and kind in [ArrowBadge.ATTACK, ArrowBadge.WAIT]:
+			kind = "wind_up"
+		panel.show_intent_chip(kind, "" if badge == null else badge.text())
 
 
 ## Every arrow to draw, with its badge: the enemy intents (as they would
@@ -470,11 +476,15 @@ func _energy_preview_for(c: Combatant) -> int:
 	return -1
 
 
-## "attack", "heal" or "wait" for an intent (a guard skill reads "guard"), or "".
+## "attack", "heal" or "wait" for an intent (a guard skill reads "guard", a
+## wind-up or its committed hit "wind_up"), or "".
 func _intent_kind(intent: UnitIntent) -> String:
 	if intent == null:
 		return ""
 	var unit := fight.combatant(intent.unit_id)
+	# A wind-up, and the hit it committed to, read as one telegraphed blow.
+	if intent.wind_up or (unit != null and unit.committed != null):
+		return "wind_up"
 	var skill := unit.skill(intent.skill_id()) if unit != null else null
 	if skill != null and (skill.is_guard() or skill.is_absorb()):
 		return "guard"
@@ -738,6 +748,7 @@ func _build_field(root: VBoxContainer) -> void:
 	var used_palettes := []
 	for c in fight.combatants:
 		var panel := UnitPanel.new()
+		panel.combat_tuning = fight.tuning
 		(enemies if c.side == Combatant.Side.ENEMY else bots).add_child(panel)
 		var bot: Bot = bot_source.call(c.id) if bot_source.is_valid() and c.side == Combatant.Side.PLAYER else null
 		var look := BattleArt.look_for(c, fight.request.defense_level, tier_rule, bot)
@@ -875,7 +886,8 @@ func _build_overlays(root: VBoxContainer) -> void:
 ## What a skill card shows for `skill` in the hands of a unit with `attack`:
 ## {name, rank, effect}. The rank is "+2" for a named rank ("Mega Strike +2"
 ## shows "Mega Strike" and "+2"), "Lv2" for a flat level above 1, else "".
-## The effect is short words with numbers: "Deal 9. Pierce 20%."
+## The effect is short words with numbers: "Deal 9. Pierce 20%.", "Deal 4 ×2.
+## Apply Exposed.", "Deal 13. +50% vs Exposed. Recovery 30%."
 static func skill_card_face(skill: CombatSkill, attack: int) -> Dictionary:
 	var title := skill.display_name
 	var rank := ""
@@ -890,11 +902,18 @@ static func skill_card_face(skill: CombatSkill, attack: int) -> Dictionary:
 	var amount := attack * skill.power_percent / 100
 	var parts: Array[String] = []
 	if skill.is_damage():
-		parts.append("Deal %d%s." % [amount, " to all" if skill.hits_all() else ""])
+		var times := " ×%d" % skill.hit_count if skill.hit_count > 1 else ""
+		parts.append("Deal %d%s%s." % [amount, times, " to all" if skill.hits_all() else ""])
 		if skill.pierce_percent > 0:
 			parts.append("Pierce %d%%." % skill.pierce_percent)
 		if skill.weakest_bonus_percent > 0:
 			parts.append("+%d%% to Weakest." % skill.weakest_bonus_percent)
+		if not skill.applies_status.is_empty():
+			parts.append("Apply %s." % skill.applies_status.capitalize())
+		if not skill.payoff_condition.is_empty() and skill.payoff_bonus_percent > 0:
+			parts.append("+%d%% vs %s." % [skill.payoff_bonus_percent, skill.payoff_condition.capitalize()])
+	if skill.recovery > 0:
+		parts.append("Recovery %d%%." % skill.recovery)
 	elif skill.is_heal():
 		parts.append("Heal %d%s." % [amount, "" if skill.target != CombatSkill.TARGET_SELF else " self"])
 		if skill.heal_guard_percent > 0:
