@@ -12,6 +12,10 @@ extends CaptureScript
 ##   rework_brace.png     a bot's Brace value, its end marked on the timeline
 ##   rework_wind_up.png   a committed wind-up: the card's flag, the intent chip, where it lands
 ##   rework_stagger.png   a Staggered enemy and its lost turn on the timeline
+##   rework_focus_landing.png  Heavy Strike aimed: damage, cost, where the bot lands (AFTER bar), and
+##                             its payoff: "N now. M if X puts Exposed on first"
+##   rework_combo_setup.png    Shred aimed: "Then X's hit: N, M with Exposed", the plating it strips
+##   rework_wait.png           pointing at WAIT: free, the Energy it banks, where the bot lands
 
 const BATTLE_SCENE := preload("res://ui/fight/battle_screen.tscn")
 const ENEMIES: Array[String] = ["charger_medium", "plated_medium", "scaler_medium"]
@@ -39,6 +43,7 @@ func _screen(enemies: Array[String] = ENEMIES) -> BattleScreen:
 func _run() -> void:
 	var screen := _screen()
 	await frames(20)
+	await _focus_shots(screen)
 	var policy := CarefulFightPolicy.new()
 	var rng := RandomNumberGenerator.new()
 	for n in MAX_DECISIONS:
@@ -90,6 +95,38 @@ func _wind_up_and_brace() -> void:
 				action = FightAction.use("brace", actor.id)
 		_send(screen, action)
 		screen.enemy_turn_delay = 0.2
+
+
+## The focused card's outlook on the first turn of a bot holding the whole
+## kit: Heavy Strike and Shred aimed at the Plated, then WAIT pointed at.
+func _focus_shots(screen: BattleScreen) -> void:
+	await until_player_turn(screen)
+	# Still pictures: the turn order's chips are placed, not mid-slide.
+	var speed := GameSettings.shared().animation_speed
+	GameSettings.shared().animation_speed = "skip"
+	screen.enemy_turn_delay = 1000.0
+	await frames(10)
+	var plated: Combatant = null
+	for c in screen.fight.living(Combatant.Side.ENEMY):
+		if c.archetype != null and c.archetype.id == "plated":
+			plated = c
+	if plated == null:
+		return
+	for shot: Array in [["heavy_strike", "rework_focus_landing"], ["shred", "rework_combo_setup"]]:
+		if not screen.handler.skill_problem(shot[0]).is_empty():
+			continue
+		screen.on_skill_pressed(shot[0])
+		screen.preview_target(plated.id)
+		await frames(40)
+		await save(shot[1])
+		screen.preview_target("")
+		screen.on_cancel_pressed()
+	screen.on_wait_hovered(true)
+	await frames(40)
+	await save("rework_wait")
+	screen.on_wait_hovered(false)
+	await frames(4)
+	GameSettings.shared().animation_speed = speed
 
 
 ## Takes each shot the first time its mechanic is on the board.

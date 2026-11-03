@@ -246,3 +246,109 @@ static func _ids(order: Array[TimelineEntry]) -> Array[String]:
 	for e in order:
 		out.append("%s%s" % [e.combatant_id, " (wait)" if e.ends_wait else ""])
 	return out
+
+
+## The battle screen's choice outlook (S7, ui/fight/ChoiceReadout) against
+## what the fight resolves: where a choice lands the bot on the timeline (its
+## slot and tick), the Energy it has when that turn comes (what a Wait
+## banks), a setup's "then X's hit: N with Exposed", and a payoff's damage
+## now. The outlook assumes every later decision follows the units' intents
+## (IntentFightPolicy), so here everyone does except the bot being checked,
+## whose choices are drawn at random from every legal action.
+func test_landing_and_combo_previews_equal_resolutions() -> void:
+	var counts := {"landing": 0, "wait": 0, "setup": 0, "payoff": 0}
+	for seed_value in range(1, 21):
+		_play_outlook(_shred_fight(), seed_value * 7, counts)
+	for seed_value in range(1, 9):
+		_play_outlook(A.charger_fight(), seed_value * 13, counts)
+		_play_outlook(A.plated_fight(), seed_value * 17, counts)
+		_play_outlook(A.scaler_fight(), seed_value * 19, counts)
+	assert_int(counts.landing).is_greater(200)
+	assert_int(counts.wait).is_greater(10)
+	assert_int(counts.setup).is_greater(10)
+	assert_int(counts.payoff).is_greater(10)
+
+
+func _play_outlook(fight: Fight, rng_seed: int, counts: Dictionary) -> void:
+	const COUNT := 7
+	var planner := IntentPlanner.new()
+	var preview := FightPreview.new(planner)
+	var policy := IntentFightPolicy.new(planner)
+	var fallback := SimpleFightPolicy.new()
+	var policy_rng := HeadlessFightRunner.policy_rng(fight.fight_seed)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = rng_seed
+	# The check in flight: the bot that chose, what its outlook said, and how
+	# many decisions have come since.
+	var pending := {}
+	var since := 0
+	var decisions := 0
+	var actor := fight.advance()
+	while actor != null and decisions < MAX_DECISIONS:
+		decisions += 1
+		var context := "seed %d action %d: %s" % [fight.fight_seed, fight.action_count + 1, actor.id]
+		if not pending.is_empty() and actor.id == pending.actor_id:
+			# Its next turn: where and with what Energy the outlook said.
+			var land: Dictionary = pending.land
+			if int(land.slot) >= 0:
+				assert_int(since).override_failure_message(context).is_equal(int(land.slot))
+				assert_int(fight.timeline.current_tick - int(pending.tick)).override_failure_message(context).is_equal(int(land.ticks))
+				assert_int(actor.energy()).override_failure_message(context).is_equal(int(land.energy_at_turn))
+				counts.landing += 1
+				if pending.wait:
+					counts.wait += 1
+			pending = {}
+		if actor.side == Combatant.Side.PLAYER and pending.is_empty():
+			var options := _legal_actions(fight)
+			var action: FightAction = options[rng.randi_range(0, options.size() - 1)]
+			var land := ChoiceReadout.landing(fight, action, preview, COUNT)
+			var target := fight.combatant(action.target_id)
+			var skill := actor.skill(action.skill_id)
+			var payoff := ChoiceReadout.payoff_combo(fight, actor, skill, target) \
+				if action.kind == FightAction.Kind.SKILL and skill.is_damage() and target != null and target.side != actor.side else {}
+			var setup := ChoiceReadout.setup_combo(fight, action, land.after, land.order, preview)
+			var hp_before := target.hp if target != null else 0
+			pending = {"actor_id": actor.id, "land": land, "tick": fight.timeline.current_tick,
+				"wait": action.kind == FightAction.Kind.WAIT}
+			since = 0
+			assert_str(fight.submit(action)).override_failure_message(context).is_empty()
+			if not payoff.is_empty():
+				# The payoff's damage now, before any hp cap.
+				assert_int(hp_before - target.hp).override_failure_message(context).is_equal(mini(int(payoff.now), hp_before))
+				counts.payoff += 1
+			if not setup.is_empty() and not setup.wears_off:
+				pending = {}
+				actor = _cash_in(fight, setup, action.target_id, policy, fallback, policy_rng, context, counts)
+				continue
+		else:
+			HeadlessFightRunner.play_turn(fight, actor, policy, fallback, policy_rng)
+			since += 1
+		actor = fight.advance()
+
+
+## Plays on by the intents to the ally the setup named; if it is still the
+## first to meet the target and can afford the hit, plays that hit and checks
+## its damage against the setup's "with Exposed" number. Returns the next
+## unit to act, not yet played.
+func _cash_in(fight: Fight, setup: Dictionary, target_id: String, policy: FightPolicy, fallback: FightPolicy,
+		policy_rng: RandomNumberGenerator, context: String, counts: Dictionary) -> Combatant:
+	var actor := fight.advance()
+	var guard := 0
+	while actor != null and actor.id != setup.unit_id and actor.id != target_id and guard < 40:
+		HeadlessFightRunner.play_turn(fight, actor, policy, fallback, policy_rng)
+		actor = fight.advance()
+		guard += 1
+	if actor == null or actor.id != setup.unit_id:
+		return actor
+	var target := fight.combatant(target_id)
+	var hit := FightAction.use(setup.skill_id, target_id)
+	if target.has_status(setup.status_id) and fight.check_action(hit).is_empty():
+		var hp_before := target.hp
+		assert_str(fight.submit(hit)).is_empty()
+		assert_int(hp_before - target.hp).override_failure_message("%s, setup %s: dealt %d of %d hp, now %s staggered %s" % [
+				context, setup, hp_before - target.hp, hp_before, FightPreview.status_texts(target), target.staggered]) \
+			.is_equal(mini(int(setup.combo), hp_before))
+		counts.setup += 1
+	else:
+		HeadlessFightRunner.play_turn(fight, actor, policy, fallback, policy_rng)
+	return fight.advance()

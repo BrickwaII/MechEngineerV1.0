@@ -92,6 +92,8 @@ var timeline_bar: TimelineBar
 var unit_panels: Dictionary[String, UnitPanel] = {}
 var skill_buttons: Dictionary[String, SkillCard] = {}
 var wait_button: ActionButton
+## "Free", and what a Wait banks ("Free +4"), under the Wait button.
+var wait_free: IconStat
 ## Exact wait length; shown only when the d-wait-length variant is "exact".
 var wait_ticks_box: SpinBox
 var cancel_button: ActionButton
@@ -110,6 +112,14 @@ var hovered_id := ""
 var wait_hovered := false
 ## The preview shown now, or null. Read-only; for tests.
 var shown_preview: ChoicePreview
+## Where the previewed choice lands the bot (ChoiceReadout.landing()), or {}.
+var landing := {}
+## The dock tile under the pointer while no skill is aimed ("" for none): its
+## card is shown as a peek, with its cost and landing slot.
+var peek_skill_id := ""
+## The Wait projection the dock's tooltip shows, kept for one decision.
+var _bank_key := ""
+var _bank_landing := {}
 var header_label: Label
 ## The fight's defense level as an icon and number in the header.
 var defense_stat: IconStat
@@ -129,6 +139,9 @@ var _header: HBoxContainer
 var control_strip: ControlStrip
 ## The chosen skill lifted into the middle of the screen.
 var focus_card: FocusCard
+## Where the choice looked at lands the bot, and its combos, in the field's
+## middle (OutlookPanel).
+var outlook: OutlookPanel
 ## The log and preview drawer on the right edge.
 var drawer: PanelContainer
 ## The acting bot's name and Energy in the action dock.
@@ -293,18 +306,45 @@ func open_unit_detail(unit_id: String) -> DetailModal:
 
 
 func on_skill_pressed(skill_id: String) -> void:
+	peek_skill_id = ""
 	send(FightCommand.select_skill(skill_id))
+
+
+## Pointing at a dock tile peeks at its card: damage before Defense, the cost
+## and where the bot would land, before it is picked.
+func on_tile_hovered(skill_id: String, inside: bool) -> void:
+	if inside:
+		peek_skill_id = skill_id
+	elif peek_skill_id == skill_id:
+		peek_skill_id = ""
+	refresh()
 
 
 func on_wait_pressed() -> void:
 	wait_hovered = false
-	send(FightCommand.wait("", exact_wait_ticks()))
+	send(FightCommand.wait(banked_skill(), exact_wait_ticks()))
 
 
 ## Pointing at WAIT previews the wait: the order and intents after it.
 func on_wait_hovered(inside: bool) -> void:
 	wait_hovered = inside
 	refresh()
+
+
+## The skill a Wait banks toward: the handler's (the aimed skill, else the
+## cheapest the bot cannot afford yet), else its costliest skill it can ever
+## afford, so Wait is always there (it is free and always allowed). "" when
+## it is not the squad's turn.
+func banked_skill() -> String:
+	var own := handler.default_wait_skill()
+	if not own.is_empty() or not handler.is_player_turn():
+		return own
+	var unit := handler.actor()
+	var best: CombatSkill = null
+	for skill in unit.skills():
+		if skill.energy_cost_milli() <= unit.max_energy_milli and (best == null or skill.energy_cost > best.energy_cost):
+			best = skill
+	return best.id if best != null else ""
 
 
 ## The exact wait the ticks box asks for, or 0 to wait until affordable.
@@ -330,11 +370,28 @@ func on_unit_hovered(unit_id: String, inside: bool) -> void:
 		preview_target("")
 
 
+## The action a peeked tile is projected with: its skill on the unit under
+## the pointer when that is a legal target, else the first legal one (the
+## landing slot rarely depends on the target). Null when none is legal.
+func peeked_action() -> FightAction:
+	if peek_skill_id.is_empty() or not handler.is_player_turn() or handler.is_choosing_target():
+		return null
+	var actor := handler.actor()
+	if actor == null or handler.selected_bot_id != actor.id or not actor.has_skill(peek_skill_id):
+		return null
+	if not hovered_id.is_empty() and fight.check_action(FightAction.use(peek_skill_id, hovered_id)).is_empty():
+		return FightAction.use(peek_skill_id, hovered_id)
+	for c in fight.combatants:
+		if c.is_alive() and fight.check_action(FightAction.use(peek_skill_id, c.id)).is_empty():
+			return FightAction.use(peek_skill_id, c.id)
+	return null
+
+
 ## The action being previewed: the selected skill on the unit under the
 ## pointer. Null when there is none or it is not allowed.
 func previewed_action() -> FightAction:
 	if wait_hovered and handler.is_player_turn() and handler.selected_bot_id == handler.actor().id:
-		var wait_skill := handler.default_wait_skill()
+		var wait_skill := banked_skill()
 		var ticks := exact_wait_ticks()
 		if ticks > 0:
 			return FightAction.wait_exact(wait_skill if not wait_skill.is_empty() else handler.actor().skill_ids[0], ticks)
@@ -372,12 +429,29 @@ func refresh() -> void:
 	arrows.set_arrows(arrow_dicts, _arrow_focus())
 	_refresh_intent_chips(arrow_dicts)
 	_refresh_preview_box(action)
-	var order := BattleReadout.order_with_choice(upcoming, shown_preview)
-	var order_changes := not order.is_empty() and not BattleReadout.same_order(order, upcoming)
+	# A previewed (or peeked) choice shows the order it would leave, played
+	# forward with the real rules (ChoiceReadout.landing(): recovery, delays
+	# and wind-ups count), with the bot's landing slot lit.
+	var projected := action if action != null else peeked_action()
+	landing = ChoiceReadout.landing(fight, projected, telegraph.preview, tuning.timeline_length - 1) \
+		if projected != null and not fight.is_over() else {}
+	var order := ChoiceReadout.after_bar(upcoming, landing)
 	var marks := TimelineMarks.of(fight, upcoming, telegraph.tracker.current)
-	if order_changes and shown_preview.fight_after != null:
-		marks = TimelineMarks.of(shown_preview.fight_after, order, shown_preview.intents_after)
-	timeline_bar.refresh(order if order_changes else upcoming, order_changes, marks)
+	if not order.is_empty():
+		var after: Fight = landing.after
+		var intents_after: Dictionary = shown_preview.intents_after if shown_preview != null else {}
+		marks = TimelineMarks.of(after, order, intents_after) if after != null else {}
+		var lands := int(landing.slot) + 1 if int(landing.slot) >= 0 else -1
+		if lands > 0:
+			var on_slot: Array = marks.get(lands, []).duplicate()
+			on_slot.push_front({"icon": "spd", "title": "Lands here",
+				"line": "This choice puts %s's next turn here." % handler.actor().display_name})
+			marks[lands] = on_slot
+		timeline_bar.refresh(order, true, marks)
+		timeline_bar.set_landing(lands)
+	else:
+		timeline_bar.refresh(upcoming, false, marks)
+		timeline_bar.set_landing(-1)
 	timeline_bar.set_highlight(hovered_id if fight.combatant(hovered_id) != null else "")
 	_refresh_commands()
 	_refresh_boss_bar()
@@ -553,7 +627,7 @@ func _refresh_commands() -> void:
 		button.disabled = not has_it or not handler.skill_problem(skill_id).is_empty()
 		button.button_pressed = skill_id == handler.selected_skill_id
 		button.set_problem(handler.skill_problem(skill_id) if has_it else "")
-	var wait_skill := handler.default_wait_skill() if can_act else ""
+	var wait_skill := banked_skill() if can_act else ""
 	var ticks := exact_wait_ticks()
 	wait_button.disabled = wait_skill.is_empty() and (ticks == 0 or not can_act)
 	# The button stays short ("Wait"); what it waits for is in its tooltip.
@@ -562,11 +636,39 @@ func _refresh_commands() -> void:
 		UiTooltip.attach(wait_button, wait_button.label.text, "Hold this many ticks, filling Energy.", "", "action_wait")
 	else:
 		wait_button.label.text = "Wait"
-		var why := "End the turn and let time pass, filling Energy." if wait_skill.is_empty() \
-			else "Wait for %s: hold until it is affordable, filling Energy." % handler.actor().skill(wait_skill).display_name
-		UiTooltip.attach(wait_button, "Wait", why, "", "action_wait")
+		var why := "End the turn and let time pass, filling Energy."
+		if not wait_skill.is_empty():
+			var toward := handler.actor().skill(wait_skill)
+			why = ("Wait for %s: hold until it is affordable, filling Energy." if not handler.actor().can_afford(toward)
+				else "Bank Energy toward %s, then act.") % toward.display_name
+		var bank := _bank_text(can_act)
+		UiTooltip.attach(wait_button, "Wait", "Free, always. " + why, bank, "action_wait")
+		var gain := int(_bank_landing.get("energy_at_turn", -1)) - handler.actor().energy() if not bank.is_empty() else -1
+		wait_free.set_value("Free +%d" % gain if gain > 0 else "Free")
+		wait_free.set_tip_text("Wait costs no Energy and is always allowed. " + bank)
 	wait_for_skill = "" if wait_skill.is_empty() else handler.actor().skill(wait_skill).display_name
 	cancel_button.disabled = not can_act or not handler.is_choosing_target()
+
+
+## What a Wait banks for the acting bot: "Banks +4 Energy by its next turn
+## (2x recharge)." "" when it cannot wait now.
+func _bank_text(can_act: bool) -> String:
+	if not can_act:
+		return ""
+	var actor := handler.actor()
+	var wait_skill := banked_skill()
+	if wait_skill.is_empty():
+		return ""
+	var key := "%d|%s|%s" % [fight.action_count, actor.id, wait_skill]
+	if key != _bank_key:
+		_bank_key = key
+		_bank_landing = ChoiceReadout.landing(fight, FightAction.wait_for(wait_skill), telegraph.preview, tuning.timeline_length - 1)
+	var land := _bank_landing
+	if int(land.energy_at_turn) < 0:
+		return ""
+	var rate := WaitRules.wait_recharge_milli(actor.recharge_milli, fight.tuning)
+	return "Banks +%d Energy by its next turn (recharge ×%s)." % [
+		int(land.energy_at_turn) - actor.energy(), _times(rate, actor.recharge_milli)]
 
 
 func _on_event_raised(event: FightEvent) -> void:
@@ -729,6 +831,8 @@ func _build_field(root: VBoxContainer) -> void:
 	middle.alignment = BoxContainer.ALIGNMENT_END
 	field.add_child(middle)
 	_middle = middle
+	outlook = OutlookPanel.new()
+	middle.add_child(outlook)
 	var enemy_col := _column(field, "ENEMIES")
 	_enemy_column = enemy_col
 	var enemy_count := fight.combatants.filter(func(c: Combatant) -> bool: return c.side == Combatant.Side.ENEMY).size()
@@ -805,6 +909,8 @@ func _build_command_bar(root: VBoxContainer) -> void:
 		buttons.add_child(button)
 		button.toggle_mode = true
 		button.pressed.connect(on_skill_pressed.bind(skill_id))
+		button.mouse_entered.connect(on_tile_hovered.bind(skill_id, true))
+		button.mouse_exited.connect(on_tile_hovered.bind(skill_id, false))
 		skill_buttons[skill_id] = button
 	var commands := UiStyle.column("xs")
 	commands.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -835,6 +941,12 @@ func _build_command_bar(root: VBoxContainer) -> void:
 	wait_button.pressed.connect(on_wait_pressed)
 	wait_button.mouse_entered.connect(on_wait_hovered.bind(true))
 	wait_button.mouse_exited.connect(on_wait_hovered.bind(false))
+	# Under the button, so it never widens the dock: Wait costs nothing, and
+	# what it banks by the bot's next turn.
+	wait_free = IconStat.make("energy", "Free")
+	wait_free.name = "WaitFree"
+	wait_free.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	moves.add_child(wait_free)
 	wait_ticks_box = SpinBox.new()
 	wait_ticks_box.name = "WaitTicksBox"
 	wait_ticks_box.min_value = 0
@@ -1229,12 +1341,14 @@ func _refresh_dock() -> void:
 
 
 ## While a skill is aimed: the focused card with its math for the target under
-## the pointer, and on every valid target what the skill would do to it.
+## the pointer, and on every valid target what the skill would do to it. While
+## a dock tile is pointed at (nothing aimed), its card as a peek; while WAIT
+## is, Wait's card: free, the Energy it banks and where the bot lands.
 func _refresh_focus() -> void:
 	var aiming := handler.is_player_turn() and handler.is_choosing_target() and not fight.is_over()
 	var targets := {}
+	var actor := handler.actor()
 	if aiming:
-		var actor := handler.actor()
 		var skill := actor.skill(handler.selected_skill_id)
 		for c in fight.combatants:
 			if c.is_alive() and handler.target_problem(c.id).is_empty():
@@ -1244,17 +1358,74 @@ func _refresh_focus() -> void:
 		if targets.has(hovered_id):
 			math = _focus_math(actor, skill, hovered_id, targets[hovered_id])
 		elif skill.is_damage():
-			math = [UiFormula.new().term("ATK", actor.stats.attack).op("×").term("Power", "%d%%" % skill.power_percent)
-				.equals(actor.stats.attack * skill.power_percent / 100, "before Defense"),
-				"Point at a target for its exact damage."]
+			math = [_before_defense(actor, skill), "Point at a target for its exact damage."]
 		var hint := "Click %s. Esc cancels." % ("an enemy" if skill.targets_opponents() else "a bot")
 		focus_card.show_skill(skill.id, face, skill.energy_cost, math, hint)
+		var action := previewed_action()
+		outlook.show_outlook(_landing_line(skill),
+			ChoiceReadout.combo_lines(fight, action, landing.get("after"), landing.get("order", []), telegraph.preview) if action != null else [])
+	elif wait_hovered and previewed_action() != null and not fight.is_over():
+		_show_wait_card(actor)
+	elif peeked_action() != null and not fight.is_over():
+		var skill := actor.skill(peek_skill_id)
+		var math: Array = [_before_defense(actor, skill)] if skill.is_damage() else []
+		focus_card.show_skill(skill.id, skill_card_face(skill, actor.stats.attack), skill.energy_cost, math,
+			"Click to aim it, or press %d." % skill_buttons[skill.id].hotkey)
+		outlook.show_outlook(_landing_line(skill), [])
 	else:
 		focus_card.hide_card()
+		outlook.hide_outlook()
 	prompt_label.visible = not focus_card.visible
 	for id: String in unit_panels:
 		var o: Variant = targets.get(id)
 		unit_panels[id].show_target_outcome(o if o != null else {})
+
+
+## "ATK 9 × Power 150% = 13 before Defense".
+static func _before_defense(actor: Combatant, skill: CombatSkill) -> UiFormula:
+	@warning_ignore("integer_division")
+	return UiFormula.new().term("ATK", actor.stats.attack).op("×").term("Power", "%d%%" % skill.power_percent) \
+		.equals(actor.stats.attack * skill.power_percent / 100, "before Defense")
+
+
+## Where the previewed choice lands the bot: "Next turn: 4th, in 120 ticks.
+## Recovery 30%." "" without a projection.
+func _landing_line(skill: CombatSkill) -> String:
+	var where := ChoiceReadout.landing_text(landing)
+	if where.is_empty():
+		return ""
+	var line := "Next turn: %s." % where
+	if skill != null and skill.recovery > 0 and TimelineOps.recovery_gauge(skill, fight.tuning) > 0:
+		line += " Recovery %d%%." % skill.recovery
+	return line
+
+
+## Wait's card: free, what it banks, where the bot lands.
+func _show_wait_card(actor: Combatant) -> void:
+	var for_skill := banked_skill()
+	var name := actor.skill(for_skill).display_name if not for_skill.is_empty() else ""
+	var gain := int(landing.get("energy_at_turn", -1)) - actor.energy()
+	var toward := actor.skill(for_skill) if not for_skill.is_empty() else null
+	var effect := "Free. Bank Energy%s." % ("" if toward == null
+		else (" until %s is affordable" if not actor.can_afford(toward) else ", then act") % name)
+	var bonus := WaitRules.damage_bonus_percent(true, fight.tuning)
+	if bonus > 0:
+		effect += " Its next hit +%d%%." % bonus
+	var math: Array = []
+	if int(landing.get("energy_at_turn", -1)) >= 0:
+		math.append(UiFormula.new().term("Energy", actor.energy()).op("+").term("Banked", gain)
+			.equals(int(landing.energy_at_turn), "at its next turn"))
+	var recharge := WaitRules.wait_recharge_milli(actor.recharge_milli, fight.tuning)
+	if recharge > actor.recharge_milli:
+		math.append("Recharge ×%s while waiting." % _times(recharge, actor.recharge_milli))
+	focus_card.show_skill("wait", {"name": "Wait", "rank": "", "effect": effect}, "Free", math, "Click WAIT to bank.")
+	outlook.show_outlook(_landing_line(null), [])
+
+
+## "2" for 2000 over 1000, "1.5" for 1500.
+static func _times(a: int, b: int) -> String:
+	var r := float(a) / maxf(1.0, float(b))
+	return str(int(r)) if is_equal_approx(r, roundf(r)) else "%.1f" % r
 
 
 ## What `action` would do to `unit_id`: {"text": "-13" | "+8" | "Guard 40%",

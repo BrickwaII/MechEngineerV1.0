@@ -31,6 +31,9 @@ var settings: GameSettings
 var highlight_id := ""
 ## True while the bar shows the order a previewed choice would leave.
 var showing_preview := false
+## The slot where the previewed choice lands the acting bot (lit in the
+## preview color, "Lands here" in its tooltip), or -1.
+var landing_slot := -1
 ## When a unit acts and why: unit id -> BattleMath.turn()'s dictionary, for
 ## each chip's tooltip. Unset: the tooltip names the tick only.
 var turn_info: Callable
@@ -65,6 +68,14 @@ func lit_slots() -> Array[int]:
 		if shown_ids[i] == highlight_id:
 			out.append(i)
 	return out
+
+
+## Lights slot `i` as where the previewed choice lands the bot; -1 clears.
+func set_landing(i: int) -> void:
+	if i == landing_slot:
+		return
+	landing_slot = i
+	_restyle()
 
 
 ## Lights the upcoming slots of `unit_id` and dims the others; "" clears.
@@ -159,8 +170,8 @@ func _restyle_chip(chip: PanelContainer) -> void:
 		return
 	var entry := _entries[i]
 	var lit := not highlight_id.is_empty() and entry.combatant_id == highlight_id
-	_style_chip(chip, entry, i == 0, lit)
-	var dim := not highlight_id.is_empty() and not lit
+	_style_chip(chip, entry, i == 0, lit, i == landing_slot)
+	var dim := not highlight_id.is_empty() and not lit and i != landing_slot
 	chip.modulate.a = ReadoutStyle.number("timeline.dim_alpha", 0.35) if dim else 1.0
 
 
@@ -210,6 +221,8 @@ func _set_marks(chip: PanelContainer, marks: Array) -> void:
 		row.remove_child(box)
 		box.queue_free()
 	if ids.is_empty():
+		row.update_minimum_size()
+		chip.update_minimum_size()
 		return
 	var col := VBoxContainer.new()
 	col.name = "Marks"
@@ -221,6 +234,10 @@ func _set_marks(chip: PanelContainer, marks: Array) -> void:
 		var r := UiIcons.rect(id)
 		r.custom_minimum_size = Vector2(MARK, MARK)
 		col.add_child(r)
+	# The chip is placed by its width at once, before the next layout pass.
+	col.update_minimum_size()
+	row.update_minimum_size()
+	chip.update_minimum_size()
 
 
 ## A chip's name label.
@@ -228,7 +245,7 @@ static func _name_of(chip: PanelContainer) -> Label:
 	return chip.get_child(0).get_child(0)
 
 
-func _style_chip(chip: PanelContainer, entry: TimelineEntry, is_now: bool, lit := false) -> void:
+func _style_chip(chip: PanelContainer, entry: TimelineEntry, is_now: bool, lit := false, lands := false) -> void:
 	var style := StyleBoxFlat.new()
 	var side_color := FeelData.color("enemy" if entry.side == Combatant.Side.ENEMY else "ally")
 	style.bg_color = side_color.darkened(0.6)
@@ -240,6 +257,9 @@ func _style_chip(chip: PanelContainer, entry: TimelineEntry, is_now: bool, lit :
 		style.border_color = ReadoutStyle.color("timeline.hover_color")
 		style.set_border_width_all(int(ReadoutStyle.number("timeline.hover_border_px", 3)))
 		style.bg_color = side_color.darkened(0.35)
+	if lands:
+		style.border_color = ReadoutStyle.color("timeline.preview_color")
+		style.set_border_width_all(int(ReadoutStyle.number("timeline.hover_border_px", 3)))
 	var pad := 2 if look_for.is_valid() else 8
 	style.content_margin_left = pad
 	style.content_margin_right = pad
