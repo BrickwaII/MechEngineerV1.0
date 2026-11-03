@@ -4,7 +4,7 @@
 	"_rework_fields_comment": "Combat rework fields, all optional: recovery (percent of a turn the user is pushed back after acting, 100 = one whole turn, default 0; S2, read by fight/timeline_ops.gd; off under the action-recovery switch's none option), hit_count (hits per use, each of power_percent; default 1), damage_type (default untyped \"\"; S13), tags (labels for the action tagger; S6), applies_status (a statuses.json id put on each target still up after the action's hits), payoff_condition (a statuses.json id the target must hold) with payoff_bonus_percent (extra damage in percent against it; fight/damage_pipeline.gd).",
 	"_shred_comment": "TODO(decision: shred-in-drafts): shred is in the catalog only. No bot skill (bot_skill_effects, data/bot_data/skills.json), draft, enemy or demo uses it until S9's sandbox, so runs and goldens do not change.",
 	"actions": {
-		"strike": {"name": "Strike", "energy_cost": 0, "power_percent": 100},
+		"strike": {"name": "Strike", "energy_cost": 1, "power_percent": 100},
 		"heavy_strike": {"name": "Heavy Strike", "energy_cost": 4, "power_percent": 150, "payoff_condition": "exposed", "payoff_bonus_percent": 50, "recovery": 30},
 		"overload": {"name": "Overload", "energy_cost": 9, "power_percent": 220, "recovery": 50},
 		"repair": {"name": "Repair", "energy_cost": 2, "power_percent": 100, "effect": "heal"},
