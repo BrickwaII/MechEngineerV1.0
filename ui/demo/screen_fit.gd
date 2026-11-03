@@ -28,6 +28,8 @@ const MAP_SCENARIOS: Array[String] = [
 const FIGHT_SCENARIOS: Array[String] = [
 	"act1_fight", "act1_boss", "act2_fight", "act2_boss", "act3_fight", "act3_boss",
 ]
+## Battle Mode's own screens (its battles are the battle screen above).
+const BATTLE_MODE: Array[String] = ["battle_mode_setup", "battle_mode_readout", "battle_mode_summary"]
 ## How far past an edge still counts as inside, for rounding.
 const SLACK := 0.5
 
@@ -42,6 +44,7 @@ static func screen_ids() -> Array[String]:
 			out.append("%s_%s" % [id, view])
 	out.append_array(["esc_menu", "end_panel", "act3_run_over",
 		"readout_summary", "readout_growth", "readout_details"])
+	out.append_array(BATTLE_MODE)
 	return out
 
 
@@ -112,6 +115,28 @@ static func open(id: String, host: Node) -> Node:
 			demo.readout.skip()
 			var tabs: UiTabs = demo.readout.find_children("*", "UiTabs", true, false)[0]
 			tabs.select(StringName(id.trim_prefix("readout_")))
+		"battle_mode_setup", "battle_mode_readout", "battle_mode_summary":
+			var bm := BattleModeFlow.new()
+			bm.csv_folder = "user://screen_fit_battle_mode"
+			host.add_child(bm)
+			node = bm
+			# Past the screen-transition wipe.
+			await _frames(tree, 40)
+			if id != "battle_mode_setup":
+				# A whole gauntlet played headless: the longest summary.
+				var squad := BattleModeRun.preset_squad(bm.tuning.squads[0].id, bm.tuning)
+				bm.run = BattleModeRun.create(squad, "gauntlet", 1, FightVariants.defaults(), bm.tuning)
+				bm.run.squad_label = bm.tuning.squads[0].id
+				var record := bm.run.play_fight(SimpleFightPolicy.new())
+				if id == "battle_mode_readout":
+					bm.show_readout(record)
+					await _frames(tree, 2)
+					bm.readout.skip()
+				else:
+					bm.run.play_to_end(SimpleFightPolicy.new())
+					bm.csv_result = OK
+					bm.show_summary()
+				await _frames(tree, 40)
 		"esc_menu", "end_panel":
 			var flow := _demo_flow("act1_fight")
 			host.add_child(flow)

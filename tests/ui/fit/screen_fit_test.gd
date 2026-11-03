@@ -57,6 +57,10 @@ func test_the_esc_menu_end_panels_and_readout_fit() -> void:
 	await _assert_fits(AFTER)
 
 
+func test_battle_mode_fits() -> void:
+	await _assert_fits(ScreenFit.BATTLE_MODE)
+
+
 func test_the_checker_catches_what_does_not_fit() -> void:
 	var host: Control = auto_free(Control.new())
 	host.size = Vector2(200, 100)

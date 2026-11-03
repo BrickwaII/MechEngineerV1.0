@@ -21,11 +21,11 @@ func _menu() -> MainMenu:
 	return m
 
 
-func test_the_main_menu_starts_with_four_entry_tiles_with_art() -> void:
+func test_the_main_menu_starts_with_five_entry_tiles_with_art() -> void:
 	var menu := _menu()
 	await _runner.simulate_frames(2)
 	var tiles: Array = menu.find_child("Tiles", true, false).get_children()
-	assert_int(tiles.size()).is_equal(4)
+	assert_int(tiles.size()).is_equal(5)
 	for t: EntryTile in tiles:
 		assert_object(t.art).is_not_null()
 		assert_str(t.title_label.text).is_not_empty()
