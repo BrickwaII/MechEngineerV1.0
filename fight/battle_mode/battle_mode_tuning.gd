@@ -85,9 +85,6 @@ var curve: Array[Row] = []
 var endless_growth: Dictionary = {}
 ## elite: extra_types, hp_percent, attack_percent, defense_percent.
 var elite: Dictionary = {}
-## Stand-in enemies (id -> an enemy_tables.json entry) added to the shipped
-## table for Battle Mode; a shipped enemy with the same id wins.
-var extra_enemies: Dictionary = {}
 var boss_order: Array[String] = []
 var boss_escorts := 0
 ## boss hp_percent, attack_percent, defense_percent.
@@ -150,8 +147,6 @@ static func from_dict(d: Dictionary) -> BattleModeTuning:
 		if e is Dictionary:
 			t.curve.append(_row(e))
 	t.curve.sort_custom(func(a: Row, b: Row) -> bool: return a.from_fight < b.from_fight)
-	var extras: Variant = d.get("extra_enemies", {})
-	t.extra_enemies = extras if extras is Dictionary else {}
 	var growth: Variant = r.lookup(d, "endless_growth")
 	t.endless_growth = growth if growth is Dictionary else {}
 	var elite_d: Variant = r.lookup(d, "elite")
@@ -232,23 +227,9 @@ func tier_up(tier: String, steps := 1) -> String:
 	return tiers[mini(tiers.size() - 1, i + steps)]
 
 
-## The shipped `base` table with extra_enemies added (a copy; a shipped
-## enemy with the same id wins).
-func enemy_table_with_extras(base: EnemyTable) -> EnemyTable:
-	if extra_enemies.is_empty():
-		return base
-	var t := EnemyTable.new()
-	t.enemies = extra_enemies.duplicate(true)
-	t.enemies.merge(base.enemies, true)
-	t.levels = base.levels
-	t.factions = base.factions
-	t.archetypes = base.archetypes
-	return t
-
-
 ## Problems in the tuning, checked against `enemies` (an EnemyTable) and
-## `combat` (kits and extra enemies' skills, when given); empty when every
-## number and name is usable.
+## `combat` (the kits' actions, when given); empty when every number and name
+## is usable.
 func validate(enemies: EnemyTable, combat: CombatTuning = null) -> Array[String]:
 	var problems: Array[String] = load_errors.duplicate()
 	if lengths.is_empty():
@@ -274,21 +255,6 @@ func validate(enemies: EnemyTable, combat: CombatTuning = null) -> Array[String]
 					problems.append("preset squad %s's kit names unknown action %s" % [p.id, action_id])
 				elif BattleModeTuning.effect_for(combat, action_id).is_empty():
 					problems.append("preset squad %s's kit action %s has no bot skill effect (bot_skill_effects)" % [p.id, action_id])
-	for id: String in extra_enemies:
-		var e: Variant = extra_enemies[id]
-		if not e is Dictionary:
-			problems.append("extra enemy %s is not an object" % id)
-			continue
-		for key in ["name", "hp", "attack", "defense", "speed", "battery_capacity", "skills"]:
-			if not (e as Dictionary).has(key):
-				problems.append("extra enemy %s is missing '%s'" % [id, key])
-		if combat != null:
-			for skill: Variant in e.get("skills", []):
-				if combat.skill(str(skill)) == null:
-					problems.append("extra enemy %s has unknown skill %s" % [id, skill])
-		var archetype := str(e.get("archetype", ""))
-		if not archetype.is_empty() and enemies != null and enemies.archetypes != null and not enemies.archetypes.has(archetype):
-			problems.append("extra enemy %s names unknown archetype %s" % [id, archetype])
 	if tiers.is_empty():
 		problems.append("battle_mode has no tiers")
 	if curve.is_empty():

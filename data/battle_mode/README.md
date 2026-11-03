@@ -13,9 +13,6 @@ every number is a first guess for S10 to tune.
   the default: **Rework kit**, Vanguard's bots with Shred, Heavy Strike
   (Overcharge Shot) and Brace, so the rework's verbs reach the metrics
   (`TODO(decision: battle-mode-default-squad)`).
-- `extra_enemies`: stand-in archetype enemies (Scaler, Plated Walker, Charger)
-  for Battle Mode only, until shipped enemies use the archetypes; a shipped
-  enemy with the same id wins (`TODO(decision: battle-mode-archetype-enemies)`).
 - `curve`: one row per stage, by fight number. Difficulty grows by the number
   of questions a fight asks (the deep dive's "Fun and fair"): `types` (distinct
   enemy kinds), `factions`, `fast` (kinds at or above `fast_speed`), then

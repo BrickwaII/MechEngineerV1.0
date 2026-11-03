@@ -57,8 +57,7 @@ static func create(p_squad: BotSquad, length_id: String, p_seed: int, p_variants
 	assert(run.length != null, "unknown Battle Mode length %s" % length_id)
 	run.variants = p_variants if p_variants != null else FightVariants.load_active()
 	run.combat_tuning = (p_combat_tuning if p_combat_tuning != null else CombatTuning.load_default()).with_variants(run.variants)
-	run.enemy_table = run.tuning.enemy_table_with_extras(
-		p_enemy_table if p_enemy_table != null else EnemyTable.load_default())
+	run.enemy_table = p_enemy_table if p_enemy_table != null else EnemyTable.load_default()
 	return run
 
 
