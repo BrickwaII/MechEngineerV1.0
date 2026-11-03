@@ -41,7 +41,7 @@ static func set_value(text: String, path: Array, value: Variant) -> Dictionary:
 		start = int(found.value_start)
 		end = int(found.value_end)
 	var out := text.substr(0, start) + format(value) + text.substr(end)
-	return _checked(out, path, value, text)
+	return _checked({"text": out, "error": ""}, path, value, text)
 
 
 ## The value at `path` in the parsed `text`, or `missing` when a key on the

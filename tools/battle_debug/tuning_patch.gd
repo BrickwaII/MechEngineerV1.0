@@ -41,7 +41,7 @@ static func build(changes: Array[DebugChange], paths: Dictionary) -> TuningPatch
 			by_file[ch.file] = {"file": ch.file, "path": path, "before": texts[ch.file], "seqs": []}
 		var text: String = texts[ch.file]
 		var held: Variant = JsonTextPatch.get_value(text, ch.data_path, MISSING)
-		var absent := typeof(held) == TYPE_STRING and held == MISSING
+		var absent: bool = typeof(held) == TYPE_STRING and String(held) == MISSING
 		var after: Variant = JSON.parse_string(JsonTextPatch.format(ch.after))
 		if (absent and ch.has_default and JsonTextPatch.same(after, ch.default_value)) or \
 				(not absent and JsonTextPatch.same(held, after)):
