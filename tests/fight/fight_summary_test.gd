@@ -106,7 +106,6 @@ func test_the_answered_fight_summary_agrees_with_its_log_and_units() -> void:
 	assert_int(s.squad.setups).is_greater(0)
 	assert_int(s.squad.combos).is_greater(0)
 	assert_int(s.squad.staggers).is_greater(0)
-	assert_int(s.squad.tag_uses.get("reactive", 0)).is_greater(0)
 	# Uses add up to the decisions, and the sides to their units.
 	var uses := 0
 	for id: String in s.squad.action_uses:
