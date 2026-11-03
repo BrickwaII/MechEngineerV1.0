@@ -3,7 +3,9 @@
 Fight scenarios for the dev tools: the batch simulator (`tools/batch_sim.gd`),
 the scenario builder and the debug overlay demo (`ui/dev/`). Hand-edited JSON.
 Files whose names start with `_` are not scenarios: `_dev_tools.json` holds the
-dev tools' settings (default run count, log path, save folders).
+dev tools' settings (default run count, log path, save folders), and
+`_harness.json` the simulation harness's (policies compared, runs, default
+scenario, CSV folder, exit-check thresholds).
 
 Scenarios saved from the scenario builder go to `user://dev/scenarios/`, and
 bots saved from the robot builder to `user://dev/bots/` and `user://dev/enemies/`.
@@ -18,7 +20,10 @@ bots saved from the robot builder to `user://dev/bots/` and `user://dev/enemies/
   "defense_level": 2,                // 0 to 5: enemies drawn, rewards, grid cost
   "squad": [ ...entries... ],
   "enemies": [ ...entries... ],      // optional; leave out to draw from the enemy table
-  "player_policy": "simple",         // "simple", "random" or "intent" (IntentFightPolicy)
+  "kit": ["strike", "shred"],        // optional: combat action ids every squad member fights with
+                                     // instead of its own skills (Wait is always there)
+  "player_policy": "simple",         // FightScenario.POLICIES: simple, random, intent, patient,
+                                     // careful, greedy, smart
   "enemy_policy": "intent"           // default "intent": enemies act as on the battle screen
 }
 ```
@@ -37,11 +42,17 @@ Enemy entries: an enemy id from `data/combat/enemy_tables.json` (`"rust_hound"`)
 an enemy. Listed enemies appear every fight in that order; without `enemies`,
 each fight draws them for `defense_level` with its seed.
 
-Bots' own skills do not drive fights yet: fight/ gives every squad member the
-skills in `CombatTuning.player_skills`, and a bot fielded as an enemy gets the same.
+Each bot fights with the combat skills its own skills map to (`SquadSkills`,
+through `bot_skill_effects` in `data/combat/combat_tuning.json`), plus the basic
+attack; a bot with no skills gets `CombatTuning.player_skills`. A scenario's
+`kit` replaces every squad member's skills with the listed actions, for actions
+no bot skill maps to yet (such as Shred).
 
 ## Samples
 
 - `level2_drafted_squad.json`: the seed-2024 draft against level 2, enemies drawn per seed.
+- `sandbox_3v3.json`: stand-in for the deep dive's sandbox (S9 may replace it).
+  Three inline bots with the kit Strike, Shred, Heavy Strike, Brace against a
+  Charger, a Plated and a Scaler. The harness's default scenario.
 - `duo_vs_turret.json`: two inline bots, played by the random policy, against a
   sentry turret and two scrap drones, the same enemies every fight.

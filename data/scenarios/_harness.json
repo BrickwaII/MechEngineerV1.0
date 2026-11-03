@@ -1,0 +1,14 @@
+{
+	"_comment": "Settings for the simulation harness (combat rework S8): tools/policy_comparison.gd, run by tools/batch_sim.gd with --policies. Not a scenario: files starting with _ are skipped when scenarios are listed.",
+	"_policies_comment": "policies: who plays the squad, in table order (FightScenario policy names). runs: seeded fights per policy; every policy plays the same seeds. scenario: the scenario played when none is named (TODO(decision: sandbox-scenario): S9's sandbox replaces this file's stand-in). csv_dir: where fights.csv and policies.csv are written.",
+	"policies": ["greedy", "smart", "random"],
+	"runs": 100,
+	"base_seed": 1,
+	"scenario": "res://data/scenarios/sandbox_3v3.json",
+	"csv_dir": "user://harness",
+	"_checks_comment": "The deep dive's exit checks. clean_policy plays well, careless_policy greedily. Greedy test: careless loses at least clear_gap_percent more HP than clean, and more grid capacity. Action-share test: no action above max_action_share_percent of the clean policy's squad decisions. Clean-win gap: on the seeds both win, careless loses at least clear_gap_percent more HP.",
+	"clean_policy": "smart",
+	"careless_policy": "greedy",
+	"max_action_share_percent": 50,
+	"clear_gap_percent": 10
+}

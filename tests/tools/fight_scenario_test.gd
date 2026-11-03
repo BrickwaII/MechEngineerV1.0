@@ -98,7 +98,7 @@ func test_problems_are_reported() -> void:
 	assert_array(problems).contains([
 		"scenario has no name", "defense level 9 is outside 0 to 5", "cannot load squad file user://nope.tres",
 		"inline bot 'x' has no stats object", "inline bot 'y' has unknown skill 'Laser'", "scenario fields no squad",
-		"unknown enemy 'dragon'", "unknown policy 'clever' (use simple, random, intent, patient, careful)"])
+		"unknown enemy 'dragon'", "unknown policy 'clever' (use simple, random, intent, patient, careful, greedy, smart)"])
 
 
 func test_the_intent_policy_plays_enemies_by_their_intents() -> void:
@@ -142,3 +142,30 @@ func test_inline_bots_round_trip_through_bot_json() -> void:
 	var back := BotJson.from_dict(BotJson.to_dict(bot), tuning, problems)
 	assert_array(problems).is_empty()
 	assert_that(BotJson.to_dict(back)).is_equal(BotJson.to_dict(bot))
+
+
+func test_a_kit_replaces_every_members_skills_and_leaves_the_tuning_alone() -> void:
+	var d := H.scenario().to_dict()
+	d["kit"] = ["strike", "heavy_strike"]
+	var s := FightScenario.from_dict(d)
+	var tuning := H.combat_tuning()
+	var before := tuning.player_skills.duplicate()
+	var r := s.resolve(H.bot_tuning(), H.enemy_table(), tuning)
+	assert_array(r.problems).is_empty()
+	assert_array(tuning.player_skills).is_equal(before)
+	assert_array(r.tuning.player_skills).is_equal(["strike", "heavy_strike"])
+	var fight := r.start(1).fight
+	for member in r.request.squad:
+		assert_array(member.skills).is_empty()
+		assert_array(fight.combatant(member.id).skill_ids).is_equal(["strike", "heavy_strike"])
+	assert_array(s.to_dict().kit).is_equal(["strike", "heavy_strike"])
+
+
+func test_a_kit_naming_an_unknown_action_is_a_problem() -> void:
+	var d := H.scenario().to_dict()
+	d["kit"] = ["strike", "nope"]
+	assert_str(", ".join(_resolve(FightScenario.from_dict(d)).problems)).contains("nope")
+
+
+func test_no_kit_is_left_out_of_the_file() -> void:
+	assert_bool(H.scenario().to_dict().has("kit")).is_false()

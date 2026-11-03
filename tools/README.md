@@ -32,6 +32,43 @@ godot --headless --path . -s res://tools/batch_sim.gd -- \
 Options: `--runs N`, `--seed N` (fight i uses seed + i), `--log PATH` or `--log none`.
 Defaults live in `data/scenarios/_dev_tools.json`.
 
+## Simulation harness (policy comparison)
+
+Combat rework S8. Plays one scenario N times with each of several squad
+policies on the same seeds and prints a Markdown comparison table plus the
+deep dive's exit checks. Every number comes from the fight's own
+`FightSummary`.
+
+```sh
+# The sandbox (data/scenarios/sandbox_3v3.json), greedy / smart / random, 100 seeds:
+godot --headless --path . -s res://tools/batch_sim.gd -- --policies default
+# Any scenario and policies:
+godot --headless --path . -s res://tools/batch_sim.gd -- \
+    --scenario res://data/scenarios/sandbox_3v3.json --policies greedy,smart,careful,random \
+    --runs 100 --seed 1 --csv user://harness
+```
+
+- Columns, per policy: win rate, squad HP lost (and as a percent of its HP),
+  capacity drained (grid cost), energy spent, fight length (squad decisions),
+  ticks, combos, Staggers, the top action and its share, fights where one
+  action took more than the share limit, and every action's share.
+- Checks: `greedy_loses_more` (the careless policy loses `clear_gap_percent`
+  more HP, and more capacity, than the clean one), `action_share` (no action
+  above `max_action_share_percent` of the clean policy's uses),
+  `clean_win_gap` (the same, on only the seeds both win). PASS, FAIL or
+  SKIPPED (a policy the check needs was not played).
+- CSV: `fights.csv` (one row per fight, with a `share_<action>` column per
+  action) and `policies.csv` (one row per policy, with each check's verdict),
+  both replaced on every run. `--csv none` skips them.
+- Policies: `greedy` (`GreedyFightPolicy`: most real damage now), `smart`
+  (`SmartFightPolicy`: the scripted-smart player), `careful`, `simple`,
+  `patient`, `random`, `intent`.
+- Settings: `data/scenarios/_harness.json`; the smart policy's numbers:
+  `data/combat/smart_policy.json`.
+- Code: `PolicyComparison.run(scenario, names, runs, seed)`, or
+  `PolicyComparison.compare(resolved, name, names, runs, seed)` on a set-up
+  that is already resolved (an edited tuning, a live fight's request).
+
 ## Battle Mode simulator
 
 Plays whole Battle Mode runs headless (`fight/battle_mode/`): fight after
@@ -123,6 +160,7 @@ dealt, energy spent and hp left.
 | `fixed_enemy_table.gd` | An EnemyTable that fields listed enemies every fight |
 | `simulated_fight.gd` | Plays a fight like HeadlessFightRunner, counting per-unit damage |
 | `batch_simulator.gd`, `batch_report.gd` | Many seeded fights and their totals |
+| `policy_comparison.gd`, `harness_settings.gd` | The simulation harness: policies compared on the same seeds, CSV and exit checks |
 | `fight_stats_log.gd` | The JSON-lines log |
 | `variant_comparison.gd`, `compare_variants.gd` | Every option of one decision on the same seeded fights |
 | `faction_win_rates.gd`, `check_factions.gd` | Win rates per enemy faction, act tier and defense level |
