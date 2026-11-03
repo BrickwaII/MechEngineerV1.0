@@ -74,8 +74,8 @@ var save_dialog: ConfirmationDialog
 var _toggle_key := KEY_F7
 ## True while the panel writes values into its editors (no edits sent).
 var _filling := false
-## The battle field's right offset before the panel took room; INF until read.
-var _field_right := INF
+## The screen's right offset before the panel took room; INF until read.
+var _screen_right := INF
 
 
 ## Builds a session on `p_screen`'s fight and adds the panel to the screen,
@@ -135,9 +135,13 @@ func _ready() -> void:
 	style.set_border_width_all(1)
 	style.set_content_margin_all(8)
 	add_theme_stylebox_override("panel", style)
+	# Laid out against the window, not the screen it sits in, which shrinks
+	# beside it.
+	top_level = true
 	set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
 	offset_left = -settings.panel_width
 	custom_minimum_size.x = settings.panel_width
+	get_viewport().size_changed.connect(_make_room)
 	_build()
 	session.changed.connect(_on_session_changed)
 	screen.handler.changed.connect(_on_screen_moved)
@@ -166,17 +170,31 @@ func _on_visibility_changed() -> void:
 	_make_room()
 
 
-## While shown, the battle field, dock and overlays move left of the panel,
-## so every unit and the dock stay visible and clickable.
+## While shown, the battle screen itself is made narrower (its right edge
+## moves in by the panel's width), so it runs its own fit pass and lays out
+## as it would in a window that wide: every unit, the dock and the strip
+## stay whole and clickable. The panel is top-level, on the window's right
+## edge. The screen never goes below settings.min_screen_width (the
+## narrowest window the fit tests cover): in a smaller window the panel
+## narrows, down to min_panel_width, and past that covers the screen's edge.
 func _make_room() -> void:
-	var root := screen.field_root
-	if root == null:
-		return
-	if _field_right == INF:
-		_field_right = root.offset_right
-	root.offset_right = _field_right - (settings.panel_width if visible else 0)
-	screen._fit_field()
-	screen.refresh()
+	if _screen_right == INF:
+		_screen_right = screen.offset_right
+	var width := panel_width()
+	offset_left = -width
+	custom_minimum_size.x = width
+	screen.offset_right = _screen_right - (mini(width, maxi(0, _window_width() - settings.min_screen_width))
+		if visible else 0)
+
+
+## The panel's width in the current window (see _make_room()).
+func panel_width() -> int:
+	var room := _window_width() - settings.min_screen_width
+	return clampi(room, settings.min_panel_width, settings.panel_width)
+
+
+func _window_width() -> int:
+	return int(get_viewport_rect().size.x) if is_inside_tree() else settings.panel_width + settings.min_screen_width
 
 
 # --- Actions the buttons call (tests call them too) --------------------------

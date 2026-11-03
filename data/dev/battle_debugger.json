@@ -12,8 +12,10 @@
 	"export_dir": "user://dev/tuning_diffs",
 	"_snapshots_comment": "Rewind keeps one snapshot per decision, up to max_snapshots (the oldest go first).",
 	"max_snapshots": 2000,
-	"_ui_comment": "The debugger panel: its width, and how many change-log lines and timeline entries it lists.",
+	"_ui_comment": "The debugger panel: its width, and how many change-log lines and timeline entries it lists. The battle screen beside it shrinks to the room left but never below min_screen_width (the narrowest window the fit tests cover); in a smaller window the panel narrows to min_panel_width, then covers the screen's edge.",
 	"panel_width": 460,
+	"min_screen_width": 1280,
+	"min_panel_width": 320,
 	"log_lines_shown": 12,
 	"timeline_shown": 10,
 	"toggle_key": "F7"
