@@ -40,6 +40,11 @@ var decision_tags: Array[ActionTag] = []
 var log_lines: PackedStringArray = []
 ## The FightEvents of the latest action, in order. See FightEvent.
 var last_events: Array[FightEvent] = []
+## The one combat log (S6): every FightEvent of the fight, in order, from the
+## first decision on, including RECOVER and INTENT_CHANGED raised between
+## decisions. Its decision events (FightEvent.is_decision()) replay the fight
+## (FightLog); FightSummary tallies it. See summary() and decisions().
+var events: Array[FightEvent] = []
 
 ## Plans archetype enemies' intents (ArchetypeRules), which the fight
 ## announces with INTENT_CHANGED events. Null until the fight first needs one,
@@ -51,6 +56,8 @@ var intent_planner: IntentPlanner
 signal event_raised(event: FightEvent)
 
 var _over := false
+## The decision being resolved, as submitted (a copy), for its SKILL or WAIT event.
+var _submitted: FightAction
 ## Why the request cannot be fought, or "" when it can.
 var _invalid_reason := ""
 
@@ -157,6 +164,7 @@ func submit(action: FightAction) -> String:
 	action_count += 1
 	last_events = []
 	var tag := ActionTag.begin(self, actor, action)
+	_submitted = action.copy()
 	if action.kind == FightAction.Kind.WAIT:
 		_resolve_wait(actor, action)
 	else:
@@ -169,6 +177,9 @@ func submit(action: FightAction) -> String:
 	ArchetypeRules.count_telegraph(self, actor)
 	tag.finish(self)
 	decision_tags.append(tag)
+	# The decision's own event (SKILL or WAIT, raised first) carries its tags.
+	if not last_events.is_empty() and last_events[0].is_decision():
+		last_events[0].tags = tag.tags.duplicate()
 	if not tag.labels.is_empty():
 		log_lines.append("  tags: %s" % ", ".join(tag.labels))
 	_check_end()
@@ -223,6 +234,18 @@ func log_text() -> String:
 	return "\n".join(log_lines)
 
 
+## The decisions made so far, in order, read from the log (FightLog.decisions()).
+## With the request and seed they replay the fight: FightLog.replay().
+func decisions() -> Array[FightAction]:
+	return FightLog.decisions(events)
+
+
+## The fight's tally so far: actions used, HP and grid capacity lost, statuses
+## applied, combos. Read it once the fight is over for the final summary.
+func summary() -> FightSummary:
+	return FightSummary.of(self)
+
+
 func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 	var skill := actor.skill(action.skill_id)
 	var target := combatant(action.target_id)
@@ -230,6 +253,7 @@ func _resolve_skill(actor: Combatant, action: FightAction) -> void:
 	actor.spend(skill)
 	action_tags.append("%s:%s" % [actor.id, skill.id])
 	var used := _event(FightEvent.Kind.SKILL, actor, target, skill)
+	used.action = _submitted
 	used.amount = skill.energy_cost
 	used.energy_before = energy_before
 	used.energy_after = actor.energy()
@@ -307,6 +331,7 @@ func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before
 	target.hp = maxi(0, target.hp - dmg)
 	target.guard_percent = 0
 	target.reflect_percent = 0
+	var gauge_before := target.gauge
 	ElasticityRules.after_hit(target, dmg, tuning)
 	var extras := ""
 	if b.status_percent > 0:
@@ -333,6 +358,14 @@ func _hit(actor: Combatant, target: Combatant, skill: CombatSkill, energy_before
 	hit.absorbed = absorbed
 	hit.hp_before = hp_before
 	_raise(hit)
+	if target.gauge < gauge_before:
+		# d-elasticity resist_knockback moved the gauge itself (no log line,
+		# as before); the log still records it.
+		var pushed := _event(FightEvent.Kind.KNOCKBACK, actor, target, skill)
+		pushed.amount = gauge_before - target.gauge
+		pushed.gauge_before = gauge_before
+		pushed.gauge_after = target.gauge
+		_raise(pushed)
 	if not target.is_alive():
 		_log("%s is down" % target.display_name)
 		_raise(_event(FightEvent.Kind.DOWN, actor, target, skill))
@@ -427,6 +460,7 @@ func _resolve_wait(actor: Combatant, action: FightAction) -> void:
 	actor.energy_milli = mini(actor.max_energy_milli, actor.energy_milli + WaitRules.start_bonus_milli(tuning))
 	action_tags.append("%s:wait" % actor.id)
 	var waited := _event(FightEvent.Kind.WAIT, actor, null, skill)
+	waited.action = _submitted
 	waited.amount = action.wait_ticks
 	waited.energy_before = energy_before
 	waited.energy_after = actor.energy()
@@ -586,7 +620,9 @@ func _event(kind: FightEvent.Kind, actor: Combatant, target: Combatant, skill: C
 func _raise(event: FightEvent) -> void:
 	if event.target_id != "":
 		event.hp_after = combatant(event.target_id).hp
+	event.tick = timeline.current_tick
 	last_events.append(event)
+	events.append(event)
 	event_raised.emit(event)
 
 

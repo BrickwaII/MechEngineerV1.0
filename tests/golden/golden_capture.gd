@@ -152,6 +152,10 @@ func _fight_text(fight: Fight) -> String:
 		lines.append("-- tag " + dump(t))
 	var r := fight.result()
 	lines.append("-- result outcome=%d grid=%s rewards=%s timed_out=%s" % [r.outcome, var_to_str(r.grid_cost), r.rewards, fight.timed_out])
+	# The S6 fight summary. Called by name: the base side of a golden check
+	# may predate it, and then simply has no summary line.
+	if fight.has_method("summary"):
+		lines.append("-- summary " + str(fight.call("summary").call("text")))
 	return "\n".join(lines) + "\n"
 
 

@@ -156,8 +156,8 @@ func validate() -> Array[String]:
 	for set_name in drift_rule_sets:
 		all_rules.append_array(drift_rule_sets[set_name])
 	for rule in all_rules:
-		if not rule.label in ActionTag.ALL_LABELS:
-			problems.append("drift rule label %s is not an ActionTag label" % rule.label)
+		if not rule.label in ActionTag.ALL_LABELS and not rule.label in ActionTag.TAGS:
+			problems.append("drift rule label %s is not an ActionTag label or tag" % rule.label)
 		if PersonalityDrift.scale_of_pole(rule.pole) < 0:
 			problems.append("drift rule pole %s is not a personality pole" % rule.pole)
 	if drift_per_push < 0.0:

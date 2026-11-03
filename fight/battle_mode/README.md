@@ -14,7 +14,7 @@ Battle Mode with no change here:
 | `battle_encounter.gd` | `BattleEncounter`: one fight's enemies, kind (normal, elite, boss) and scaling |
 | `battle_encounter_picker.gd` | `BattleEncounterPicker`: draws an encounter from the curve and `EnemyTable`, seeded |
 | `battle_enemy_table.gd` | `BattleEnemyTable`: an `EnemyTable` that fields the encounter at its scaling |
-| `battle_fight_recorder.gd` | `BattleFightRecorder`: watches a fight (its events and public state) and builds the record |
+| `battle_fight_recorder.gd` | `BattleFightRecorder`: builds the record from the fight summary (`Fight.summary()`, the S6 log) plus energy wasted between actions |
 | `battle_fight_record.gd` | `BattleFightRecord`: one fight's turns, HP lost, energy spent and wasted, action uses, combos, Staggers; its readout line and CSV row |
 | `battle_run_summary.gd` | `BattleRunSummary`: the run's totals, action-use shares and dominated fights; end-of-run text and CSV row |
 | `battle_mode_run.gd` | `BattleModeRun`: the loop. Next encounter and request, `begin_fight`/`watch`, `finish_fight` (FightAftermath: growth and HP), `play_fight` headless, CSV |

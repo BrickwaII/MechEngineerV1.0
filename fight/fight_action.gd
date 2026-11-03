@@ -35,6 +35,13 @@ static func wait_exact(p_skill_id: String, ticks: int) -> FightAction:
 	return a
 
 
+## A new action with the same fields.
+func copy() -> FightAction:
+	var a := FightAction.new(kind, skill_id, target_id)
+	a.wait_ticks = wait_ticks
+	return a
+
+
 func _to_string() -> String:
 	if kind == Kind.WAIT:
 		return "wait for %s" % skill_id if wait_ticks == 0 else "wait %d ticks (%s)" % [wait_ticks, skill_id]
