@@ -138,7 +138,7 @@ func test_card_skills_match_what_the_battle_shows() -> void:
 func test_card_costs_follow_the_fight_variants() -> void:
 	var t := CombatTuning.load_default()
 	t.variants.choose(FightVariants.STRIKE_COST, FightVariants.STRIKE_COSTS)
-	var cost := t.variants.param_int(FightVariants.STRIKE_COST, "energy_cost")
+	var cost := t.skills["strike"].energy_cost
 	for bot in _screen.picker.bots():
 		for f in DraftCard.skill_faces(bot, t):
 			if f.id == "strike":

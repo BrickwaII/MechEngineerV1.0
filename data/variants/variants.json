@@ -71,7 +71,7 @@
 			"default": "compressed",
 			"options": [
 				{"id": "wide", "name": "Wide (old)", "description": "Gauge per tick = speed: speed 3 to 11 acts up to 3.7 times as often as the slowest. No power for slow units."},
-				{"id": "compressed", "name": "Compressed, slow hits harder", "description": "Speed speed_low..speed_high maps onto charge_low..charge_high gauge per tick (threshold x gauge_scale), so the fastest acts at most 1.6 times as often as the slowest. A slower unit's damage skills deal slow_power_percent of the tempo it gives up as extra damage. TODO(decision: speed-range).", "params": {"speed_low": 3, "speed_high": 11, "charge_low": 50, "charge_high": 80, "gauge_scale": 10, "slow_power_percent": 80}}
+				{"id": "compressed", "name": "Compressed, slow hits harder", "description": "Speed speed_low..speed_high maps onto charge_low..charge_high gauge per tick (threshold x gauge_scale), so the fastest acts at most 1.6 times as often as the slowest. A slower unit's damage skills deal slow_power_percent of the tempo it gives up as extra damage. Decided Nov 2: kept beside action recovery until S10 tunes the two together.", "params": {"speed_low": 3, "speed_high": 11, "charge_low": 50, "charge_high": 80, "gauge_scale": 10, "slow_power_percent": 80}}
 			]
 		},
 		{
@@ -81,8 +81,8 @@
 			"applies": "next_fight",
 			"default": "costs",
 			"options": [
-				{"id": "free", "name": "Free Strike (old)", "description": "Strike costs nothing; energy recharges by energy in data/combat/combat_tuning.json."},
-				{"id": "costs", "name": "Strike costs energy", "description": "Strike (the basic attack) costs energy_cost; energy recharges recharge_milli_per_battery_per_tick per battery point a tick (at least recharge_floor_milli_per_tick), so a bot chooses between Strike, a bigger skill and waiting. TODO(decision: strike-cost).", "params": {"energy_cost": 1, "recharge_milli_per_battery_per_tick": 10, "recharge_floor_milli_per_tick": 60}}
+				{"id": "free", "name": "Free Strike (retired)", "description": "The retired rule, kept so tools can compare: Strike costs nothing whatever data/combat/actions.json says, and energy recharges by energy in data/combat/combat_tuning.json."},
+				{"id": "costs", "name": "Strike costs energy (decided)", "description": "Decided Nov 2: every action but Wait costs energy. Strike (the basic attack) costs what data/combat/actions.json says; energy recharges recharge_milli_per_battery_per_tick per battery point a tick (at least recharge_floor_milli_per_tick), so a bot chooses between Strike, a bigger skill and waiting, and Wait stays free.", "params": {"recharge_milli_per_battery_per_tick": 10, "recharge_floor_milli_per_tick": 60}}
 			]
 		},
 		{

@@ -54,13 +54,15 @@ const TAG_WEIGHT_PER_TURN_TIME := "per_turn_time"
 const TAG_WEIGHT_PER_FIGHT := "per_fight"
 
 ## How far apart the fastest and slowest units act, and what slow units get
-## for it. See SpeedRules. TODO(decision: speed-range).
+## for it. See SpeedRules. Decided Nov 2: kept beside action recovery until
+## S10 (docs/design/combat-rework-questions.md).
 const SPEED_RANGE := "speed-range"
 const SPEED_WIDE := "wide"
 const SPEED_COMPRESSED := "compressed"
 
-## What the basic attack (Strike) costs, and the energy recharge that goes
-## with it. See EnergyRules. TODO(decision: strike-cost).
+## Decided Nov 2: Strike costs energy like every action but Wait, at its
+## cost in data/combat/actions.json; "costs" is that rule and its recharge,
+## "free" the retired rule, kept so tools can compare. See EnergyRules.
 const STRIKE_COST := "strike-cost"
 const STRIKE_FREE := "free"
 const STRIKE_COSTS := "costs"

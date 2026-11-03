@@ -49,7 +49,7 @@ func test_a_drafted_bots_skills_appear_in_its_combatant() -> void:
 			assert_bool(c.has_skill(combat_id)).is_true()
 			assert_str(c.skill(combat_id).display_name).is_equal(skill.display_name)
 			assert_int(c.skill(combat_id).level).is_equal(skill.level)
-		# Never stuck: a free single-target attack is always there.
+		# The basic single-target attack is always there (and Wait is free).
 		assert_bool(c.skills().any(func(s: CombatSkill) -> bool: return CombatTuning.is_basic_attack(s))).is_true()
 
 
